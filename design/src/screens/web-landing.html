@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>E-Cinema / Web / Landing</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  .page { width: 1440px; background: var(--bg-base); }
+  .nav { height: 76px; padding: 0 64px; display: flex; align-items: center; justify-content: space-between; position: absolute; top: 0; left: 0; right: 0; }
+  .nav-links { display: flex; gap: 32px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+  .nav-links .on { color: var(--text-primary); }
+  .hero { position: relative; height: 820px; overflow: hidden; }
+  .hero-art { position: absolute; inset: 0; background: linear-gradient(120deg, #2a070c 0%, #12060a 40%, #050507 100%); }
+  .hero-sun { position: absolute; width: 900px; height: 900px; right: -120px; top: -160px; border-radius: 50%; background: radial-gradient(circle, rgba(255,110,40,.55) 0%, rgba(227,24,45,.25) 35%, rgba(227,24,45,0) 65%); }
+  .hero-dune { position: absolute; left: 0; right: 0; bottom: 0; height: 420px; background: linear-gradient(180deg, rgba(10,10,12,0) 0%, rgba(10,10,12,.85) 60%, #0A0A0C 100%); }
+  .hero-left { position: absolute; left: 0; top: 0; bottom: 0; width: 900px; background: linear-gradient(90deg, rgba(10,10,12,.95) 0%, rgba(10,10,12,.6) 55%, rgba(10,10,12,0) 100%); }
+  .hero-body { position: absolute; left: 64px; top: 210px; width: 640px; display: flex; flex-direction: column; gap: 22px; }
+  .countdown { display: flex; gap: 10px; }
+  .cd { width: 76px; height: 76px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .cd b { font-family: var(--font-display); font-size: 36px; line-height: 36px; font-weight: 400; }
+  .cd span { font-size: 10px; font-weight: 700; letter-spacing: .8px; color: var(--text-secondary); }
+  .meta { display: flex; gap: 12px; align-items: center; font-size: 14px; color: var(--text-secondary); font-weight: 600; }
+  .meta i { width: 4px; height: 4px; border-radius: 2px; background: var(--text-muted); }
+  .seats { display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--text-secondary); }
+  .bar { width: 220px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .bar div { width: 72%; height: 6px; background: var(--brand-red); }
+  .section { padding: 72px 64px; display: flex; flex-direction: column; gap: 28px; }
+  .sec-head { display: flex; align-items: flex-end; justify-content: space-between; }
+  .strip { display: flex; gap: 20px; }
+  .tile { width: 248px; display: flex; flex-direction: column; gap: 12px; }
+  .tile .poster { width: 248px; height: 360px; }
+  .tile-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+  .langs { display: flex; flex-wrap: wrap; gap: 10px; width: 560px; }
+  .split { display: flex; gap: 64px; align-items: center; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature { padding: 28px; display: flex; flex-direction: column; gap: 12px; min-height: 220px; }
+  .f-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(227,24,45,.12); display: flex; align-items: center; justify-content: center; }
+  .steps { display: flex; gap: 20px; }
+  .step { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 10px; }
+  .step-n { font-family: var(--font-display); font-size: 56px; line-height: 52px; color: var(--brand-red); }
+  .plans { display: flex; gap: 16px; }
+  .plan { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .plan.hl { border-color: var(--brand-red); background: linear-gradient(180deg, rgba(227,24,45,.10), rgba(227,24,45,0) 60%), var(--bg-surface); }
+  .price { font-family: var(--font-display); font-size: 40px; line-height: 40px; }
+  .ticks { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .surge { margin: 0 64px; border-radius: 24px; padding: 40px 48px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(100deg, #E3182D 0%, #9d0c1b 100%); position: relative; overflow: hidden; }
+  .pay { display: flex; gap: 12px; flex-wrap: wrap; }
+  .pay div { height: 40px; padding: 0 16px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+  .footer { padding: 56px 64px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; margin-top: 72px; }
+  .fcol { display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-muted); }
+  .fcol b { color: var(--text-secondary); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div class="hero-art"></div><div class="hero-sun"></div><div class="hero-left"></div><div class="hero-dune"></div>
+    <div class="nav">
+      <div class="row" style="gap:48px">
+        <div class="logo"><div class="logo-word">E-CINEMA</div><div class="logo-arc"></div></div>
+        <div class="nav-links"><span class="on">Premieres</span><span>Watch parties</span><span>Plans</span><span>For business</span></div>
+      </div>
+      <div class="row" style="gap:12px">
+        <div class="chip">NG · English</div>
+        <div class="btn btn-ghost btn-sm">Sign in</div>
+        <div class="btn btn-primary btn-sm">Join free</div>
+      </div>
+    </div>
+    <div class="hero-body">
+      <div class="row" style="gap:10px"><span class="badge badge-live"><span class="dot"></span>World premiere</span><span class="badge badge-outline">Screening once · Tonight only</span></div>
+      <div class="display-xl">THE LAST<br>HARMATTAN</div>
+      <div class="meta"><span>2026</span><i></i><span>Drama, Thriller</span><i></i><span>2h 11m</span><i></i><span class="badge badge-outline">PG-13</span></div>
+      <div class="body-l secondary">One night, one screening, the whole world in the same seat. Hear it in Yoruba, Hausa, Hindi, French or 38 other languages, and talk to the person watching in Lagos, Mumbai or Lyon.</div>
+      <div class="countdown">
+        <div class="cd"><b>02</b><span>HRS</span></div>
+        <div class="cd"><b>14</b><span>MIN</span></div>
+        <div class="cd"><b>36</b><span>SEC</span></div>
+      </div>
+      <div class="row" style="gap:12px">
+        <div class="btn btn-primary btn-lg">Get a seat · ₦3,500</div>
+        <div class="btn btn-secondary btn-lg">▶  Watch trailer</div>
+      </div>
+      <div class="seats"><div class="bar"><div></div></div><span>18,240 of 65,000 seats left</span></div>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:24px">
+    <div class="sec-head">
+      <div class="col" style="gap:6px"><span class="overline" style="color:var(--brand-red)">This week only</span><div class="h1">Premieres near your time zone</div></div>
+      <div class="row" style="gap:8px"><span class="chip active">All</span><span class="chip">Tonight</span><span class="chip">Tomorrow</span><span class="chip">Nollywood</span><span class="chip">Bollywood</span><span class="chip">Hollywood</span><span class="chip">K-Drama</span></div>
+    </div>
+    <div class="strip">
+      <div class="tile"><div class="poster art-2"><div class="glow-blue"></div><span class="p-badge badge badge-live"><span class="dot"></span>Live now</span><div class="p-title">TIDE OF<br>LAGOS</div></div><div class="tile-meta"><span>Ends in 48 min</span><span>Yoruba · EN</span></div></div>
+      <div class="tile"><div class="poster art-3"><div class="glow-amber"></div><span class="p-badge badge badge-new">Tonight 20:00</span><div class="p-title">MONSOON<br>HEARTS</div></div><div class="tile-meta"><span>₦3,000</span><span>Hindi · 31 dubs</span></div></div>
+      <div class="tile"><div class="poster art-4"><div class="glow-red"></div><span class="p-badge badge badge-new">Tonight 22:30</span><div class="p-title">ORBIT<br>ZERO</div></div><div class="tile-meta"><span>₦4,200</span><span>English · 42 dubs</span></div></div>
+      <div class="tile"><div class="poster art-5"><div class="glow-amber"></div><span class="p-badge badge badge-outline" style="background:rgba(0,0,0,.5)">Tomorrow 19:00</span><div class="p-title">THE KANO<br>LEDGER</div></div><div class="tile-meta"><span>₦2,800</span><span>Hausa · 18 dubs</span></div></div>
+      <div class="tile"><div class="poster art-1"><div class="glow-red"></div><span class="p-badge badge badge-adult">18+</span><div class="p-title">VELVET<br>HOUR</div></div><div class="tile-meta"><span>Verified adults</span><span>French · 22 dubs</span></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="col" style="gap:6px"><span class="overline" style="color:var(--brand-red)">How it works</span><div class="h1">A cinema seat without the cinema</div></div>
+    <div class="steps">
+      <div class="step card"><div class="step-n">01</div><div class="h3">Pick tonight's premiere</div><div class="secondary">Only new releases, and each screening disappears once it ends. Miss it and it is gone.</div></div>
+      <div class="step card"><div class="step-n">02</div><div class="h3">Take your seat</div><div class="secondary">Pay once with card, Paystack, Flutterwave or crypto. Prices are set for your country.</div></div>
+      <div class="step card"><div class="step-n">03</div><div class="h3">Watch with the world</div><div class="secondary">Same frame, same second, for everyone. Pick your audio language and talk in the room chat.</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="split">
+      <div class="col" style="gap:16px; width:560px">
+        <span class="overline" style="color:var(--brand-red)">Your language, live</span>
+        <div class="display-l">HEAR EVERY FILM<br>IN YOUR MOTHER TONGUE</div>
+        <div class="body-l secondary">AI dubbing and subtitles run alongside the stream, so a premiere from Hollywood plays in Igbo in Enugu and in Tamil in Chennai. Chat messages are translated as they arrive.</div>
+        <div class="langs">
+          <span class="chip active">Yorùbá</span><span class="chip">Hausa</span><span class="chip">Igbo</span><span class="chip">English</span><span class="chip">हिन्दी</span><span class="chip">தமிழ்</span><span class="chip">Français</span><span class="chip">Kiswahili</span><span class="chip">العربية</span><span class="chip">Português</span><span class="chip">Español</span><span class="chip">中文</span><span class="chip">+30 more</span>
+        </div>
+      </div>
+      <div class="card" style="flex:1; height:440px; position:relative; overflow:hidden; background:linear-gradient(160deg,#16222e,#07090c)">
+        <div class="glow-blue"></div>
+        <div style="position:absolute; left:32px; right:32px; bottom:32px; display:flex; flex-direction:column; gap:12px; align-items:center">
+          <div style="background:rgba(0,0,0,.65); padding:10px 16px; border-radius:8px; font-size:20px; font-weight:700; text-align:center">“Ọ̀rẹ́ mi, a ò ní fi ọ́ sílẹ̀ níbí.”</div>
+          <div class="row" style="gap:8px"><span class="badge badge-outline" style="background:rgba(0,0,0,.6)">Audio · Yorùbá (AI)</span><span class="badge badge-outline" style="background:rgba(0,0,0,.6)">Subtitles · English</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="col" style="gap:6px"><span class="overline" style="color:var(--brand-red)">Built for watching together</span><div class="h1">Everything a night out has, minus the traffic</div></div>
+    <div class="feature-grid">
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></div><div class="h3">Room chat across borders</div><div class="secondary">Text, voice notes, photos, documents and reactions, translated for every reader.</div></div>
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></div><div class="h3">Volume past 100%</div><div class="secondary">Boost dialogue up to 200% for noisy rooms and small phone speakers.</div></div>
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div><div class="h3">AI snack critic</div><div class="secondary">Snap your food, get a rating and a pairing tip, and find films that match tonight's mood.</div></div>
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="h3">Locked-down screen</div><div class="secondary">One person, one account. Screenshots, screen recording and downloads are blocked.</div></div>
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="h3">Private screenings</div><div class="secondary">Enterprise members can watch alone or invite their own guest list.</div></div>
+      <div class="feature card"><div class="f-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22D41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/></svg></div><div class="h3">Data saver</div><div class="secondary">Watch in 240p audio-first mode on as little as 150 MB per film.</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><div class="col" style="gap:6px"><span class="overline" style="color:var(--brand-red)">Plans</span><div class="h1">Choose how loud you want to be</div></div><span class="secondary">Prices shown for Nigeria</span></div>
+    <div class="plans">
+      <div class="plan card"><span class="badge badge-outline">Free</span><div class="price">₦0</div><div class="ticks"><span>✓ Buy single tickets</span><span>✓ Read chat and react</span><span>— Muted in chat</span></div></div>
+      <div class="plan card"><span class="badge badge-student">Student</span><div class="price">₦1,500<span class="body-s muted"> /mo</span></div><div class="ticks"><span>✓ Pro features</span><span>✓ Verified school email</span><span>✓ 2 premieres a month</span></div></div>
+      <div class="plan card hl"><span class="badge badge-pro">Pro</span><div class="price">₦4,500<span class="body-s muted"> /mo</span></div><div class="ticks"><span>✓ Unmuted voice and media</span><span>✓ Request older films</span><span>✓ AI insights dashboard</span></div></div>
+      <div class="plan card"><span class="badge badge-vip">VIP group</span><div class="price">₦2,900<span class="body-s muted"> /seat</span></div><div class="ticks"><span>✓ 5 to 50 seats together</span><span>✓ Lower price per seat</span><span>✓ Group room and host tools</span></div></div>
+      <div class="plan card"><span class="badge badge-ent">Enterprise</span><div class="price">₦25,000<span class="body-s muted"> /mo</span></div><div class="ticks"><span>✓ Watch alone or invite-only</span><span>✓ Private rooms</span><span>✓ Priority support</span></div></div>
+    </div>
+  </div>
+
+  <div class="surge">
+    <div class="col" style="gap:8px; width:760px"><span class="overline">Sold out in 24 hours?</span><div class="display-m">WE OPEN 1,000 FREE SEATS</div><div class="body-l">When a premiere sells out within a day, we release a free block of seats by lottery so demand never locks people out.</div></div>
+    <div class="btn btn-lg" style="background:#fff; color:#0A0A0C">Join the waitlist</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><div class="h2">Pay the way your country pays</div></div>
+    <div class="pay"><div>Mastercard</div><div>Visa</div><div>Verve</div><div>Paystack</div><div>Flutterwave</div><div>M-Pesa</div><div>UPI</div><div>Apple Pay</div><div>Google Pay</div><div>Bitcoin</div><div>USDC</div><div>Ethereum</div></div>
+  </div>
+
+  <div class="footer">
+    <div class="col" style="gap:14px"><div class="logo"><div class="logo-word">E-CINEMA</div><div class="logo-arc"></div></div><span class="body-s muted">© 2026 E-Cinema. Premieres, together.</span></div>
+    <div class="row" style="gap:80px; align-items:flex-start">
+      <div class="fcol"><b>Watch</b><span>Premieres</span><span>Watch parties</span><span>Request a film</span></div>
+      <div class="fcol"><b>Account</b><span>Plans</span><span>Student offer</span><span>Gift a seat</span></div>
+      <div class="fcol"><b>Company</b><span>About</span><span>Studios and distributors</span><span>Careers</span></div>
+      <div class="fcol"><b>Help</b><span>Help centre</span><span>Privacy</span><span>Terms</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
