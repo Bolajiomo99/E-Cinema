@@ -2,6 +2,8 @@
 
 Figma file: https://www.figma.com/design/M2RESyD3zhwTZfV7VXrBW3/E-Cinema
 
+Every page is designed in Figma before it is built. Anything new gets a Figma frame first, then code.
+
 ## Pages
 
 | Page | What is on it |
@@ -9,14 +11,15 @@ Figma file: https://www.figma.com/design/M2RESyD3zhwTZfV7VXrBW3/E-Cinema
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 10 desktop screens at 1440 wide |
-| 04 Mobile screens | 6 Android screens at 412 x 915 |
-| 05 Flows & notes | Key user flows and open product questions |
+| 03 Web screens | 35 desktop frames at 1440 wide |
+| 04 Mobile screens | 28 Android frames at 412 x 915, plus one landscape player |
+| 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
+| 06 Studio portal | 15 frames for film studios at 1440 wide |
 
 ## Brand
 
 - **Name and mark.** "E-CINEMA" set in Bebas Neue, brand red, over a curved line that reads as a cinema screen. Only used on dark surfaces.
-- **Colour.** Near-black surfaces with one red (`#E3182D`) reserved for the main action, live state and the logo. Key art carries the rest of the colour, the way Netflix does it.
+- **Colour.** Near-black surfaces with one red (`#E3182D`) reserved for the main action, live state and the logo. Key art carries the rest of the colour, the way Netflix does it. The studio portal uses VIP gold (`#D4A23A`) as its accent so studios always know which side they are on.
 - **Tiers** have their own colours so a badge is recognisable at a glance: Pro red, VIP gold, Enterprise violet, Student teal.
 - **Type.** Bebas Neue for titles and big moments, Manrope for everything people read or tap. Bebas has no diacritics or non-Latin glyphs, so any localised title (Yorùbá, Hindi, Arabic, and so on) falls back to Manrope ExtraBold, with Noto Sans for scripts Manrope lacks.
 
@@ -26,33 +29,111 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 
 ### Web (1440)
 
-| Screen | Figma node | Notes |
+| Area | Screen | Figma node |
 | --- | --- | --- |
-| Landing | `14:280` | Hero premiere with countdown and seats left, premieres strip, how it works, live dubbing, features, plans, sold-out free seats, local payment methods |
-| Sign up · 1 Account | `16:127` | Netflix-style details: name, email, country (detected), mobile, date of birth, app and audio language, password strength, consent |
-| Sign up · 2 Verify | `16:259` | Phone OTP, face liveness, government ID (deferred to first 18+ title), passkey. One face and phone per account |
-| Sign in | `16:296` | Password, passkey or one-time code; two-device limit is stated up front |
-| Home | `17:310` | Live hero with friends in room, starting soon, friends' watch parties, Clips, request a classic |
-| Player + watch party | `17:562` | Synced live player, AI dub and subtitles, volume boost to 200%, data saver, forensic watermark, room chat with translation, voice notes, images with snack-critic score, documents, reactions, muted state for Free |
-| Plans | `18:426` | Five tiers, monthly or yearly, local currency, VIP group price bands, comparison table |
-| Checkout | `18:533` | Payment methods chosen by country, order summary with discounts and tax |
-| 18+ unlock | `18:616` | Four stages: prove age, adult PIN, choose and pay, OTP and PIN |
-| Insights dashboard | `19:462` | Watch time, genre mix, languages, people by country, AI insights |
-| Library | `19:583` | Infuse-style detail header with tech badges, cast and audio tracks; owned, downloads with expiry, requested classics |
+| Join | Landing | `14:280` |
+| | Sign up · 1 Account | `16:127` |
+| | Sign up · 2 Verify (phone, face, passkey) | `16:259` |
+| | Sign up · 3 Plan | `29:417` |
+| | Sign up · 4 Pay | `29:521` |
+| | Sign in | `16:296` |
+| | Forgot password · code | `29:556` |
+| Discover | Home | `17:310` |
+| | Browse by type (movies, anime, cartoons, K-drama, Nollywood, Bollywood, series, documentaries) | `30:564` |
+| | Search (AI and voice) | `30:750` |
+| | Film detail · premiere page | `30:904` |
+| | World map · live | `32:1201` |
+| Watch | Room lobby · pre-show | `30:989` |
+| | Create watch party | `31:934` |
+| | Player + watch party (free talk-time trial) | `17:562` |
+| | Player · free talk time used | `28:565` |
+| Pay | Plans · Nigeria (NGN) | `18:426` |
+| | Plans · Germany (EUR, Deutsch) | `28:304` |
+| | Checkout | `18:533` |
+| | Payment success · ticket | `29:590` |
+| | 18+ unlock · four payments | `28:839` |
+| | Sold out · free-seat lottery | `31:1121` |
+| | Request a classic | `31:1055` |
+| Mine | My tickets | `31:605` |
+| | Library | `19:583` |
+| | Downloads | `31:743` |
+| | Insights dashboard | `19:462` |
+| | Notifications | `31:878` |
+| Social | Messages | `32:798` |
+| | Community feed | `32:951` |
+| | Profile | `32:1060` |
+| Account | Settings · Security and devices | `33:781` |
+| | Settings · Language and region | `33:901` |
+| | Help and AI concierge | `33:987` |
+| | System states (capture blocked, offline, not in your country, premiere ended, too many devices, 404) | `33:1044` |
 
 ### Android (412 x 915)
 
 | Screen | Figma node |
 | --- | --- |
 | Choose language | `23:34` |
-| Home | `23:107` |
-| Clips (vertical feed) | `23:227` |
-| Player + chat | `23:293` |
 | Sign up | `23:364` |
+| Verify phone and face | `40:141` |
+| Sign in | `40:164` |
+| Home | `23:107` |
+| Browse by type | `40:254` |
+| Voice search | `40:320` |
+| Clips (vertical feed) | `23:227` |
+| Film detail | `40:370` |
+| Watch party lobby | `40:443` |
+| Player + chat | `23:293` |
+| Player · talk time ending | `43:1590` |
+| Player · landscape (915 x 412) | `43:1648` |
+| Plans · local currency | `42:212` |
+| Checkout | `42:274` |
+| 18+ unlock · four payments | `42:333` |
+| Seat booked | `42:373` |
+| My tickets | `42:432` |
+| Library and downloads | `42:533` |
+| Messages | `43:301` |
+| Chat (translated, voice notes, images) | `43:393` |
+| Profile | `43:460` |
+| Notifications | `43:540` |
+| World map (globe) | `43:1321` |
+| My insights | `43:1405` |
+| Settings | `43:1502` |
+| AI concierge (voice) | `43:1540` |
 | AI snack critic | `23:443` |
+
+### Studio portal (1440)
+
+Studios license and upload their own films. E-Cinema keeps 30% of net ticket revenue and the studio keeps 70%. The mockups use an invented studio, Starlight Pictures of Lagos, and invented films.
+
+| Screen | Figma node |
+| --- | --- |
+| Onboarding · verify studio and rights | `34:49` |
+| Overview | `34:274` |
+| Films | `34:458` |
+| Upload · film file (with AI quality checks) | `35:290` |
+| Premieres and pricing (per country, global or rolling start) | `35:514` |
+| AI dubbing studio (voice, lip-sync, line review) | `35:871` |
+| Live control room (viewers map, sync, CDN, mood, moderation) | `37:1272` |
+| Analytics · audience and retention | `37:1652` |
+| Analytics · reach, languages and money (funnel, cohorts) | `37:2861` |
+| Revenue and payouts (70/30 split) | `39:349` |
+| Piracy protection | `39:578` |
+| Marketing and clip generator | `39:779` |
+| Team and roles | `39:980` |
+| Settings, webhooks and API | `39:1184` |
+| Studio AI assistant | `39:1345` |
+
+### Flows & notes
+
+| Frame | Figma node |
+| --- | --- |
+| Key flows and answered questions | `23:775` |
+| AI capability map | `45:142` |
+| Real-time and no-buffer architecture | `45:249` |
+| Country, currency and payments | `45:357` |
+| Page inventory and decisions | `45:417` |
 
 ## Placeholders
 
 - Poster art is abstract duotone gradients until licensed key art is available. Swap the Poster instance fill for the real image.
-- Prices are placeholders in NGN. See the open questions on the Flows & notes page.
-- Film titles, people and cities in the mockups are invented.
+- Prices are placeholders and follow the viewer's country. See the country matrix on the Flows & notes page.
+- Film titles, studios, people and cities in the mockups are invented.
