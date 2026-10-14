@@ -11,11 +11,12 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 74 desktop frames at 1440 wide |
-| 04 Mobile screens | 50 Android frames at 412 x 915, plus landscape player and VR headset view |
+| 03 Web screens | 80 desktop frames at 1440 wide |
+| 04 Mobile screens | 53 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
 | 06 Studio portal | 18 frames for film studios at 1440 wide |
 | 07 Executive | 20 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
+| 08 Emails | 22 automatic emails, 600 wide, sent through Resend. See [emails.md](emails.md) |
 
 ## Brand
 
@@ -106,6 +107,13 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | | Room · report and block | `96:1378` |
 | | Help · request a refund | `96:1426` |
 | | Community · group page | `96:1566` |
+| Password recovery | 1 Find your account | `105:1186` |
+| | 2 Enter the code | `29:556` |
+| | 3 Face check | `105:1239` |
+| | 4 New password | `105:1314` |
+| | 5 Done | `105:1357` |
+| | Code expired or too many tries | `105:1402` |
+| | Check your email (reset link) | `105:1447` |
 
 ### Android (412 x 915)
 
@@ -161,6 +169,9 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | Help · request a refund | `100:425` |
 | Settings · delete account | `100:473` |
 | Offline, reconnecting and capture blocked | `100:506` |
+| Password recovery · face check | `105:1809` |
+| Password recovery · new password | `105:1884` |
+| Password recovery · done | `105:1929` |
 
 ### Studio portal (1440)
 
