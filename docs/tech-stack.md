@@ -50,6 +50,10 @@ Go services in v1:
 | `entitlements` | Who may watch or download what, adult unlock state, device limits |
 | `talktime` (inside `rooms`) | Counts each Free member's minutes of voice and text per room, then mutes until they upgrade |
 | `studios` | Studio accounts, rights and territories, uploads, per-country pricing, 70/30 revenue split, payouts |
+| `shop` | Merch catalogue, stock per warehouse, cart, orders, delivery partners, returns |
+| `presale` | Coming-soon pre-orders, price stages, holds and refunds if a release moves |
+| `notify` | Push, in-app, email, SMS and WhatsApp campaigns with AI send-time and translation |
+| `admin` | Executive dashboards and role-based access (CEO, cabinet, investors, stakeholders, partners) |
 | `webhooks` | Signed, retried, idempotent webhooks in from payment and identity providers, and out to studios |
 
 ## Architecture at a glance
@@ -165,6 +169,18 @@ And the biggest one: **film rights.** Studios or distributors must license each 
 - **WebSockets** for everything live and two-way: room chat, voice notes, reactions, presence, seat counters, player sync heartbeats, the world map and the studio control room. Go services hold the connections.
 - **Webhooks** between servers: payment results from Paystack, Flutterwave, Stripe, Razorpay and crypto providers, Smile ID results, DRM and CDN events, and outgoing studio events (`ticket.sold`, `premiere.started`, `payout.sent`, `leak.detected`). Every webhook is signed, retried and idempotent.
 - **No buffering:** the film is pre-positioned on every CDN edge before doors open; players pre-buffer the first minutes during the 15-minute lobby; AI watches each ISP and switches CDN or quality before a stall; quality steps down instead of pausing; audio-first mode keeps the story going on very weak networks; a reconnect jumps straight to the live moment.
+
+## Never down: five copies and 10 million online
+
+- Active-active in at least three Azure regions, with Cloudflare load balancing between them; a region can fail without viewers noticing.
+- Five copies of every important dataset: the live Postgres cluster across zones, a synchronous hot standby in a second region, point-in-time backups every 5 minutes on geo-redundant storage, hourly encrypted copies on a second cloud (Cloudflare R2), and a nightly immutable offline vault.
+- Load-tested before launch at 12 million concurrent viewers; autoscaling on Kubernetes; chat and sync shards spread by consistent hashing.
+- Failover drills every week; payments and chat queue safely when a provider or the internet drops, and finish once it is back.
+
+## VR, AR and the shop
+
+- **VR and AR:** WebXR on the web, and OpenXR apps for Meta Quest, Pico, Android XR and Apple Vision Pro (built in Unity so one codebase covers them). The same DRM-protected streams play on a virtual cinema screen, with spatial voice chat.
+- **Shop:** our own `shop` service with country warehouses and delivery partners; PayPal added to every country's payment options alongside the local methods.
 
 ## Studio portal
 
