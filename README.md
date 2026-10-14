@@ -11,7 +11,8 @@ E-Cinema is a web app and Android app for live, synchronized screenings of newly
 | `design/src/tokens.css` | Design tokens (colors, type, spacing, radius) mirrored from Figma |
 | `design/src/screens/` | Screen specs as HTML, imported into Figma |
 | `design/tools/build.py` | Inlines tokens into each screen for Figma import or browser preview |
-| `docs/` | Product, design and engineering documents |
+| `docs/design/` | Design system and screen index |
+| `docs/tech-stack.md` | Tool and stack proposal |
 
 ## Design
 
