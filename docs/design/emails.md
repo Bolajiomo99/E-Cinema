@@ -26,6 +26,9 @@ Set these up in Resend once the domain exists, with SPF, DKIM and DMARC records.
 | `family@ecinema.app` | Kids approvals |
 | `exec@ecinema.app` | Executive invites |
 | `studios@ecinema.app`, `payouts@ecinema.app` | Studio approvals and payouts |
+| `careers@ecinema.app` | Job applications |
+| `rewards@ecinema.app` | Brand protection rewards |
+| `licensing@ecinema.app` | Merch licences |
 
 ## Emails
 
@@ -53,3 +56,7 @@ Set these up in Resend once the domain exists, with SPF, DKIM and DMARC records.
 | 20 | Studio payout sent | The monthly studio payout is sent | `106:599` |
 | 21 | New this week | Weekly, if the member allowed news | `106:635` |
 | 22 | We miss you | After 30 days without watching, if allowed | `106:657` |
+| 23 | Job application received | Someone applies for a job | `118:2895` |
+| 24 | Report reward paid | An investigator confirms a fake-seller report | `118:2917` |
+| 25 | Licence approved | A merch licence application is approved | `118:2939` |
+| 26 | Late-entry ticket | Someone buys a seat after a film has started | `118:2961` |
