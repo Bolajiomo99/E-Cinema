@@ -14,8 +14,8 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 03 Web screens | 74 desktop frames at 1440 wide |
 | 04 Mobile screens | 50 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
-| 06 Studio portal | 16 frames for film studios at 1440 wide |
-| 07 Executive | 17 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
+| 06 Studio portal | 18 frames for film studios at 1440 wide |
+| 07 Executive | 20 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
 
 ## Brand
 
@@ -146,6 +146,21 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | VR headset view (stereo, 915 x 412) | `55:634` |
 | Order tracking | `89:1451` |
 | Kids mode | `89:1516` |
+| Legal and policies | `97:342` |
+| Policy reader | `97:371` |
+| Shop · product detail | `97:402` |
+| Settings · plan and payments | `97:490` |
+| Settings · notifications | `97:572` |
+| Settings · privacy and data | `97:644` |
+| Sign in · forgot password | `97:680` |
+| Community feed | `97:746` |
+| Search results | `97:818` |
+| Checkout · payment failed | `100:322` |
+| After the film · rate and review | `100:349` |
+| Room · report and block | `100:402` |
+| Help · request a refund | `100:425` |
+| Settings · delete account | `100:473` |
+| Offline, reconnecting and capture blocked | `100:506` |
 
 ### Studio portal (1440)
 
@@ -169,6 +184,8 @@ Studios license and upload their own films. E-Cinema keeps 30% of net ticket rev
 | Settings, webhooks and API | `39:1184` |
 | Studio AI assistant | `39:1345` |
 | Post a coming-soon film | `53:1512` |
+| Film detail and editor | `99:247` |
+| Notifications | `99:552` |
 
 ### Executive (1440)
 
@@ -193,6 +210,9 @@ Access is granted only by the CEO. Invited people sign in with a passkey and see
 | Safety and trust | CEO, cabinet | `82:1075` |
 | Stakeholder view | CEO, stakeholders | `83:958` |
 | Settings (payments, security, countries) | CEO only | `83:386` |
+| Access and roles · grant access | CEO only | `99:1041` |
+| 18+ recipients · add a recipient | CEO only | `99:1362` |
+| Invite sign-in with passkey (no sign-up) | Invited people | `99:1696` |
 
 ### Flows & notes
 
