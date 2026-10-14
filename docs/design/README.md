@@ -11,10 +11,11 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 35 desktop frames at 1440 wide |
-| 04 Mobile screens | 28 Android frames at 412 x 915, plus one landscape player |
+| 03 Web screens | 40 desktop frames at 1440 wide |
+| 04 Mobile screens | 33 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
-| 06 Studio portal | 15 frames for film studios at 1440 wide |
+| 06 Studio portal | 16 frames for film studios at 1440 wide |
+| 07 Executive | 9 frames for the CEO, cabinet, investors and partners, with role-based access |
 
 ## Brand
 
@@ -66,6 +67,11 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | | Settings · Language and region | `33:901` |
 | | Help and AI concierge | `33:987` |
 | | System states (capture blocked, offline, not in your country, premiere ended, too many devices, 404) | `33:1044` |
+| Coming soon | Coming soon (pre-sales) | `52:808` |
+| | Pre-order · quality and VR options, 3 price stages | `52:958` |
+| | VR and AR cinema mode | `52:1122` |
+| Shop | Shop (branded merch, gear, snacks) | `53:925` |
+| | Cart and checkout (local methods, PayPal, pay on delivery) | `53:1111` |
 
 ### Android (412 x 915)
 
@@ -99,6 +105,11 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | Settings | `43:1502` |
 | AI concierge (voice) | `43:1540` |
 | AI snack critic | `23:443` |
+| Coming soon | `55:307` |
+| Pre-order | `55:385` |
+| Shop | `55:478` |
+| Cart and checkout | `55:567` |
+| VR headset view (stereo, 915 x 412) | `55:634` |
 
 ### Studio portal (1440)
 
@@ -121,6 +132,23 @@ Studios license and upload their own films. E-Cinema keeps 30% of net ticket rev
 | Team and roles | `39:980` |
 | Settings, webhooks and API | `39:1184` |
 | Studio AI assistant | `39:1345` |
+| Post a coming-soon film | `53:1512` |
+
+### Executive (1440)
+
+Access is granted only by the CEO. Invited people sign in with a passkey and see their role's data at once, with no sign-up. Pages marked CEO only are never shown to other roles.
+
+| Screen | Who sees it | Figma node |
+| --- | --- | --- |
+| CEO command center | CEO only | `49:1055` |
+| Access and roles | CEO only | `49:1307` |
+| 18+ recipients (charities, pastors, clerics) | CEO only | `49:1577` |
+| Money | CEO, cabinet (CFO) | `50:253` |
+| Infrastructure · 5 backups, 10M scale | CEO, cabinet (CTO) | `50:469` |
+| Investor view | CEO, investors | `50:609` |
+| Partners view | CEO, each partner for their own deal | `51:198` |
+| Notifications and re-engagement | CEO, cabinet | `51:375` |
+| Shop and merch | CEO, cabinet | `51:657` |
 
 ### Flows & notes
 
