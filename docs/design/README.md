@@ -16,7 +16,7 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
 | 06 Studio portal | 18 frames for film studios at 1440 wide |
 | 07 Executive | 25 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
-| 08 Emails | 26 automatic emails, 600 wide, sent through Resend. See [emails.md](emails.md) |
+| 08 Emails | 48 automatic emails, 600 wide, sent through Resend. See [emails.md](emails.md) |
 | 09 Licensee Portal | 7 frames for companies licensed to sell E-Cinema merch, at 1440 wide |
 
 ## Brand
