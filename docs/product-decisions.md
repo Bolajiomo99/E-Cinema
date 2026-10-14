@@ -21,6 +21,8 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 | Shop | Every member can buy branded E-Cinema merch, gear (including an E-Cinema VR headset), snacks and water, with a cart and every local payment method plus PayPal. |
 | Reliability | Never crash: active-active regions, five copies of all data (live, hot standby, 5-minute backups, a second cloud, an offline vault), built and load-tested for 10 million people online at once. |
 | Engagement | Everyone is notified of updates, premieres and coming-soon films; responses feed the ranking algorithm. |
+| Self-serve admin | The CEO and cabinet can add and edit shop products and create new rooms and VR halls from their dashboard, without a developer. Every change is logged with who made it. |
+| Family | One plan holds up to 6 profiles. Kids profiles see age-rated films only, with no voice chat and no purchases without a parent. |
 | Process | Every page is designed in Figma before code. Any new idea is added to Figma first. |
 
 ## Still open
