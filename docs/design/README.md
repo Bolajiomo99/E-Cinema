@@ -11,8 +11,8 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 43 desktop frames at 1440 wide |
-| 04 Mobile screens | 35 Android frames at 412 x 915, plus landscape player and VR headset view |
+| 03 Web screens | 74 desktop frames at 1440 wide |
+| 04 Mobile screens | 50 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
 | 06 Studio portal | 16 frames for film studios at 1440 wide |
 | 07 Executive | 17 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
@@ -75,6 +75,37 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | | Orders and live delivery tracking | `89:894` |
 | Family | Family and kids profiles, parental controls | `89:1020` |
 | Legal | Terms, privacy and cookie consent | `89:1091` |
+| | Terms of use | `92:841` |
+| | Cookie preferences | `92:957` |
+| | Refunds | `92:1060` |
+| | Kids and family policy | `92:1152` |
+| | Studio terms | `92:1248` |
+| | Community rules | `92:1350` |
+| Settings | Account (profile, verification, sign-in) | `93:900` |
+| | Plan and payments | `93:1091` |
+| | Notifications (push, email, SMS, WhatsApp) | `93:1336` |
+| | Data saver | `93:1493` |
+| | Privacy and data | `93:1666` |
+| | Delete account | `96:1493` |
+| Company | About | `94:947` |
+| | For studios | `94:1055` |
+| | Careers | `94:1157` |
+| | For business (private screenings) | `94:1239` |
+| | Student offer | `94:1327` |
+| | Gift a seat | `94:1398` |
+| Tab states | Player · world chat, translated | `95:1008` |
+| | Player · polls | `95:1269` |
+| | Library · collections | `101:1208` |
+| | Library · requested films | `101:1387` |
+| | Profile · reviews | `95:1863` |
+| | Profile · badges | `95:2002` |
+| | Messages · requests | `95:2163` |
+| Flows | Shop · product detail | `96:1194` |
+| | Checkout · payment failed | `96:1254` |
+| | After the film · rate and review | `96:1302` |
+| | Room · report and block | `96:1378` |
+| | Help · request a refund | `96:1426` |
+| | Community · group page | `96:1566` |
 
 ### Android (412 x 915)
 
