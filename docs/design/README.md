@@ -11,11 +11,11 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 40 desktop frames at 1440 wide |
-| 04 Mobile screens | 33 Android frames at 412 x 915, plus landscape player and VR headset view |
+| 03 Web screens | 43 desktop frames at 1440 wide |
+| 04 Mobile screens | 35 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
 | 06 Studio portal | 16 frames for film studios at 1440 wide |
-| 07 Executive | 9 frames for the CEO, cabinet, investors and partners, with role-based access |
+| 07 Executive | 17 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
 
 ## Brand
 
@@ -72,6 +72,9 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | | VR and AR cinema mode | `52:1122` |
 | Shop | Shop (branded merch, gear, snacks) | `53:925` |
 | | Cart and checkout (local methods, PayPal, pay on delivery) | `53:1111` |
+| | Orders and live delivery tracking | `89:894` |
+| Family | Family and kids profiles, parental controls | `89:1020` |
+| Legal | Terms, privacy and cookie consent | `89:1091` |
 
 ### Android (412 x 915)
 
@@ -110,6 +113,8 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | Shop | `55:478` |
 | Cart and checkout | `55:567` |
 | VR headset view (stereo, 915 x 412) | `55:634` |
+| Order tracking | `89:1451` |
+| Kids mode | `89:1516` |
 
 ### Studio portal (1440)
 
@@ -149,6 +154,14 @@ Access is granted only by the CEO. Invited people sign in with a passkey and see
 | Partners view | CEO, each partner for their own deal | `51:198` |
 | Notifications and re-engagement | CEO, cabinet | `51:375` |
 | Shop and merch | CEO, cabinet | `51:657` |
+| Shop · add or edit a product | CEO, cabinet | `83:631` |
+| Rooms and VR halls · add a room | CEO, cabinet | `83:831` |
+| Growth and users | CEO, cabinet | `82:409` |
+| Content and studios | CEO, cabinet | `82:633` |
+| Live operations (only CEO and CTO can pause a premiere) | CEO, cabinet | `82:852` |
+| Safety and trust | CEO, cabinet | `82:1075` |
+| Stakeholder view | CEO, stakeholders | `83:958` |
+| Settings (payments, security, countries) | CEO only | `83:386` |
 
 ### Flows & notes
 
@@ -163,5 +176,6 @@ Access is granted only by the CEO. Invited people sign in with a passkey and see
 ## Placeholders
 
 - Poster art is abstract duotone gradients until licensed key art is available. Swap the Poster instance fill for the real image.
+- Shop, cart, order and admin product photos and the VR hall photos are AI-generated mockups showing the E-Cinema mark. Replace them with real product photography before launch.
 - Prices are placeholders and follow the viewer's country. See the country matrix on the Flows & notes page.
 - Film titles, studios, people and cities in the mockups are invented.
