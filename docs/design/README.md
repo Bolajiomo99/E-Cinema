@@ -11,12 +11,13 @@ Every page is designed in Figma before it is built. Anything new gets a Figma fr
 | 00 Cover | File cover |
 | 01 Foundations | Colour, typography, spacing and radius, all backed by Figma variables and text styles |
 | 02 Components | Logo, Button, Badge, Chip, Input, Poster, Chat message |
-| 03 Web screens | 80 desktop frames at 1440 wide |
-| 04 Mobile screens | 53 Android frames at 412 x 915, plus landscape player and VR headset view |
+| 03 Web screens | 91 desktop frames at 1440 wide |
+| 04 Mobile screens | 60 Android frames at 412 x 915, plus landscape player and VR headset view |
 | 05 Flows & notes | Key flows, answered questions, AI capability map, real-time architecture, country matrix, page inventory |
 | 06 Studio portal | 18 frames for film studios at 1440 wide |
-| 07 Executive | 20 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
-| 08 Emails | 22 automatic emails, 600 wide, sent through Resend. See [emails.md](emails.md) |
+| 07 Executive | 25 frames for the CEO, cabinet, investors, stakeholders and partners, with role-based access |
+| 08 Emails | 26 automatic emails, 600 wide, sent through Resend. See [emails.md](emails.md) |
+| 09 Licensee Portal | 7 frames for companies licensed to sell E-Cinema merch, at 1440 wide |
 
 ## Brand
 
@@ -114,6 +115,17 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | | 5 Done | `105:1357` |
 | | Code expired or too many tries | `105:1402` |
 | | Check your email (reset link) | `105:1447` |
+| Careers | Jobs board (40% Nigeria, 60% worldwide) | `114:1273` |
+| | Job detail and apply | `114:1397` |
+| | My applications | `114:1531` |
+| Community rewards | Brand protection rewards | `114:1670` |
+| | Report a fake seller | `114:1733` |
+| | Verify a product · genuine | `114:1751` |
+| | Verify a product · not genuine | `114:1818` |
+| | Licensing · sell official merch (plans) | `114:1933` |
+| Late entry | Film detail · started, late entry open | `118:1379` |
+| | Checkout · late entry at double price | `118:1440` |
+| | Player · joined late, catch-up | `118:1480` |
 
 ### Android (412 x 915)
 
@@ -172,6 +184,13 @@ Tokens live in [`design/src/tokens.css`](../../design/src/tokens.css) and mirror
 | Password recovery · face check | `105:1809` |
 | Password recovery · new password | `105:1884` |
 | Password recovery · done | `105:1929` |
+| Careers · jobs | `118:1872` |
+| Careers · apply | `118:1897` |
+| Rewards · brand protection | `118:1968` |
+| Rewards · report a fake seller | `118:2001` |
+| Verify a product · scan | `118:2021` |
+| Late entry · join live at double price | `118:2073` |
+| Late entry · catch-up | `118:2114` |
 
 ### Studio portal (1440)
 
@@ -224,6 +243,25 @@ Access is granted only by the CEO. Invited people sign in with a passkey and see
 | Access and roles · grant access | CEO only | `99:1041` |
 | 18+ recipients · add a recipient | CEO only | `99:1362` |
 | Invite sign-in with passkey (no sign-up) | Invited people | `99:1696` |
+| CEO global overview (world map, money mix, health) | CEO only | `117:684` |
+| Hiring and jobs (Nigeria quota setting) | CEO, cabinet | `117:948` |
+| Brand protection (reports, investigators, rewards) | CEO, cabinet | `117:1216` |
+| Licensing (licensees, royalties, approvals) | CEO, cabinet | `117:1481` |
+| Security operations | CEO, cabinet (CTO) | `117:1773` |
+
+### Licensee portal (1440)
+
+Companies pay for a licence to put the E-Cinema logo on merch in their country. Each gets its own portal with full sales data. The mockups use an invented licensee, Lagos Threads Ltd.
+
+| Screen | Figma node |
+| --- | --- |
+| Apply for a licence | `116:38` |
+| Overview | `116:192` |
+| Products and approvals | `116:300` |
+| Sales analytics | `116:441` |
+| Authenticity codes (QR labels) | `116:532` |
+| Royalties and payouts | `116:634` |
+| Licence and compliance | `116:726` |
 
 ### Flows & notes
 
