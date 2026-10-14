@@ -23,6 +23,11 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 | Engagement | Everyone is notified of updates, premieres and coming-soon films; responses feed the ranking algorithm. |
 | Self-serve admin | The CEO and cabinet can add and edit shop products and create new rooms and VR halls from their dashboard, without a developer. Every change is logged with who made it. |
 | Family | One plan holds up to 6 profiles. Kids profiles see age-rated films only, with no voice chat and no purchases without a parent. |
+| Careers | A public jobs board anyone in any country can apply to. 40% of roles are kept for Nigeria and 60% are open worldwide; the CEO can change the split. |
+| Community rewards | Members are rewarded (cash or Pro months) for reporting anyone selling E-Cinema-branded goods without a licence. Paid only after an investigator confirms; reporters stay anonymous; repeated false reports lose the right to report. |
+| Merch licensing | Companies pay for a licence to sell E-Cinema-branded merch in a country (Starter, Growth or Global plans plus a royalty on sales). Each licensee gets its own portal with sales analytics, product approvals, royalties and compliance. Every licensed item carries a QR authenticity label that anyone can check at ecinema.app/verify. |
+| Late entry | After a film starts, people can still buy a seat and join live. The first 15 minutes are normal price; after that a late-entry seat costs double. Doors close 30 minutes before the end. Late joiners get a 60-second, spoiler-free AI catch-up. The studio keeps 70% of late seats too. |
+| CEO overview | The CEO dashboard has a global overview of everything: revenue by stream, live world map, money mix, system health, hiring, brand protection, licensing and security operations. |
 | Process | Every page is designed in Figma before code. Any new idea is added to Figma first. |
 
 ## Still open
