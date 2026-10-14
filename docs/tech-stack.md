@@ -30,8 +30,8 @@ Status: proposal for review. Nothing here is provisioned yet.
 | Cloudflare | Yes | DNS, CDN, DDoS protection, WAF, bot protection (Turnstile), R2 storage |
 | Microsoft Azure | Yes, main cloud | Kubernetes (AKS) for Go and Python services, GPUs for AI, Speech and Translator APIs |
 | name.com | Yes | Domain registrar; DNS points to Cloudflare |
-| Hermes | Need to confirm | See questions below |
-| "Earth global" | Need to confirm | See questions below |
+| Hermes | Optional | An AI builder for internal tools and automations if we need one. Not in the viewer, watch or payment path |
+| "Earth global" | Yes | Worldwide access plus a live, Earth-style map of who is watching where: MapLibre GL (web) and MapLibre Native (Android) with vector tiles from MapTiler or self-hosted Protomaps, fed by the `rooms` service over WebSockets |
 
 ## Why Go is the backbone
 
@@ -48,6 +48,9 @@ Go services in v1:
 | `tickets` | Seat inventory, holds, sell-out detection, the 1,000 free seats lottery |
 | `payments` | Routes each country to its providers, reconciles, keeps the ledger |
 | `entitlements` | Who may watch or download what, adult unlock state, device limits |
+| `talktime` (inside `rooms`) | Counts each Free member's minutes of voice and text per room, then mutes until they upgrade |
+| `studios` | Studio accounts, rights and territories, uploads, per-country pricing, 70/30 revenue split, payouts |
+| `webhooks` | Signed, retried, idempotent webhooks in from payment and identity providers, and out to studios |
 
 ## Architecture at a glance
 
@@ -157,7 +160,21 @@ Accounts to create, in the order we will need them:
 
 And the biggest one: **film rights.** Studios or distributors must license each new release for online premieres and approve AI dubs. Who are the first partners?
 
-## Questions
+## Real time and no buffering
 
-1. **Hermes**: do you mean the Hermes JavaScript engine (used by React Native), the Hermes open LLMs from Nous Research, or something else? We are building Android natively in Kotlin, so the JavaScript engine would not be needed.
-2. **"Earth global"**: is this a product or service you have in mind (for example Google Earth Engine), or do you mean a global edge/CDN setup? Cloudflare already gives us global edge coverage.
+- **WebSockets** for everything live and two-way: room chat, voice notes, reactions, presence, seat counters, player sync heartbeats, the world map and the studio control room. Go services hold the connections.
+- **Webhooks** between servers: payment results from Paystack, Flutterwave, Stripe, Razorpay and crypto providers, Smile ID results, DRM and CDN events, and outgoing studio events (`ticket.sold`, `premiere.started`, `payout.sent`, `leak.detected`). Every webhook is signed, retried and idempotent.
+- **No buffering:** the film is pre-positioned on every CDN edge before doors open; players pre-buffer the first minutes during the 15-minute lobby; AI watches each ISP and switches CDN or quality before a stall; quality steps down instead of pausing; audio-first mode keeps the story going on very weak networks; a reconnect jumps straight to the live moment.
+
+## Studio portal
+
+Studios license and upload their own films and keep 70% of net ticket revenue; E-Cinema keeps 30%. The portal covers onboarding and rights, uploads with AI quality checks, per-country pricing and premiere times, AI dubbing with studio approval, a live control room, analytics deeper than YouTube Studio and Netflix (retention, reach, languages, funnels, cohorts, money), payouts, piracy protection, marketing clips, team roles, and webhooks. Built on the same Next.js app and Go services, with ClickHouse for analytics.
+
+## AI everywhere
+
+AI detects language automatically and does far more than dubbing. The full list is the **AI capability map** on the Figma Flows & notes page: language and voice, discovery, safety, piracy, studio tools and operations.
+
+## Answered
+
+1. **Hermes** is an AI builder. We keep it as an option for internal tools.
+2. **"Earth global"** means worldwide access plus an Earth-style live map, now designed for web and Android.
