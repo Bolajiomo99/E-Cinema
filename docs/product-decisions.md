@@ -25,10 +25,11 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 | Family | One plan holds up to 6 profiles. Kids profiles see age-rated films only, with no voice chat and no purchases without a parent. |
 | Careers | A public jobs board anyone in any country can apply to. 40% of roles are kept for Nigeria and 60% are open worldwide; the CEO can change the split. |
 | Community rewards | Members are rewarded (cash or Pro months) for reporting anyone selling E-Cinema-branded goods without a licence. Paid only after an investigator confirms; reporters stay anonymous; repeated false reports lose the right to report. |
-| Merch licensing | Companies pay for a licence to sell E-Cinema-branded merch in a country (Starter, Growth or Global plans plus a royalty on sales). Each licensee gets its own portal with sales analytics, product approvals, royalties and compliance. Every licensed item carries a QR authenticity label that anyone can check at ecinema.app/verify. |
+| Merch licensing | Companies pay for a licence to sell E-Cinema-branded merch in a country (Starter, Growth or Global plans plus a royalty on sales). Each licensee gets its own portal with sales analytics, product approvals, royalties and compliance. Every licensed item carries a QR authenticity label that anyone can check at e-cinema.net/verify. |
 | Late entry | After a film starts, people can still buy a seat and join live. The first 15 minutes are normal price; after that a late-entry seat costs double. Doors close 30 minutes before the end. Late joiners get a 60-second, spoiler-free AI catch-up. The studio keeps 70% of late seats too. |
 | Lobby quiz | The pre-show quiz in a room lobby is for people who already hold a seat for that screening. Getting all 5 questions right wins a free seat for any premiere in the next 30 days. |
 | Web menu | One menu on every signed-in web page: Home, Coming soon, Live, Community, Clips, Shop, Library, then search, notifications, cart and profile. Browse and search sit under Home; messages and profiles sit under Community. |
+| Company and domain | E-Cinema is a registered limited company (Ltd) in Nigeria. The domain is e-cinema.net, with DNS on Cloudflare; all emails and links use it. |
 | CEO overview | The CEO dashboard has a global overview of everything: revenue by stream, live world map, money mix, system health, hiring, brand protection, licensing and security operations. |
 | Process | Every page is designed in Figma before code. Any new idea is added to Figma first. |
 
@@ -37,4 +38,3 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 - Launch prices per country.
 - First studio partners and film rights.
 - Who gets the 1,000 free seats on a sell-out (designed as a lottery among the waitlist).
-- Domain name.

@@ -1,6 +1,6 @@
 # E-Cinema emails
 
-Every automatic email is designed on page **08 Emails** of the Figma file before it is built. Emails are sent through [Resend](https://resend.com) from the `ecinema.app` domain (domain still to be bought). The API key goes in the GitHub secret `RESEND_API_KEY` and is never committed.
+Every automatic email is designed on page **08 Emails** of the Figma file before it is built. Emails are sent through [Resend](https://resend.com) from the `e-cinema.net` domain. The API key goes in the GitHub secret `RESEND_API_KEY` and is never committed.
 
 ## Rules
 
@@ -16,19 +16,19 @@ Set these up in Resend once the domain exists, with SPF, DKIM and DMARC records.
 
 | Address | Used for |
 | --- | --- |
-| `hello@ecinema.app` | Welcome and news |
-| `security@ecinema.app` | Codes, password and sign-in alerts, account deletion |
-| `privacy@ecinema.app` | Data downloads |
-| `tickets@ecinema.app` | Tickets, reminders, pre-orders |
-| `billing@ecinema.app` | Receipts, failed payments, refunds |
-| `orders@ecinema.app` | Shop orders |
-| `gifts@ecinema.app` | Gifts |
-| `family@ecinema.app` | Kids approvals |
-| `exec@ecinema.app` | Executive invites |
-| `studios@ecinema.app`, `payouts@ecinema.app` | Studio approvals and payouts |
-| `careers@ecinema.app` | Job applications |
-| `rewards@ecinema.app` | Brand protection rewards |
-| `licensing@ecinema.app` | Merch licences |
+| `hello@e-cinema.net` | Welcome and news |
+| `security@e-cinema.net` | Codes, password and sign-in alerts, account deletion |
+| `privacy@e-cinema.net` | Data downloads |
+| `tickets@e-cinema.net` | Tickets, reminders, pre-orders |
+| `billing@e-cinema.net` | Receipts, failed payments, refunds |
+| `orders@e-cinema.net` | Shop orders |
+| `gifts@e-cinema.net` | Gifts |
+| `family@e-cinema.net` | Kids approvals |
+| `exec@e-cinema.net` | Executive invites |
+| `studios@e-cinema.net`, `payouts@e-cinema.net` | Studio approvals and payouts |
+| `careers@e-cinema.net` | Job applications |
+| `rewards@e-cinema.net` | Brand protection rewards |
+| `licensing@e-cinema.net` | Merch licences |
 
 ## Emails
 

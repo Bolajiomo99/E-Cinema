@@ -154,7 +154,7 @@ GitHub Actions (CI/CD), Terraform (infrastructure), OpenTelemetry with Grafana (
 
 Accounts to create, in the order we will need them:
 
-1. Domain at name.com (which name do you want, e.g. `ecinema.app`?).
+1. Domain: `e-cinema.net` (bought), with DNS on Cloudflare.
 2. Cloudflare, Vercel, Supabase and MongoDB Atlas (free tiers are enough to start).
 3. Microsoft Azure subscription (startup credits are worth applying for).
 4. Paystack and Flutterwave business accounts (need a registered company), then Stripe and Razorpay.
