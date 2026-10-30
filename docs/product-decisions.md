@@ -29,7 +29,7 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 | Late entry | After a film starts, people can still buy a seat and join live. The first 15 minutes are normal price; after that a late-entry seat costs double. Doors close 30 minutes before the end. Late joiners get a 60-second, spoiler-free AI catch-up. The studio keeps 70% of late seats too. |
 | Lobby quiz | The pre-show quiz in a room lobby is for people who already hold a seat for that screening. Getting all 5 questions right wins a free seat for any premiere in the next 30 days. |
 | Web menu | One menu on every signed-in web page: Home, Coming soon, Live, Community, Clips, Shop, Library, then search, notifications, cart and profile. Browse and search sit under Home; messages and profiles sit under Community. |
-| Company and domain | E-Cinema is a registered limited company (Ltd) in Nigeria. The domain is e-cinema.net, with DNS on Cloudflare; all emails and links use it. |
+| Company and domain | E-Cinema is the brand of ONLINE CINEMA LTD, a limited company registered in Nigeria (RC 9947766, 19 October 2026). Legal and payment forms use the legal name; public text can say "Online Cinema Ltd, trading as E-Cinema". The domain is e-cinema.net, with DNS on Cloudflare; all emails and links use it. |
 | CEO overview | The CEO dashboard has a global overview of everything: revenue by stream, live world map, money mix, system health, hiring, brand protection, licensing and security operations. |
 | Process | Every page is designed in Figma before code. Any new idea is added to Figma first. |
 
