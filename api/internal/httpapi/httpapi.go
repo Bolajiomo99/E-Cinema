@@ -92,6 +92,37 @@ func (s *Server) Routes() http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	mux.HandleFunc("GET /v1/showtimes/{id}/statement", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		st, err := s.Tickets.Statement(r.Context(), r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, st)
+	}))
+	mux.HandleFunc("POST /v1/showtimes/{id}/payout", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		st, err := s.Tickets.ClaimPayout(r.Context(), r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, st)
+	}))
+	mux.HandleFunc("POST /v1/showtimes/{id}/payout/result", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Status  string `json:"status"`
+			BatchID string `json:"batchId"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		if err := s.Tickets.RecordPayout(r.Context(), r.PathValue("id"), body.Status, body.BatchID); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -127,10 +158,13 @@ func fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, tickets.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
-	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold):
+	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold),
+		errors.Is(err, tickets.ErrNotEnded), errors.Is(err, tickets.ErrNoPayout):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, tickets.ErrBadSeats):
+	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, tickets.ErrNoStudio):
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
 		slog.Error("request failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})

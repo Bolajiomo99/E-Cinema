@@ -33,6 +33,7 @@ func store(t *testing.T) tickets.Store {
 func newShow(t *testing.T, s tickets.Store, id string, capacity int) {
 	t.Helper()
 	ctx := context.Background()
+	s.DB.Exec(ctx, `DELETE FROM studio_payouts WHERE showtime_id = $1`, id)
 	s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = $1`, id)
 	s.DB.Exec(ctx, `DELETE FROM showtimes WHERE id = $1`, id)
 	if _, err := s.DB.Exec(ctx, `INSERT INTO showtimes VALUES ($1, 'Test Film', 'Test Studio', now() + interval '1 day', 90, $2, 500, 'USD')`, id, capacity); err != nil {
