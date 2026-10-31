@@ -146,6 +146,9 @@ const webEnv = {
   CHANNEL3_API_KEY: process.env.CHANNEL3_API_KEY,
   NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY,
   ...r2Env,
+  WEB_URL: process.env.WEB_PUBLIC_URL || existingWeb?.serviceDetails?.url,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 };
 if (existingWeb) {
   const webhookId = (await currentEnv(existingWeb.id)).PAYPAL_WEBHOOK_ID;

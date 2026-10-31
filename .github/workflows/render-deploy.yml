@@ -43,6 +43,8 @@ jobs:
           TERMII_SENDER_ID: ${{ secrets.TERMII_SENDER_ID }}
           SUMSUB_APP_TOKEN: ${{ secrets.SUMSUB_APP_TOKEN }}
           SUMSUB_SECRET_KEY: ${{ secrets.SUMSUB_SECRET_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       - name: Smoke test the live services
         run: |
           curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
