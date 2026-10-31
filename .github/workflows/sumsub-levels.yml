@@ -1,0 +1,15 @@
+name: Sumsub levels
+# Manual: list the verification levels set up in Sumsub (names only).
+on: workflow_dispatch
+jobs:
+  levels:
+    runs-on: ubuntu-latest
+    env:
+      T: ${{ secrets.SUMSUB_APP_TOKEN }}
+      K: ${{ secrets.SUMSUB_SECRET_KEY }}
+    steps:
+      - run: |
+          ts=$(date +%s); path="/resources/applicants/-/levels"
+          sig=$(printf '%s%s%s' "$ts" "GET" "$path" | openssl dgst -sha256 -hmac "$K" | sed 's/^.*= //')
+          curl -s -H "X-App-Token: $T" -H "X-App-Access-Ts: $ts" -H "X-App-Access-Sig: $sig" "https://api.sumsub.com$path" \
+            | jq -c '(.items // .list.items // .)[]? | {name, steps: [.requiredIdDocs.docSets[]?.idDocSetType]}' || true
