@@ -43,8 +43,8 @@ jobs:
           TERMII_SENDER_ID: ${{ secrets.TERMII_SENDER_ID }}
           SUMSUB_APP_TOKEN: ${{ secrets.SUMSUB_APP_TOKEN }}
           SUMSUB_SECRET_KEY: ${{ secrets.SUMSUB_SECRET_KEY }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || secrets.GOOGLE_CONSOLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
           PAYSTACK_PUBLIC_KEY: ${{ secrets.PAYSTACK_PUBLIC_KEY }}
@@ -94,7 +94,7 @@ jobs:
           curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
           echo "passkeys ok"
           # Google sign-in: once the client secrets exist, start must hand off to Google.
-          if [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ]; then
+          if [ -n "${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}" ]; then
             loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://e-cinema.net/api/auth/google/start")
             echo "google start -> ${loc%%\?*}"
             echo "$loc" | grep -q '^https://accounts.google.com/' || exit 1
