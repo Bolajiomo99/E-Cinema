@@ -57,3 +57,32 @@ export async function dubTrack(film: string, lang: string): Promise<DubClip[] | 
       })),
   );
 }
+
+export interface FilmStream {
+  hd: string;
+  sd: string;
+  title: string;
+  credit: string;
+  license: string;
+  durationSec: number;
+}
+
+// Until studios upload their own films, every room plays the same freely licensed stand-in.
+const STAND_IN = "films/stand-in";
+
+// Signed links to a screening's film, valid until shortly after it ends so a viewer who
+// joins at the start keeps playing, and useless to anyone once the screening is over.
+export async function filmStream(endsAt: Date): Promise<FilmStream | null> {
+  let info: { title: string; credit: string; license: string; durationSec: number };
+  try {
+    const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: `${STAND_IN}/info.json` }));
+    info = JSON.parse(await obj.Body!.transformToString());
+  } catch (err) {
+    if ((err as { name?: string }).name === "NoSuchKey") return null;
+    throw err;
+  }
+  const seconds = Math.min(6 * 3600, Math.max(LINK_SECONDS, Math.ceil((endsAt.getTime() - Date.now()) / 1000) + 1800));
+  const sign = (key: string) => getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: seconds });
+  const [hd, sd] = await Promise.all([sign(`${STAND_IN}/feature-720p.mp4`), sign(`${STAND_IN}/feature-360p.mp4`)]);
+  return { hd, sd, ...info, durationSec: Number(info.durationSec) };
+}
