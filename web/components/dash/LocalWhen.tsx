@@ -7,7 +7,8 @@ import { useEffect, useState } from "react";
 export default function LocalWhen({ iso, suffix = "" }: { iso: string; suffix?: string }) {
   const [text, setText] = useState(() => fmt(iso, "UTC"));
   useEffect(() => setText(fmt(iso)), [iso]);
-  return <>{text}{suffix}</>;
+  // Server and browser time-zone data can format the first (UTC) render slightly differently.
+  return <span suppressHydrationWarning>{text + suffix}</span>;
 }
 
 function fmt(iso: string, timeZone?: string) {
