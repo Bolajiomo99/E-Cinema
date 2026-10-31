@@ -35,6 +35,21 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
 	}))
+	mux.HandleFunc("POST /v1/sessions/external", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Provider, Subject, Email, Name, Device string
+			EmailVerified                          bool
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		acct, sess, created, err := s.Accounts.SignInExternal(r.Context(), b.Provider, b.Subject, b.Email, b.EmailVerified, b.Name, b.Device)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess, "created": created})
+	}))
 	mux.HandleFunc("GET /v1/sessions/current", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		writeJSON(w, http.StatusOK, map[string]any{"account": a})
 	}))

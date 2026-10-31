@@ -245,3 +245,31 @@ func TestRecordIdentity(t *testing.T) {
 		t.Fatalf("approved: %v %+v", err, got)
 	}
 }
+
+func TestSignInExternal(t *testing.T) {
+	s, _ := store(t)
+	ctx := context.Background()
+	// New Google user gets an account.
+	a, sess, created, err := s.SignInExternal(ctx, "google", "g-1", "New@Example.com", true, "New Person", "Phone")
+	if err != nil || !created || a.Email != "new@example.com" || sess.Token == "" {
+		t.Fatalf("new: %v %v %+v", err, created, a)
+	}
+	// Same Google user signs in again to the same account.
+	b, _, created, err := s.SignInExternal(ctx, "google", "g-1", "other@example.com", true, "", "Laptop")
+	if err != nil || created || b.ID != a.ID {
+		t.Fatalf("repeat: %v %v %+v", err, created, b)
+	}
+	// Google accounts have no password.
+	if _, _, err := s.SignIn(ctx, "new@example.com", "!external", "x"); !errors.Is(err, accounts.ErrBadLogin) {
+		t.Fatalf("password sign-in on external account: %v", err)
+	}
+	// An Apple identity with the same verified email links to the existing account.
+	pwAcct, _, _ := s.SignUp(ctx, "link@example.com", "Link", pw, "x")
+	c, _, created, err := s.SignInExternal(ctx, "apple", "a-1", "link@example.com", true, "", "iPhone")
+	if err != nil || created || c.ID != pwAcct.ID {
+		t.Fatalf("link: %v %v %+v", err, created, c)
+	}
+	if _, _, _, err := s.SignInExternal(ctx, "google", "g-2", "x@example.com", false, "", "x"); !errors.Is(err, accounts.ErrBadInput) {
+		t.Fatalf("unverified email: %v", err)
+	}
+}
