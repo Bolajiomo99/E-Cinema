@@ -15,6 +15,8 @@ import { liveStats, myTickets } from "@/lib/api";
 import LiveAudience from "@/components/dash/LiveAudience";
 import PartiesRow from "@/components/home/PartiesRow";
 import ClipsRow from "@/components/home/ClipsRow";
+import ClassicCard from "@/components/home/ClassicCard";
+import type { Classic } from "@/lib/classics";
 import type { Party } from "@/lib/parties";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
@@ -46,11 +48,13 @@ export default async function Home() {
   const { t } = loc;
   if (!me) redirect("/signin?next=/home");
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
-  const [tickets, stats, partyRes] = await Promise.all([
+  const [tickets, stats, partyRes, classicRes] = await Promise.all([
     myTickets(session).catch(() => []),
     liveStats(),
     accountApi("GET", "/v1/me/parties", undefined, session).catch(() => null),
+    accountApi("GET", "/v1/classics", undefined, session).catch(() => null),
   ]);
+  const topClassic = classicRes?.status === 200 && Array.isArray(classicRes.body) ? (classicRes.body as Classic[])[0] : undefined;
   const parties = partyRes?.status === 200 && Array.isArray(partyRes.body) ? (partyRes.body as Party[]) : [];
   const { list, hero, live } = pick();
   const heroStat = stats.find((x) => x.showtimeId === hero.id);
@@ -155,6 +159,7 @@ export default async function Home() {
 
         <PartiesRow parties={parties} heroId={hero.id} />
         <ClipsRow films={list} />
+        <ClassicCard top={topClassic} />
 
         <WeekCalendar items={calendar} />
 
