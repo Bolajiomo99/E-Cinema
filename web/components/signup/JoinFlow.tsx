@@ -17,6 +17,17 @@ export const LANGUAGES: [string, string][] = [
 ];
 const DIAL: Record<string, string> = { NG: "+234", GH: "+233", KE: "+254", ZA: "+27", GB: "+44", US: "+1", DE: "+49", FR: "+33", IN: "+91", KR: "+82" };
 
+
+const I = ({ d }: { d: string }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
+);
+const ICON = {
+  phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm5 16h.01",
+  face: "M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M9 9h.01M15 9h.01M8 14s1.5 2 4 2 4-2 4-2",
+  id: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0Zm-1 5c.5-1.5 1.5-2 2.5-2s2 .5 2.5 2M14 10h4M14 14h3",
+  key: "M15.5 7.5 19 4m-2 2 2 2m-5.5 1.5a4.5 4.5 0 1 1-6.36 6.36 4.5 4.5 0 0 1 6.36-6.36Z",
+};
+
 async function call(path: string, body: unknown, method = "POST") {
   const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
@@ -169,7 +180,7 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         <p>We check every account once so seats, chats and payments belong to real people. Your documents are encrypted and deleted after review.</p>
       </div>
       <section className={`su-card${verified ? " done" : ""}`}>
-        <span className="su-ico" aria-hidden>📱</span>
+        <span className="su-ico" aria-hidden><I d={ICON.phone} /></span>
         <div>
           <strong>Phone number</strong>
           <small>{verified ? `Verified · ${sentTo}` : sentTo ? `Code sent to ${sentTo}` : phone ? `We text a 6-digit code to ${phone}` : "Add your mobile number in Settings"}</small>
@@ -184,7 +195,7 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         {verified ? <span className="su-tag">DONE</span> : !sentTo && phone ? <button className="su-sm" onClick={send} disabled={busy}>Send code</button> : null}
       </section>
       <section className="su-card">
-        <span className="su-ico" aria-hidden>🙂</span>
+        <span className="su-ico" aria-hidden><I d={ICON.face} /></span>
         <div>
           <strong>Face check</strong>
           <small>A 5-second selfie video. No photo is stored, only a match score.</small>
@@ -192,7 +203,7 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         <FaceCheck initialStatus={identityStatus} />
       </section>
       <section className="su-card">
-        <span className="su-ico" aria-hidden>🪪</span>
+        <span className="su-ico" aria-hidden><I d={ICON.id} /></span>
         <div>
           <strong>Government ID</strong>
           <small>Needed only before your first 18+ title or a payout. It is part of the face check above.</small>
@@ -200,14 +211,14 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         <span className="su-later">Later</span>
       </section>
       <section className="su-card">
-        <span className="su-ico" aria-hidden>🔑</span>
+        <span className="su-ico" aria-hidden><I d={ICON.key} /></span>
         <div>
           <strong>Passkey for this device</strong>
           <small>Sign in with your fingerprint or face instead of a password.</small>
         </div>
         <PasskeyButton />
       </section>
-      <p className="su-info">🔒 Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>
+      <p className="su-info su-lock">Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>
       <button className="su-cta" onClick={onDone}>Continue</button>
     </div>
   );
@@ -282,7 +293,7 @@ function PayStep({ country, plan, ready }: { country?: string; plan: PlanId; rea
       <div className="su-form">
         <Stepper at={4} />
         <div className="su-title"><h1>How do you want to pay?</h1></div>
-        <p className="su-info">🌐 Showing methods for {countryName(country) || "your country"}. Travelling? Prices stay in your home currency until you change country in Settings.</p>
+        <p className="su-info su-globe">Showing methods for {countryName(country) || "your country"}. Travelling? Prices stay in your home currency until you change country in Settings.</p>
         <div className="su-plans" role="radiogroup" aria-label="Payment method">
           {methods.map((m) => (
             <button type="button" role="radio" aria-checked={method === m.id} key={m.id} className={`su-plan${method === m.id ? " on" : ""}`} onClick={() => setMethod(m.id)}>
