@@ -3,6 +3,7 @@ import "@bryntum/calendar/fontawesome/css/fontawesome.css";
 import "@bryntum/calendar/fontawesome/css/solid.css";
 import "@bryntum/calendar/calendar.css";
 import "@bryntum/calendar/svalbard-dark.css";
+import "./fonts.css";
 import "./globals.css";
 import { cookies } from "next/headers";
 import TabBar from "@/components/mobile/TabBar";
