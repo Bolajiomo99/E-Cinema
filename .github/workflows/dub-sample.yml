@@ -32,7 +32,7 @@ jobs:
             res=$(api "https://api.render.com/v1/task-runs/$run")
             status=$(jq -r .status <<<"$res")
             case "$status" in
-              completed|succeeded) jq -c .results <<<"$res"; jq -e '.results[0].failed | length == 0' <<<"$res" >/dev/null; exit $? ;;
+              completed|succeeded) jq -c .results <<<"$res"; jq -e ".results[0].failed | length == 0" <<<"$res" >/dev/null; exit $? ;;
               failed|canceled) echo "dubFilm $status: $(jq -r .error <<<"$res")"; exit 1 ;;
             esac
             sleep 10

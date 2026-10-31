@@ -67,7 +67,9 @@ export const dubFilm = task(
     return {
       filmId,
       dubbed: results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])),
-      failed: results.flatMap((r, i) => (r.status === "rejected" ? [langs[i]] : [])),
+      failed: results.flatMap((r, i) =>
+        r.status === "rejected" ? [{ language: langs[i], error: String(r.reason?.message ?? r.reason).slice(0, 300) }] : [],
+      ),
     };
   },
 );

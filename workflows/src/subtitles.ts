@@ -49,7 +49,9 @@ export const translateSubtitles = task(
     const results = await Promise.allSettled(langs.map((l) => ctx.run(translateTrack, vtt, l)));
     return {
       tracks: results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])),
-      failed: results.flatMap((r, i) => (r.status === "rejected" ? [langs[i]] : [])),
+      failed: results.flatMap((r, i) =>
+        r.status === "rejected" ? [{ language: langs[i], error: String(r.reason?.message ?? r.reason).slice(0, 300) }] : [],
+      ),
     };
   },
 );
