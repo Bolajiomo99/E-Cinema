@@ -99,6 +99,13 @@ jobs:
           curl -fsS -o /dev/null https://e-cinema.net/privacy
           curl -fsS -o /dev/null https://e-cinema.net/terms
           echo "google and legal ok"
+          # Pages and the watch room: a viewer without a ticket sees the gate and gets no room pass.
+          curl -fsS -o /dev/null https://e-cinema.net/
+          curl -fsS -o /dev/null https://e-cinema.net/releases
+          curl -fsS -b "$jar" "$web/room/red-earth-2026-11-02" | grep -q "for ticket holders"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/rooms/red-earth-2026-11-02/pass")" = 403 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.render.outputs.api_url }}/v1/rooms/red-earth-2026-11-02/live?t=forged.pass")" = 401 ]
+          echo "home, releases and watch room gate ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
