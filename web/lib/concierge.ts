@@ -5,6 +5,7 @@ import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { findShowtime, showtimes } from "@/lib/catalog";
 import { paypalOrders } from "@/lib/paypal";
 import { shopFor, type ShopItem } from "@/lib/shop";
+import { attachOrder, holdSeats, SoldOutError } from "@/lib/api";
 
 // The E-Cinema Concierge: Claude plans the booking, PayPal takes the payment.
 // The agent can only prepare orders priced by the server. The viewer approves every payment in PayPal.
@@ -70,6 +71,13 @@ async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], sh
     if (!showtime) return reply("Unknown showtimeId. Call list_showtimes first.", true);
     if (!Number.isInteger(seats) || seats < 1 || seats > MAX_SEATS) return reply(`Seats must be 1 to ${MAX_SEATS}.`, true);
 
+    let hold;
+    try {
+      hold = await holdSeats(showtime.id, seats, randomUUID());
+    } catch (err) {
+      if (err instanceof SoldOutError) return reply("Not enough seats left for that screening. Offer another one.", true);
+      throw err;
+    }
     const unitCents = Math.round(Number(showtime.price.value) * 100);
     const total = ((unitCents * seats) / 100).toFixed(2);
     const { result } = await paypalOrders().createOrder({
@@ -87,6 +95,7 @@ async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], sh
       },
     });
     if (!result.id) return reply("PayPal did not return an order.", true);
+    if (hold) await attachOrder(hold.id, result.id);
     orders.push({ orderId: result.id, showtimeId, film: showtime.film, seats, total, currency: showtime.price.currency });
     return reply(JSON.stringify({ orderId: result.id, total, currency: showtime.price.currency, status: "awaiting viewer approval in PayPal" }));
   }

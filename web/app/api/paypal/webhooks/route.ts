@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook, type PayPalEvent } from "@/lib/paypal-webhook";
+import { markPaid } from "@/lib/api";
 
 // Events we act on. Everything is acknowledged so PayPal stops retrying, but unknown types are ignored.
 const HANDLED = new Set([
@@ -29,6 +30,18 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: "Bad signature" }, { status: 400 });
 
   const event = JSON.parse(raw) as PayPalEvent;
+  if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
+    const orderId = (event.resource?.supplementary_data as { related_ids?: { order_id?: string } } | undefined)?.related_ids?.order_id;
+    const captureId = event.resource?.id as string | undefined;
+    if (orderId && captureId) {
+      try {
+        await markPaid(orderId, captureId);
+      } catch (err) {
+        console.error("Ledger update failed", err instanceof Error ? err.message : err);
+        return NextResponse.json({ error: "Retry later" }, { status: 503 }); // PayPal retries
+      }
+    }
+  }
   if (HANDLED.has(event.event_type)) {
     // Ticket issuing, refunds, dispute holds and studio payout status are written here once the database exists.
     console.info("PayPal event", event.event_type, event.id);

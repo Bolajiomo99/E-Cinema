@@ -4,6 +4,7 @@ import type { OrderRequest } from "@paypal/paypal-server-sdk";
 import { randomUUID } from "node:crypto";
 import { findShowtime } from "@/lib/catalog";
 import { paypalError, paypalOrders } from "@/lib/paypal";
+import { attachOrder, holdSeats, SoldOutError } from "@/lib/api";
 
 // Creates a PayPal order for one ticket. The price always comes from the server catalog.
 export async function POST(req: Request) {
@@ -24,9 +25,12 @@ export async function POST(req: Request) {
   };
 
   try {
+    const hold = await holdSeats(showtime.id, 1, randomUUID());
     const { result } = await paypalOrders().createOrder({ body, paypalRequestId: randomUUID(), prefer: "return=minimal" });
+    if (hold && result.id) await attachOrder(hold.id, result.id);
     return NextResponse.json({ orderId: result.id });
   } catch (err) {
+    if (err instanceof SoldOutError) return NextResponse.json({ error: "Sold out" }, { status: 409 });
     return paypalError(err);
   }
 }
