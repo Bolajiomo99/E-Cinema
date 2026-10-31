@@ -41,6 +41,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN1 }}
           TERMII_API_KEY: ${{ secrets.TERMII_API_KEY }}
           TERMII_SENDER_ID: ${{ secrets.TERMII_SENDER_ID }}
+          SUMSUB_APP_TOKEN: ${{ secrets.SUMSUB_APP_TOKEN }}
+          SUMSUB_SECRET_KEY: ${{ secrets.SUMSUB_SECRET_KEY }}
       - name: Smoke test the live services
         run: |
           curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
@@ -76,6 +78,8 @@ jobs:
             -d "{\"name\":\"Smoke Test\",\"email\":\"$email\",\"password\":\"smoke-$(openssl rand -hex 12)\",\"terms\":true}" \
             "$web/api/auth/signup" | grep -q '"account"'
           curl -fsS -b "$jar" "$web/api/auth/me" | grep -q "$email"
+          curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/identity/token" | grep -q '"token"'
+          echo "face check token ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
