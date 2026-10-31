@@ -1,0 +1,27 @@
+name: Custom domain
+on:
+  workflow_dispatch:
+  push:
+    paths: [ops/custom-domain.mjs, .github/workflows/custom-domain.yml]
+jobs:
+  domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Point e-cinema.net at the web app
+        run: node ops/custom-domain.mjs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
+          RENDER_OWNER_ID: tea-db7ej9e7bikc73ajmkmg
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN1 }}
+      - name: Wait for HTTPS on e-cinema.net
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://e-cinema.net/checkout || true)
+            echo "e-cinema.net $code"
+            [ "$code" = 200 ] && exit 0
+            sleep 15
+          done
+          echo "Not serving yet; Render may still be issuing the certificate"
