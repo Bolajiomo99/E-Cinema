@@ -186,6 +186,52 @@ async function waitLive(svc) {
 await waitLive(apiSvc);
 await waitLive(webSvc);
 
+// 6. Render Workflow service: studio payouts and subtitle translation (workflows/).
+const wfEnv = {
+  API_URL: apiSvc.serviceDetails.url,
+  INTERNAL_API_TOKEN: token,
+  PAYPAL_ENV: "sandbox",
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+};
+const wfVars = Object.entries(wfEnv).filter(([, v]) => v).map(([key, value]) => ({ key, value: String(value) }));
+const wfList = await api("GET", `/workflows?ownerId=${OWNER}&name=e-cinema-workflows&limit=20`);
+let wf = wfList.map((w) => w.workflow ?? w).find((w) => w.name === "e-cinema-workflows");
+if (!wf) {
+  wf = await api("POST", "/workflows", {
+    name: "e-cinema-workflows", ownerId: OWNER, region: REGION, runCommand: "node dist/main.js",
+    autoDeployTrigger: "commit", envVars: wfVars,
+    buildConfig: { repo: REPO, branch: BRANCH, rootDir: "workflows", runtime: "node", buildCommand: "npm ci && npm run build" },
+  });
+  console.log(`Created workflow ${wf.slug ?? wf.id}`);
+} else {
+  try {
+    await api("PUT", `/services/${wf.id}/env-vars`, wfVars);
+  } catch (err) {
+    console.log(`Could not update workflow env vars: ${err.message}`);
+  }
+  console.log(`Workflow exists: ${wf.slug ?? wf.id}`);
+}
+let version = await api("POST", "/workflowversions", { workflowId: wf.id });
+for (let i = 0; i < 90 && !["ready", "build_failed", "registration_failed"].includes(version.status); i++) {
+  await sleep(10_000);
+  version = await api("GET", `/workflowversions/${version.id}`);
+  if (i % 3 === 0) console.log(`Workflow version: ${version.status}`);
+}
+if (version.status !== "ready") throw new Error(`workflow version ${version.status}`);
+const slug = wf.slug ?? (await api("GET", `/workflows/${wf.id}`)).slug;
+console.log(`Workflow ready: ${slug}`);
+
+// Smoke run: the payout sweep must register and finish (it pays nothing until a screening has ended).
+let run = await api("POST", "/task-runs", { task: `${slug}/payEndedScreenings`, input: [] });
+for (let i = 0; i < 60 && !["completed", "succeeded", "failed", "canceled"].includes(run.status); i++) {
+  await sleep(5_000);
+  run = await api("GET", `/task-runs/${run.id}`);
+}
+console.log(`payEndedScreenings: ${run.status} ${JSON.stringify(run.results ?? run.error ?? null)}`);
+if (!["completed", "succeeded"].includes(run.status)) throw new Error("payout sweep did not succeed");
+
 const out = process.env.GITHUB_OUTPUT;
 if (out) {
   const { appendFileSync } = await import("node:fs");
