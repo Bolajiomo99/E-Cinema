@@ -2,9 +2,9 @@ name: API (Go)
 
 on:
   push:
-    paths: [api/**, .github/workflows/api.yml]
+    paths: [api/**, workflows/**, .github/workflows/api.yml]
   pull_request:
-    paths: [api/**]
+    paths: [api/**, workflows/**]
 
 permissions:
   contents: read
@@ -38,3 +38,13 @@ jobs:
           TEST_DATABASE_URL: postgres://ecinema:ecinema@localhost:5432/ecinema?sslmode=disable
         run: go test -race -count=1 ./...
       - run: go build -trimpath -o bin/api ./cmd/api
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Render Workflow tasks against the API (studio payouts)
+        working-directory: workflows
+        env:
+          TEST_DATABASE_URL: postgres://ecinema:ecinema@localhost:5432/ecinema?sslmode=disable
+          API_BIN: ${{ github.workspace }}/api/bin/api
+          RENDER_SDK_AUTO_START: "false"
+        run: npm ci && npm test

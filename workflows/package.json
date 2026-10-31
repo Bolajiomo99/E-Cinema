@@ -1,0 +1,23 @@
+{
+  "name": "e-cinema-workflows",
+  "private": true,
+  "type": "module",
+  "description": "Render Workflows for E-Cinema: studio payouts and AI subtitle translation",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@renderinc/sdk": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  }
+}
