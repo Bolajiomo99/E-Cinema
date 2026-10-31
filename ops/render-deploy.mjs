@@ -105,6 +105,10 @@ const apiSvc = await upsertService(
     DATABASE_URL: internalConnectionString,
     INTERNAL_API_TOKEN: token,
     ALLOWED_ORIGINS: "e-cinema.net,*.e-cinema.net,*.onrender.com",
+    // Phone codes switch on once Termii approves the sender ID (TERMII_SENDER_ID secret).
+    ...Object.fromEntries(
+      ["TERMII_API_KEY", "TERMII_SENDER_ID"].filter((k) => process.env[k]).map((k) => [k, process.env[k]]),
+    ),
   },
 );
 

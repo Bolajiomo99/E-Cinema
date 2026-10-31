@@ -39,6 +39,8 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCOUNT_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_ACCOUNT_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN1 }}
+          TERMII_API_KEY: ${{ secrets.TERMII_API_KEY }}
+          TERMII_SENDER_ID: ${{ secrets.TERMII_SENDER_ID }}
       - name: Smoke test the live services
         run: |
           curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
@@ -55,7 +57,25 @@ jobs:
           for i in $(seq 1 30); do
             body=$(curl -s "${{ steps.render.outputs.web_url }}/api/dubs/red-earth-sample" || true)
             echo "dubs $body"
-            echo "$body" | grep -q '"fr"' && exit 0
+            echo "$body" | grep -q '"fr"' && break
+            [ "$i" = 30 ] && exit 1
             sleep 10
           done
-          exit 1
+          # Accounts: sign up a throwaway viewer, read it back with the cookie, then sign out.
+          web="${{ steps.render.outputs.web_url }}"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$web/signin")
+            echo "signin $code"
+            [ "$code" = 200 ] && break
+            [ "$i" = 30 ] && exit 1
+            sleep 10
+          done
+          jar=$(mktemp)
+          email="smoke+$(date +%s)@e-cinema.net"
+          curl -fsS -c "$jar" -H "content-type: application/json" -H "origin: $web" \
+            -d "{\"name\":\"Smoke Test\",\"email\":\"$email\",\"password\":\"smoke-$(openssl rand -hex 12)\",\"terms\":true}" \
+            "$web/api/auth/signup" | grep -q '"account"'
+          curl -fsS -b "$jar" "$web/api/auth/me" | grep -q "$email"
+          curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
+          echo "accounts ok"
