@@ -2,11 +2,14 @@ package accounts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // Profile is what the sign-up form asks for beyond name, email and password.
@@ -19,6 +22,9 @@ type Profile struct {
 	ContactPhone  string `json:"contactPhone,omitempty"`
 	Plan          string `json:"plan"`
 	PlanStatus    string `json:"planStatus"`
+	PendingPlan   string `json:"pendingPlan,omitempty"`
+	RenewsAt      string `json:"renewsAt,omitempty"`
+	Subscribed    bool   `json:"subscribed"`
 }
 
 // MinAge is the youngest a viewer may be to hold their own account.
@@ -81,23 +87,77 @@ func (s Store) SaveProfile(ctx context.Context, accountID string, p Profile, now
 func (s Store) GetProfile(ctx context.Context, accountID string) (Profile, error) {
 	var p Profile
 	err := s.DB.QueryRow(ctx, `SELECT coalesce(country, ''), coalesce(to_char(birth_date, 'YYYY-MM-DD'), ''), coalesce(gender, ''),
-		coalesce(app_language, ''), coalesce(audio_language, ''), coalesce(contact_phone, ''), plan, plan_status
+		coalesce(app_language, ''), coalesce(audio_language, ''), coalesce(contact_phone, ''), plan, plan_status,
+		coalesce(pending_plan, ''), coalesce(to_char(plan_renews_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), ''), paypal_subscription_id IS NOT NULL
 		FROM accounts WHERE id = $1`, accountID).
-		Scan(&p.Country, &p.BirthDate, &p.Gender, &p.AppLanguage, &p.AudioLanguage, &p.ContactPhone, &p.Plan, &p.PlanStatus)
+		Scan(&p.Country, &p.BirthDate, &p.Gender, &p.AppLanguage, &p.AudioLanguage, &p.ContactPhone, &p.Plan, &p.PlanStatus,
+			&p.PendingPlan, &p.RenewsAt, &p.Subscribed)
 	return p, err
 }
 
-// ChoosePlan records the plan picked at sign-up. Free is active at once; paid plans wait for payment.
+// ChoosePlan records the plan picked at sign-up or on the plans page. Free is active at once.
+// A paid plan waits for payment; someone already paying for a plan keeps it until the new
+// subscription is approved, so changing their mind never drops them to Free.
 func (s Store) ChoosePlan(ctx context.Context, accountID, plan string) (Profile, error) {
 	if !Plans[plan] {
 		return Profile{}, fmt.Errorf("%w: unknown plan", ErrBadInput)
 	}
-	status := "awaiting_payment"
-	if plan == "free" {
-		status = "active"
+	var q string
+	switch {
+	case plan == "free":
+		q = `UPDATE accounts SET plan = 'free', plan_status = 'active', pending_plan = NULL WHERE id = $1 AND $2 = 'free'`
+	default:
+		q = `UPDATE accounts SET
+		  pending_plan = $2,
+		  plan = CASE WHEN plan_status = 'active' AND plan <> 'free' THEN plan ELSE $2 END,
+		  plan_status = CASE WHEN plan_status = 'active' AND plan <> 'free' THEN 'active' ELSE 'awaiting_payment' END
+		  WHERE id = $1`
 	}
-	if _, err := s.DB.Exec(ctx, `UPDATE accounts SET plan = $2, plan_status = $3 WHERE id = $1`, accountID, plan, status); err != nil {
+	if _, err := s.DB.Exec(ctx, q, accountID, plan); err != nil {
 		return Profile{}, err
 	}
 	return s.GetProfile(ctx, accountID)
+}
+
+// ActivatePlan turns an approved PayPal subscription into the account's plan. It is safe to
+// call twice (the return page and the webhook both do). It returns the subscription it
+// replaced, which the caller cancels at PayPal so nobody pays for two plans.
+func (s Store) ActivatePlan(ctx context.Context, accountID, plan, subscriptionID string, renews time.Time) (previous string, err error) {
+	if !Plans[plan] || plan == "free" || subscriptionID == "" {
+		return "", fmt.Errorf("%w: bad plan or subscription", ErrBadInput)
+	}
+	err = pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
+		var old *string
+		if err := tx.QueryRow(ctx, `SELECT paypal_subscription_id FROM accounts WHERE id = $1 FOR UPDATE`, accountID).Scan(&old); err != nil {
+			return err
+		}
+		if old != nil && *old != subscriptionID {
+			previous = *old
+		}
+		_, err := tx.Exec(ctx, `UPDATE accounts SET plan = $2, plan_status = 'active', pending_plan = NULL,
+		  paypal_subscription_id = $3, plan_renews_at = $4 WHERE id = $1`, accountID, plan, subscriptionID, renews)
+		return err
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return previous, err
+}
+
+// EndSubscription drops an account to Free when its subscription is cancelled or expires.
+// A subscription that was already replaced by a newer one changes nothing.
+func (s Store) EndSubscription(ctx context.Context, subscriptionID string) error {
+	_, err := s.DB.Exec(ctx, `UPDATE accounts SET plan = 'free', plan_status = 'active', pending_plan = NULL,
+		paypal_subscription_id = NULL, plan_renews_at = NULL WHERE paypal_subscription_id = $1`, subscriptionID)
+	return err
+}
+
+// SubscriptionOwner says which account a subscription belongs to, for cancelling from Settings.
+func (s Store) SubscriptionOf(ctx context.Context, accountID string) (string, error) {
+	var sub *string
+	err := s.DB.QueryRow(ctx, `SELECT paypal_subscription_id FROM accounts WHERE id = $1`, accountID).Scan(&sub)
+	if err != nil || sub == nil {
+		return "", err
+	}
+	return *sub, nil
 }

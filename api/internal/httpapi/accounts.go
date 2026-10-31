@@ -272,6 +272,41 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, p)
 	}))
+	// PayPal subscriptions: the web server confirms each one with PayPal before calling these.
+	mux.HandleFunc("POST /v1/internal/plans/activate", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			AccountID, Plan, SubscriptionID string
+			RenewsAt                        time.Time
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		prev, err := s.Accounts.ActivatePlan(r.Context(), b.AccountID, b.Plan, b.SubscriptionID, b.RenewsAt)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"previous": prev})
+	}))
+	mux.HandleFunc("POST /v1/internal/plans/end", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ SubscriptionID string }
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Accounts.EndSubscription(r.Context(), b.SubscriptionID); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}))
+	mux.HandleFunc("GET /v1/me/subscription", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		id, err := s.Accounts.SubscriptionOf(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"id": id, "accountId": a.ID})
+	}))
 	mux.HandleFunc("GET /v1/devices", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		list, err := s.Accounts.Devices(r.Context(), a.ID, sid)
 		if err != nil {
