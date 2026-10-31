@@ -6,7 +6,8 @@ import { findShowtime } from "@/lib/catalog";
 import { paypalError, paypalOrders } from "@/lib/paypal";
 import { cookies } from "next/headers";
 import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, SoldOutError } from "@/lib/api";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { accountApi, SESSION_COOKIE } from "@/lib/auth";
+import { quote } from "@/lib/ticket-quote";
 
 // Creates a PayPal order for one ticket. The price always comes from the server catalog.
 export async function POST(req: Request) {
@@ -17,6 +18,10 @@ export async function POST(req: Request) {
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   if (apiEnabled && !session) return NextResponse.json({ error: "Sign in to buy a seat", signIn: true }, { status: 401 });
 
+  // Member discount and VAT follow the buyer's plan and home country.
+  const prof = session ? await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null) : null;
+  const q = quote(showtime, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined);
+  const cur = q.currency;
   const body: OrderRequest = {
     intent: CheckoutPaymentIntent.Capture,
     purchaseUnits: [
@@ -24,7 +29,16 @@ export async function POST(req: Request) {
         referenceId: showtime.id,
         description: `E-Cinema ticket: ${showtime.film}`,
         customId: showtime.id,
-        amount: { currencyCode: showtime.price.currency, value: showtime.price.value },
+        amount: {
+          currencyCode: cur,
+          value: q.total,
+          breakdown: {
+            itemTotal: { currencyCode: cur, value: q.seat },
+            ...(Number(q.discount) ? { discount: { currencyCode: cur, value: q.discount } } : {}),
+            ...(Number(q.vat) ? { taxTotal: { currencyCode: cur, value: q.vat } } : {}),
+          },
+        },
+        items: [{ name: `${showtime.film} · premiere seat`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) }],
       },
     ],
   };
