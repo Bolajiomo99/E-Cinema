@@ -1,0 +1,25 @@
+name: Render logs
+# Manual: print recent error logs from the live E-Cinema services (secrets never printed).
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service name"
+        default: e-cinema-api
+      text:
+        description: "Only lines containing this text"
+        default: "request failed"
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    env:
+      KEY: ${{ secrets.RENDER_API_KEY1 }}
+      OWNER: tea-db7ej9e7bikc73ajmkmg
+    steps:
+      - run: |
+          id=$(curl -fsS -H "Authorization: Bearer $KEY" "https://api.render.com/v1/services?ownerId=$OWNER&name=${{ inputs.service }}&limit=1" | jq -r '.[0].service.id')
+          echo "service $id"
+          curl -fsS -G -H "Authorization: Bearer $KEY" "https://api.render.com/v1/logs" \
+            --data-urlencode "ownerId=$OWNER" --data-urlencode "resource=$id" \
+            --data-urlencode "text=${{ inputs.text }}" --data-urlencode "limit=30" --data-urlencode "direction=backward" \
+            | jq -r '.logs[]? | "\(.timestamp) \(.message)"'
