@@ -2,11 +2,11 @@ import "server-only";
 import { paypalEnv } from "@/lib/paypal";
 
 // PayPal's Server SDK has no webhooks controller, so this calls the REST endpoint directly.
-const base = () => (paypalEnv === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com");
+export const base = () => (paypalEnv === "production" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com");
 
 let cached: { token: string; expires: number } | undefined;
 
-async function accessToken(): Promise<string> {
+export async function accessToken(): Promise<string> {
   if (cached && cached.expires > Date.now() + 60_000) return cached.token;
   const basic = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const res = await fetch(`${base()}/v1/oauth2/token`, {

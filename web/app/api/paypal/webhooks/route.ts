@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook, type PayPalEvent } from "@/lib/paypal-webhook";
 import { markPaid } from "@/lib/api";
+import { activateFromPayPal, endFromPayPal } from "@/lib/plan-activation";
+import type { Subscription } from "@/lib/paypal-subs";
 
 // Events we act on. Everything is acknowledged so PayPal stops retrying, but unknown types are ignored.
 const HANDLED = new Set([
@@ -12,6 +14,8 @@ const HANDLED = new Set([
   "CUSTOMER.DISPUTE.RESOLVED",
   "BILLING.SUBSCRIPTION.ACTIVATED",
   "BILLING.SUBSCRIPTION.CANCELLED",
+  "BILLING.SUBSCRIPTION.EXPIRED",
+  "BILLING.SUBSCRIPTION.SUSPENDED",
   "PAYMENT.PAYOUTS-ITEM.SUCCEEDED",
   "PAYMENT.PAYOUTS-ITEM.FAILED",
 ]);
@@ -40,6 +44,17 @@ export async function POST(req: Request) {
         console.error("Ledger update failed", err instanceof Error ? err.message : err);
         return NextResponse.json({ error: "Retry later" }, { status: 503 }); // PayPal retries
       }
+    }
+  }
+  // Plan subscriptions: activation backs up the return page, the rest drop the plan to Free.
+  if (event.event_type.startsWith("BILLING.SUBSCRIPTION.")) {
+    const sub = event.resource as unknown as Subscription;
+    try {
+      if (event.event_type === "BILLING.SUBSCRIPTION.ACTIVATED") await activateFromPayPal(sub);
+      else if (["BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED", "BILLING.SUBSCRIPTION.SUSPENDED"].includes(event.event_type) && sub?.id) await endFromPayPal(sub.id);
+    } catch (err) {
+      console.error("Plan update failed", err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: "Retry later" }, { status: 503 });
     }
   }
   if (HANDLED.has(event.event_type)) {
