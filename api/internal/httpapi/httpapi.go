@@ -197,9 +197,9 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusGone, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadInput), errors.Is(err, accounts.ErrBadCode):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	case errors.Is(err, accounts.ErrBadLogin), errors.Is(err, accounts.ErrNoSession), errors.Is(err, accounts.ErrBadPasskey):
+	case errors.Is(err, accounts.ErrBadLogin), errors.Is(err, accounts.ErrNoSession), errors.Is(err, accounts.ErrBadPasskey), errors.Is(err, accounts.ErrWrongPassword):
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
-	case errors.Is(err, accounts.ErrEmailTaken), errors.Is(err, accounts.ErrPhoneTaken), errors.Is(err, accounts.ErrReusedPass):
+	case errors.Is(err, accounts.ErrEmailTaken), errors.Is(err, accounts.ErrPhoneTaken), errors.Is(err, accounts.ErrReusedPass), errors.Is(err, accounts.ErrUsernameTaken), errors.Is(err, accounts.ErrLastSignIn):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrLocked), errors.Is(err, accounts.ErrTooSoon), errors.Is(err, accounts.ErrPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})

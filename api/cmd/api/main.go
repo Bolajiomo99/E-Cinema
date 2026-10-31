@@ -89,6 +89,23 @@ func run() error {
 		Hub:            rooms.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
+	// Accounts whose 30-day deletion grace has ended are removed hourly.
+	go func() {
+		t := time.NewTicker(time.Hour)
+		defer t.Stop()
+		for {
+			if n, err := srv.Accounts.PurgeDeleted(ctx); err != nil {
+				slog.Error("purge deleted accounts", "err", err)
+			} else if n > 0 {
+				slog.Info("purged deleted accounts", "count", n)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
 	httpSrv := &http.Server{
 		Addr:              ":" + env("PORT", "8080"),
 		Handler:           srv.Routes(),

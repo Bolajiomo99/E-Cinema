@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -31,6 +32,19 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		acct, sess, err := s.Accounts.SignIn(r.Context(), b.Email, b.Password, b.Device)
+		if errors.Is(err, accounts.ErrSecondStep) {
+			// Two-step verification: the password was right; a code finishes the sign-in.
+			out, cerr := s.Accounts.IssueCode(r.Context(), acct.Email, "login")
+			if cerr != nil && !errors.Is(cerr, accounts.ErrTooSoon) {
+				fail(w, cerr)
+				return
+			}
+			if out.MaskedTo == "" {
+				out.MaskedTo = accounts.MaskEmail(acct.Email)
+			}
+			writeJSON(w, http.StatusAccepted, map[string]any{"secondStep": true, "code": out, "identifier": acct.Email})
+			return
+		}
 		if err != nil {
 			fail(w, err)
 			return
@@ -130,6 +144,76 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}))
+	mux.HandleFunc("GET /v1/me/settings", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		out, err := s.Accounts.GetSettings(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
+	mux.HandleFunc("PATCH /v1/me/settings", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b accounts.SettingsChange
+		if !decode(w, r, &b) {
+			return
+		}
+		out, err := s.Accounts.UpdateSettings(r.Context(), a.ID, b)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
+	mux.HandleFunc("POST /v1/me/password", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ Current, Password string }
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Accounts.ChangePassword(r.Context(), a.ID, b.Current, b.Password); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}))
+	mux.HandleFunc("POST /v1/me/signout-all", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		n, err := s.Accounts.SignOutEverywhere(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"signedOut": n})
+	}))
+	mux.HandleFunc("DELETE /v1/me/identities/{provider}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if err := s.Accounts.RemoveIdentity(r.Context(), a.ID, r.PathValue("provider")); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	mux.HandleFunc("POST /v1/me/delete", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ Confirm string }
+		if !decode(w, r, &b) {
+			return
+		}
+		if b.Confirm != "DELETE" {
+			fail(w, fmt.Errorf("%w: type DELETE to confirm", accounts.ErrBadInput))
+			return
+		}
+		at, err := s.Accounts.ScheduleDelete(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"deleteAfter": at, "email": a.Email})
+	}))
+	mux.HandleFunc("GET /v1/me/export", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		out, err := s.Accounts.Export(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
 	}))
 	mux.HandleFunc("GET /v1/me/profile", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		p, err := s.Accounts.GetProfile(r.Context(), a.ID)
