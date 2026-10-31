@@ -24,9 +24,10 @@ const (
 )
 
 var (
-	ErrPaused     = errors.New("too many wrong codes; resets are paused for 30 minutes to protect the account")
-	ErrReusedPass = errors.New("choose a password you have not used for this account before")
-	ErrShortReset = fmt.Errorf("%w: your new password needs at least %d characters", ErrBadInput, ResetPassLen)
+	ErrCodeExpired = errors.New("that code has expired")
+	ErrPaused      = errors.New("too many wrong codes; resets are paused for 30 minutes to protect the account")
+	ErrReusedPass  = errors.New("choose a password you have not used for this account before")
+	ErrShortReset  = fmt.Errorf("%w: your new password needs at least %d characters", ErrBadInput, ResetPassLen)
 )
 
 // CodeIssued tells the caller where to send the code. The caller must answer the same way
@@ -165,7 +166,7 @@ func (s Store) checkCode(ctx context.Context, tx pgx.Tx, acctID, purpose, code s
 		return ErrPaused
 	}
 	if time.Now().After(expires) {
-		return ErrBadCode
+		return ErrCodeExpired
 	}
 	if string(hash) != string(hashToken(acctID+":"+strings.TrimSpace(code))) {
 		if _, err := tx.Exec(ctx, `UPDATE auth_codes SET tries = tries + 1 WHERE id = $1`, id); err != nil {
@@ -195,7 +196,7 @@ func (s Store) SignInWithCode(ctx context.Context, identifier, code, device stri
 	}
 	defer tx.Rollback(ctx)
 	if err := s.checkCode(ctx, tx, acctID, "login", code); err != nil {
-		if errors.Is(err, ErrBadCode) || errors.Is(err, ErrPaused) {
+		if errors.Is(err, ErrBadCode) || errors.Is(err, ErrPaused) || errors.Is(err, ErrCodeExpired) {
 			_ = tx.Commit(ctx) // keep the spent try
 		}
 		return Account{}, Session{}, err
@@ -226,7 +227,7 @@ func (s Store) VerifyResetCode(ctx context.Context, identifier, code string) (st
 	}
 	defer tx.Rollback(ctx)
 	if err := s.checkCode(ctx, tx, acctID, "reset", code); err != nil {
-		if errors.Is(err, ErrBadCode) || errors.Is(err, ErrPaused) {
+		if errors.Is(err, ErrBadCode) || errors.Is(err, ErrPaused) || errors.Is(err, ErrCodeExpired) {
 			_ = tx.Commit(ctx)
 		}
 		return "", err

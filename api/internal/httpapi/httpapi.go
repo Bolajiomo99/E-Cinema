@@ -193,6 +193,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrCodeExpired):
+		writeJSON(w, http.StatusGone, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadInput), errors.Is(err, accounts.ErrBadCode):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadLogin), errors.Is(err, accounts.ErrNoSession), errors.Is(err, accounts.ErrBadPasskey):

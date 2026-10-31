@@ -46,6 +46,18 @@ func TestLoginCodeByEmail(t *testing.T) {
 	if _, _, err := s.SignInWithCode(ctx, "code@example.com", got.Code, "x"); !errors.Is(err, accounts.ErrBadCode) {
 		t.Fatalf("reuse: %v", err)
 	}
+	// An expired code says so.
+	age(t, s)
+	again, err := s.IssueCode(ctx, "code@example.com", "login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(ctx, `UPDATE auth_codes SET expires_at = now() - interval '1 second' WHERE used_at IS NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.SignInWithCode(ctx, "code@example.com", again.Code, "x"); !errors.Is(err, accounts.ErrCodeExpired) {
+		t.Fatalf("expired: %v", err)
+	}
 }
 
 func TestCodeTriesPauseResets(t *testing.T) {
