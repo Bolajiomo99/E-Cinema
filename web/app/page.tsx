@@ -7,6 +7,9 @@ import LanguageDemo from "@/components/landing/LanguageDemo";
 import Logo from "@/components/landing/Logo";
 import AccountMenu from "@/components/AccountMenu";
 import PremiereStrip from "@/components/landing/PremiereStrip";
+import PlanPickLink from "@/components/plans/PlanPickLink";
+import TrailerButton from "@/components/landing/TrailerButton";
+import { countryName, currencyFor, money as planMoney, priceOf, type PlanId } from "@/lib/plans";
 import { currentAccount } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
 
@@ -55,12 +58,12 @@ const FEATURES = [
   ["i-data", "Data saver", "Watch in 240p audio-first mode on as little as 150 MB per film.", false],
 ] as const;
 
-const PLANS = [
-  { badge: "FREE", kind: "outline", price: "₦0", per: "", ticks: [["✓", "Buy single tickets"], ["✓", "Read chat and react"], ["—", "Muted in chat"]] },
-  { badge: "STUDENT", kind: "student", price: "₦1,500", per: "/mo", ticks: [["✓", "Most Pro features"], ["✓", "Verified school email"], ["✓", "2 premieres a month"]] },
-  { badge: "PRO", kind: "pro", price: "₦4,500", per: "/mo", ticks: [["✓", "Unmuted voice and media"], ["✓", "Request older films"], ["✓", "AI insights dashboard"]], hot: true },
-  { badge: "VIP GROUP", kind: "vip", price: "₦2,900", per: "/seat", ticks: [["✓", "5 to 50 seats together"], ["✓", "Lower price per seat"], ["✓", "Group room and host tools"]] },
-  { badge: "ENTERPRISE", kind: "enterprise", price: "₦25,000", per: "/mo", ticks: [["✓", "Watch alone or invite-only"], ["✓", "Private rooms"], ["✓", "Priority support"]] },
+const PLANS: { id: PlanId; badge: string; kind: string; per: string; ticks: string[][]; hot?: boolean }[] = [
+  { id: "free", badge: "FREE", kind: "outline", per: "", ticks: [["✓", "Buy single tickets"], ["✓", "Read chat and react"], ["—", "Muted in chat"]] },
+  { id: "student", badge: "STUDENT", kind: "student", per: "/mo", ticks: [["✓", "Most Pro features"], ["✓", "Verified school email"], ["✓", "2 premieres a month"]] },
+  { id: "pro", badge: "PRO", kind: "pro", per: "/mo", ticks: [["✓", "Unmuted voice and media"], ["✓", "Request older films"], ["✓", "AI insights dashboard"]], hot: true },
+  { id: "vip", badge: "VIP GROUP", kind: "vip", per: "/seat", ticks: [["✓", "5 to 50 seats together"], ["✓", "Lower price per seat"], ["✓", "Group room and host tools"]] },
+  { id: "enterprise", badge: "ENTERPRISE", kind: "enterprise", per: "/mo", ticks: [["✓", "Watch alone or invite-only"], ["✓", "Private rooms"], ["✓", "Priority support"]] },
 ];
 
 const METHODS = ["Mastercard", "Visa", "Verve", "Paystack", "Flutterwave", "M-Pesa", "UPI", "Apple Pay", "Google Pay", "Bitcoin", "USDC", "Ethereum"];
@@ -68,7 +71,7 @@ const LIVE_METHODS = new Set(["Mastercard", "Visa"]); // through PayPal today
 
 const FOOTER: [string, [string, string][]][] = [
   ["Watch", [["Premieres", "#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
-  ["Account", [["Plans", "#plans"], ["Student offer", "#plans"], ["Gift a seat", "/checkout"]]],
+  ["Account", [["Plans", "/plans"], ["Student offer", "#plans"], ["Gift a seat", "/checkout"]]],
   ["Company", [["About", "/terms"], ["Studios and distributors", "mailto:admin@e-cinema.net?subject=Studios"], ["Careers", "mailto:admin@e-cinema.net?subject=Careers"]]],
   ["Help", [["Help centre", "/concierge"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
 ];
@@ -78,6 +81,8 @@ export default async function Home() {
   const { list, hero } = lineupNow();
   const heroSeats = seats[hero.id];
   const country = h.get("cf-ipcountry");
+  const planCountry = country && country !== "XX" && country !== "T1" ? country : undefined;
+  const planCurrency = currencyFor(planCountry);
   const [l1, ...l2] = hero.film.toUpperCase().split(" ");
   const heroLines = l2.length > 1 ? [`${l1} ${l2[0]}`, l2.slice(1).join(" ")] : [l1, l2.join(" ")];
   const tiles = list.filter((s) => s.id !== hero.id).map((s) => ({ ...s, endsAtMs: endsAt(s) }));
@@ -97,7 +102,7 @@ export default async function Home() {
             <div className="lp-nav-links">
               <a href="#premieres" className="on">Premieres</a>
               <Link href="/releases">Watch parties</Link>
-              <a href="#plans">Plans</a>
+              <Link href="/plans">Plans</Link>
               <a href="mailto:admin@e-cinema.net?subject=E-Cinema%20for%20business">For business</a>
             </div>
           </div>
@@ -131,7 +136,7 @@ export default async function Home() {
           <Countdown to={hero.startsAt} />
           <div className="lp-ctas">
             <Link href={`/checkout#${hero.id}`} className="lp-btn lg">Get a seat · {money(hero.price)}</Link>
-            <Link href="/watch/red-earth-sample" className="lp-btn lg secondary">Hear the AI dubs</Link>
+            <TrailerButton film={hero.id} title={hero.film} className="lp-btn lg secondary" />
           </div>
           {heroSeats && (
             <div className="lp-seats">
@@ -182,20 +187,23 @@ export default async function Home() {
             <p className="lp-eyebrow">PLANS</p>
             <h2>Choose how loud you want to be</h2>
           </div>
-          <p className="lp-body-m">Prices shown for Nigeria</p>
+          <p className="lp-body-m">Prices shown for {countryName(planCountry) || "your country"} · <Link href="/plans">Compare plans</Link></p>
         </div>
         <ul className="lp-plans">
           {PLANS.map((p) => (
-            <li key={p.badge} className={`lp-card lp-plan${p.hot ? " hot" : ""}`}>
-              <span className={`lp-badge ${p.kind}`}>{p.badge}</span>
-              <div className="lp-price"><b>{p.price}</b>{p.per && <span>{p.per}</span>}</div>
-              <ul className="lp-ticks">
-                {p.ticks.map(([m, t]) => <li key={t} className={m === "—" ? "off" : ""}>{m}&nbsp;&nbsp;{t}</li>)}
-              </ul>
+            <li key={p.badge}>
+              <PlanPickLink plan={p.id} signedIn={Boolean(me)} className="lp-card lp-plan">
+                <span className="lp-plan-top"><span className={`lp-badge ${p.kind}`}>{p.badge}</span>{p.hot && <em>Most popular</em>}</span>
+                <div className="lp-price"><b>{planMoney(priceOf(p.id, planCurrency), planCurrency)}</b>{p.per && <span>{p.per}</span>}</div>
+                <ul className="lp-ticks">
+                  {p.ticks.map(([m, t]) => <li key={t} className={m === "—" ? "off" : ""}>{m}&nbsp;&nbsp;{t}</li>)}
+                </ul>
+                <span className="lp-plan-cta">{p.id === "free" ? (me ? "Compare plans" : "Join free") : `Choose ${p.badge === "VIP GROUP" ? "VIP group" : p.badge.charAt(0) + p.badge.slice(1).toLowerCase()}`} →</span>
+              </PlanPickLink>
             </li>
           ))}
         </ul>
-        <p className="lp-note">Single tickets are on sale now. Monthly plans open when local payments go live.</p>
+        <p className="lp-note">Pay for any plan with PayPal today. Paystack, Flutterwave and crypto switch on next.</p>
       </section>
 
       <div className="lp-surge-wrap">

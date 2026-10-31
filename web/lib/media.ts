@@ -86,3 +86,17 @@ export async function filmStream(endsAt: Date): Promise<FilmStream | null> {
   const [hd, sd] = await Promise.all([sign(`${STAND_IN}/feature-720p.mp4`), sign(`${STAND_IN}/feature-360p.mp4`)]);
   return { hd, sd, ...info, durationSec: Number(info.durationSec) };
 }
+
+// A film's trailer: the studio's own upload at trailers/<film>.mp4 when there is one,
+// otherwise the opening two minutes of the stand-in film, labelled as such.
+export async function trailer(film: string): Promise<{ url: string; studio: boolean; endSec?: number; credit?: string } | null> {
+  const key = `trailers/${film}.mp4`;
+  try {
+    await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: "bytes=0-0" }));
+    return { url: await getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: LINK_SECONDS }), studio: true };
+  } catch (err) {
+    if ((err as { name?: string }).name !== "NoSuchKey") throw err;
+  }
+  const stand = await filmStream(new Date());
+  return stand ? { url: stand.sd, studio: false, endSec: 120, credit: `${stand.title} · ${stand.credit} · ${stand.license}` } : null;
+}
