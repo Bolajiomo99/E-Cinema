@@ -31,6 +31,9 @@ Decisions from Bolaji, 14 October 2026. Prices are placeholders and can change.
 | Web menu | One menu on every signed-in web page: Home, Coming soon, Live, Community, Clips, Shop, Library, then search, notifications, cart and profile. Browse and search sit under Home; messages and profiles sit under Community. |
 | Company and domain | E-Cinema is the brand of ONLINE CINEMA LTD, a limited company registered in Nigeria (RC 9947766, 19 October 2026). Legal and payment forms use the legal name; public text can say "Online Cinema Ltd, trading as E-Cinema". The domain is e-cinema.net, with DNS on Cloudflare; all emails and links use it. |
 | CEO overview | The CEO dashboard has a global overview of everything: revenue by stream, live world map, money mix, system health, hiring, brand protection, licensing and security operations. |
+| Agentic commerce | The E-Cinema Concierge, an AI agent on Claude, finds films and showtimes, builds a PayPal order and books seats for a viewer and friends. Nothing is charged without the viewer's PayPal approval, unless they set a spending cap on a saved PayPal account. PayPal webhooks drive what the agent does next (31 October 2026). |
+| PayPal | Orders/Checkout for tickets, pre-sales, upgrades, merch and 18+ payments; Vault for saved PayPal; Subscriptions for plans; Payouts to studios and 18+ recipients; Webhooks; Disputes; the PayPal Agent Toolkit for the concierge. |
+| Partner tools | APIMatic PayPal context plugin while coding; AG Studio for the CEO, studio and licensee dashboards; Bryntum Calendar for showtimes and studio release planning; Channel3 for "Shop the film"; Render with Render Workflows for dubbing, transcoding, payouts and webhook jobs. AG Studio and Bryntum stay inside dashboards so they can be swapped out. |
 | Process | Every page is designed in Figma before code. Any new idea is added to Figma first. |
 
 ## Still open
