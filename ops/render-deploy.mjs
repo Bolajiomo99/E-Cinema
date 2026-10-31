@@ -125,6 +125,42 @@ if (existingWeb) {
   if (webhookId) webEnv.PAYPAL_WEBHOOK_ID = webhookId;
 }
 if (process.env.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID;
+
+// Register (or find) the PayPal sandbox webhook pointing at the live web service.
+async function ensurePaypalWebhook(webUrl) {
+  const id = process.env.PAYPAL_CLIENT_ID, secret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!id || !secret) return null;
+  const base = "https://api-m.sandbox.paypal.com";
+  const tok = await fetch(`${base}/v1/oauth2/token`, {
+    method: "POST",
+    headers: { authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`, "content-type": "application/x-www-form-urlencoded" },
+    body: "grant_type=client_credentials",
+  });
+  if (!tok.ok) throw new Error(`PayPal token -> ${tok.status}`);
+  const auth = { authorization: `Bearer ${(await tok.json()).access_token}`, "content-type": "application/json" };
+  const url = `${webUrl}/api/paypal/webhooks`;
+  const list = await (await fetch(`${base}/v1/notifications/webhooks`, { headers: auth })).json();
+  const found = (list.webhooks ?? []).find((w) => w.url === url);
+  if (found) { console.log(`PayPal webhook already registered: ${found.id}`); return found.id; }
+  const res = await fetch(`${base}/v1/notifications/webhooks`, {
+    method: "POST", headers: auth,
+    body: JSON.stringify({ url, event_types: PAYPAL_EVENTS.map((name) => ({ name })) }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(`PayPal webhook create -> ${res.status} ${body.name ?? ""}`);
+  console.log(`Registered PayPal webhook ${body.id} for ${url}`);
+  return body.id;
+}
+const PAYPAL_EVENTS = [
+  "CHECKOUT.ORDER.APPROVED", "PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.REFUNDED",
+  "CUSTOMER.DISPUTE.CREATED", "CUSTOMER.DISPUTE.RESOLVED", "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.CANCELLED",
+  "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", "PAYMENT.PAYOUTS-ITEM.FAILED",
+];
+const webUrlNow = existingWeb?.serviceDetails?.url;
+if (webUrlNow && !webEnv.PAYPAL_WEBHOOK_ID) {
+  const hookId = await ensurePaypalWebhook(webUrlNow);
+  if (hookId) webEnv.PAYPAL_WEBHOOK_ID = hookId;
+}
 for (const [k, v] of Object.entries(webEnv)) if (!v) { console.log(`Skipping empty ${k}`); delete webEnv[k]; }
 
 const webSvc = await upsertService(
