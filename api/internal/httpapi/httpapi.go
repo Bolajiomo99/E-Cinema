@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
@@ -29,6 +30,8 @@ type Server struct {
 	Passes rooms.Passes
 	// Parties are watch parties: named groups for one premiere.
 	Parties parties.Store
+	// Classics are member requests to bring older films back.
+	Classics classics.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -157,6 +160,7 @@ func (s *Server) Routes() http.Handler {
 	s.accountRoutes(mux)
 	s.roomRoutes(mux)
 	s.partyRoutes(mux)
+	s.classicRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -215,6 +219,12 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, rooms.ErrNoTicket), errors.Is(err, tickets.ErrAdult):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, classics.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, classics.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, classics.ErrPlan):
+		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
 	case errors.Is(err, parties.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, parties.ErrBadInput):
