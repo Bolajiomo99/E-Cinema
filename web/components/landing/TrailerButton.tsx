@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type T = { url: string; studio: boolean; endSec?: number; credit?: string };
 
 // "Watch trailer" from the Figma landing hero (14:280). Opens a player over the page.
-export default function TrailerButton({ film, title, className, label = "Watch trailer" }: { film: string; title: string; className?: string; label?: string }) {
+export default function TrailerButton({ film, title, className, label = "Watch trailer", children, ariaLabel }: { film: string; title: string; className?: string; label?: string; children?: React.ReactNode; ariaLabel?: string }) {
   const [open, setOpen] = useState(false);
   const [t, setT] = useState<T | null>(null);
   const [error, setError] = useState("");
@@ -30,7 +30,7 @@ export default function TrailerButton({ film, title, className, label = "Watch t
 
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)}>{label}</button>
+      <button type="button" className={className} onClick={() => setOpen(true)} aria-label={ariaLabel}>{children ?? label}</button>
       {open && (
         <dialog ref={dialog} className="tr-dialog" onClose={close} onClick={(e) => e.target === dialog.current && close()} aria-label={`${title} trailer`}>
           <div className="tr-box">
