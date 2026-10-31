@@ -124,6 +124,18 @@ jobs:
           echo "subscription -> $(echo "$sub" | grep -o '"approve":"https://[^/"]*' || echo "$sub")"
           echo "$sub" | grep -q '"approve":"https://www.sandbox.paypal.com/' || exit 1
           echo "plans and PayPal subscription ok"
+          # Checkout, live counts, watch parties and classic requests.
+          curl -fsS "$web/checkout?film=red-earth-2026-11-02" | grep -q "Order summary"
+          curl -fsS "${{ steps.render.outputs.api_url }}/v1/live" | grep -q '^\['
+          party=$(curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" \
+            -d '{"showtimeId":"red-earth-2026-11-02","name":"Smoke party","visibility":"link","rules":["spoiler-filter"]}' "$web/api/parties")
+          code=$(echo "$party" | grep -o '"code":"[a-z0-9-]*"' | cut -d'"' -f4)
+          echo "party -> $code"
+          [ -n "$code" ]
+          curl -fsS "$web/p/$code" | grep -q "Smoke party"
+          curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/parties/$code/end" >/dev/null
+          curl -fsS "$web/classics" | grep -q "Bring back a classic"
+          echo "checkout, live, parties and classics ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
