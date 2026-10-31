@@ -15,6 +15,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/httpapi"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
@@ -51,7 +52,18 @@ func run() error {
 		}
 	}
 
+	var idCheck *identity.Sumsub
+	if t, k := os.Getenv("SUMSUB_APP_TOKEN"), os.Getenv("SUMSUB_SECRET_KEY"); t != "" && k != "" {
+		idCheck = &identity.Sumsub{
+			BaseURL:   env("SUMSUB_BASE_URL", "https://api.sumsub.com"),
+			AppToken:  t,
+			SecretKey: k,
+			Level:     env("SUMSUB_LEVEL", "basic-kyc-level"),
+		}
+	}
+
 	srv := &httpapi.Server{
+		Identity:       idCheck,
 		Tickets:        tickets.Store{DB: pool},
 		Accounts:       accounts.Store{DB: pool, SMS: texts},
 		AllowedOrigins: strings.Split(env("ALLOWED_ORIGINS", "e-cinema.net,*.e-cinema.net,localhost:3000"), ","),

@@ -83,6 +83,35 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"account": acct})
 	}))
+	mux.HandleFunc("POST /v1/identity/token", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if s.Identity == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "face checks are not switched on yet"})
+			return
+		}
+		tok, err := s.Identity.SDKToken(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"token": tok})
+	}))
+	mux.HandleFunc("POST /v1/identity/refresh", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if s.Identity == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "face checks are not switched on yet"})
+			return
+		}
+		res, err := s.Identity.Check(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		acct, err := s.Accounts.RecordIdentity(r.Context(), a.ID, res.Status)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "check": res})
+	}))
 }
 
 func (s *Server) signedIn(next func(http.ResponseWriter, *http.Request, accounts.Account, string)) http.HandlerFunc {

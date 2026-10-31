@@ -10,13 +10,16 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
 type Server struct {
-	Tickets        tickets.Store
-	Accounts       accounts.Store
+	Tickets  tickets.Store
+	Accounts accounts.Store
+	// Identity runs face and ID checks; nil until Sumsub keys are set.
+	Identity       *identity.Sumsub
 	AllowedOrigins []string
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
@@ -184,6 +187,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrSMSUnavailable):
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+	case errors.Is(err, identity.ErrNoApplicant):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):

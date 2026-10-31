@@ -231,3 +231,17 @@ func TestNoSMS(t *testing.T) {
 		t.Fatal(p)
 	}
 }
+
+func TestRecordIdentity(t *testing.T) {
+	s, _ := store(t)
+	ctx := context.Background()
+	a, _, _ := s.SignUp(ctx, "id@example.com", "Id", pw, "x")
+	got, err := s.RecordIdentity(ctx, a.ID, "pending")
+	if err != nil || got.FaceVerified {
+		t.Fatalf("pending: %v %+v", err, got)
+	}
+	got, err = s.RecordIdentity(ctx, a.ID, "approved")
+	if err != nil || !got.FaceVerified || !got.IDVerified {
+		t.Fatalf("approved: %v %+v", err, got)
+	}
+}
