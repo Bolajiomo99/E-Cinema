@@ -1,0 +1,77 @@
+# E-Cinema on Render (workspace "E-Cinema", Frankfurt, close to Azure West Europe).
+# Secrets marked sync: false are entered once in the Render dashboard and never live in git.
+projects:
+  - name: e-cinema
+    environments:
+      - name: production
+        databases:
+          - name: e-cinema-db
+            plan: basic-256mb
+            region: frankfurt
+            databaseName: ecinema
+            user: ecinema
+            postgresMajorVersion: "16"
+            ipAllowList: [] # private network only
+
+        services:
+          - type: web
+            name: e-cinema-api
+            runtime: go
+            region: frankfurt
+            plan: starter
+            rootDir: api
+            buildCommand: go build -trimpath -ldflags="-s -w" -o bin/api ./cmd/api
+            startCommand: ./bin/api
+            healthCheckPath: /healthz
+            autoDeployTrigger: checksPass
+            buildFilter:
+              paths: [api/**]
+            envVars:
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: e-cinema-db
+                  property: connectionString
+              - key: INTERNAL_API_TOKEN
+                generateValue: true
+              - key: ALLOWED_ORIGINS
+                value: e-cinema.net,*.e-cinema.net,*.onrender.com
+
+          - type: web
+            name: e-cinema-web
+            runtime: node
+            region: frankfurt
+            plan: starter
+            rootDir: web
+            buildCommand: npm ci && npm run build
+            startCommand: npm start
+            healthCheckPath: /checkout
+            autoDeployTrigger: checksPass
+            buildFilter:
+              paths: [web/**]
+            envVars:
+              - key: NODE_VERSION
+                value: "22"
+              - key: API_URL
+                fromService:
+                  type: web
+                  name: e-cinema-api
+                  envVarKey: RENDER_EXTERNAL_URL
+              - key: INTERNAL_API_TOKEN
+                fromService:
+                  type: web
+                  name: e-cinema-api
+                  envVarKey: INTERNAL_API_TOKEN
+              - key: PAYPAL_ENV
+                value: sandbox
+              - key: PAYPAL_CLIENT_ID
+                sync: false
+              - key: PAYPAL_CLIENT_SECRET
+                sync: false
+              - key: PAYPAL_WEBHOOK_ID
+                sync: false
+              - key: ANTHROPIC_API_KEY
+                sync: false
+              - key: CHANNEL3_API_KEY
+                sync: false
+              - key: NEXT_PUBLIC_AG_GRID_LICENSE_KEY
+                sync: false
