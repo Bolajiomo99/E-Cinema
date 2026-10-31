@@ -624,3 +624,14 @@ body:has(.lp) { background: #0a0a0c; }
 .acct-menu .off { cursor: default; opacity: .6; }
 .acct-menu .acct-out { color: #ff4d57; }
 @media (max-width: 480px) { .lp-nav-right > .lp-btn[href="/home"] { display: none; } .acct-menu { width: min(280px, calc(100vw - 32px)); } }
+
+/* Keep every page inside the phone width, even on iOS */
+html, body { overflow-x: clip; }
+/* Password show / hide and "Soon" tag on auth buttons */
+.pw { position: relative; display: block; }
+.pw input { width: 100%; padding-right: 72px; box-sizing: border-box; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 34px; padding: 0 12px; border-radius: 8px; border: 0; background: transparent; color: #a6a6b0; font: 700 13px/1 Manrope, sans-serif; cursor: pointer; }
+.pw-eye:hover { color: #f4f4f6; background: #1d1d23; }
+.soon-tag { margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: #26262e; color: #a6a6b0; font: 700 10px/14px Manrope, sans-serif; vertical-align: middle; }
+.check input[aria-invalid="true"] { outline: 2px solid #ff4d57; outline-offset: 2px; }
+.check a { color: inherit; text-decoration: underline; }
