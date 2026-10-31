@@ -8,6 +8,8 @@ import "./globals.css";
 import { cookies } from "next/headers";
 import TabBar from "@/components/mobile/TabBar";
 import { SESSION_COOKIE } from "@/lib/auth";
+import { dirOf, isLang } from "@/lib/i18n";
+import { LANG_COOKIE } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "E-Cinema",
@@ -19,11 +21,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jar = await cookies();
+  const raw = jar.get(LANG_COOKIE)?.value;
+  const lang = isLang(raw) ? raw : "en";
   return (
-    <html lang="en">
+    <html lang={lang} dir={dirOf(lang)}>
       <body>
         {children}
-        <TabBar signedIn={Boolean((await cookies()).get(SESSION_COOKIE))} />
+        <TabBar signedIn={Boolean(jar.get(SESSION_COOKIE))} />
       </body>
     </html>
   );
