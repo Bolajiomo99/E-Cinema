@@ -56,7 +56,11 @@ export default async function SettingsSection({ params, searchParams }: { params
       const plan = PLANS.find((x) => x.id === planId)!;
       const amount = priceOf(planId, currency);
       const price = planId === "free" ? "Free" : `${money(amount, currency)} ${plan.per === "seat" ? "a seat a month" : "a month"}`;
-      const renews = planId === "free" ? plan.blurb : profile.planStatus === "awaiting_payment" ? `Waiting for your first payment · ${plan.blurb}` : plan.blurb;
+      const pending = PLANS.find((x) => x.id === profile.pendingPlan && x.id !== planId);
+      const renewDate = profile.renewsAt ? new Date(profile.renewsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+      const renews = planId === "free" ? plan.blurb
+        : profile.planStatus === "awaiting_payment" ? `Waiting for your first payment · ${plan.blurb}`
+        : `${renewDate ? `Renews ${renewDate} through PayPal` : "Paid through PayPal"}${pending ? ` · Switching to ${pending.name} once you approve it` : ""}`;
       const t = await accountApi("GET", "/v1/me/tickets", undefined, session);
       const tickets = (t.status === 200 ? (t.body as { tickets?: unknown[] }).tickets ?? (Array.isArray(t.body) ? t.body : []) : []) as { holdId: string; showtimeId: string; seats: number; status: string; createdAt: string }[];
       const bills: Bill[] = tickets.filter((x) => x.status === "paid").map((x) => {
@@ -69,7 +73,7 @@ export default async function SettingsSection({ params, searchParams }: { params
           amount: st ? new Intl.NumberFormat("en", { style: "currency", currency: st.price.currency }).format(value) : "",
         };
       });
-      return <PlanSection plan={plan} price={price} renews={renews} bills={bills} paidPlan={planId !== "free"} />;
+      return <PlanSection plan={plan} price={price} renews={renews} bills={bills} paidPlan={planId !== "free"} subscribed={Boolean(profile.subscribed)} pendingPay={profile.planStatus === "awaiting_payment" || Boolean(pending)} />;
     }
     case "notifications":
       return <NotificationsSection settings={settings} />;

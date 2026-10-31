@@ -13,7 +13,7 @@ export type SettingsData = {
   username: string; hasPassword: boolean; passwordChangedAt: string | null; twoStep: boolean; loginAlerts: boolean;
   prefs: Record<string, unknown>; deleteAfter: string | null; identities: { provider: string; email: string; added: string }[]; passkeys: number;
 };
-export type ProfileData = { country?: string; birthDate?: string; appLanguage?: string; audioLanguage?: string; plan: string; planStatus: string };
+export type ProfileData = { country?: string; birthDate?: string; appLanguage?: string; audioLanguage?: string; plan: string; planStatus: string; pendingPlan?: string; renewsAt?: string; subscribed?: boolean };
 type Passkey = { id: string; name: string; createdAt: string; lastUsedAt?: string };
 type Device = { id: string; device: string; lastSeenAt: string; current: boolean };
 
@@ -288,15 +288,24 @@ export function LanguageSection({ profile, settings, countryLabel }: { profile: 
 
 export type Bill = { id: string; date: string; what: string; amount: string };
 
-export function PlanSection({ plan, price, renews, bills, paidPlan }: { plan: { badge: string; name: string; blurb: string }; price: string; renews: string; bills: Bill[]; paidPlan: boolean }) {
+export function PlanSection({ plan, price, renews, bills, paidPlan, subscribed, pendingPay }: { plan: { badge: string; name: string; blurb: string }; price: string; renews: string; bills: Bill[]; paidPlan: boolean; subscribed: boolean; pendingPay: boolean }) {
   const [note, setNote] = useState(false);
+  const [cancelling, setCancelling] = useState<"idle" | "ask" | "busy" | "error">("idle");
+  const cancel = async () => {
+    setCancelling("busy");
+    const r = await fetch("/api/me/plan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: "free" }) });
+    if (r.ok) window.location.reload(); else setCancelling("error");
+  };
   return (
     <>
       <h1 className="st-title">Plan and payments</h1>
       <Card title="Your plan">
         <div className="st-plan">
           <div><p><span className="st-plan-badge">{plan.badge}</span><strong>{price}</strong></p><small>{renews}</small></div>
-          <a className="st-btn grey" href="/join?step=3">Change plan</a>
+          <span className="st-plan-acts">
+            {pendingPay && <a className="st-btn red" href="/join?step=4">Finish payment</a>}
+            <a className="st-btn grey" href="/plans">Change plan</a>
+          </span>
         </div>
       </Card>
       <Card title="Payment methods" aside="Every local method, plus PayPal">
@@ -313,7 +322,17 @@ export function PlanSection({ plan, price, renews, bills, paidPlan }: { plan: { 
           </div>
         )}
       </Card>
-      {paidPlan && <p className="st-foot">Cancel plan: you keep your plan until the end of the period, then move to Free.</p>}
+      {paidPlan && (
+        <div className="st-foot">
+          {cancelling === "ask" || cancelling === "busy" ? (
+            <p>Move to Free now? {subscribed ? "Your PayPal subscription is cancelled straight away, so you are not billed again." : ""}{" "}
+              <button className="st-btn line sm" onClick={cancel} disabled={cancelling === "busy"}>{cancelling === "busy" ? "Cancelling…" : "Yes, move to Free"}</button>{" "}
+              <button className="st-btn line sm" onClick={() => setCancelling("idle")}>Keep my plan</button></p>
+          ) : (
+            <p>{cancelling === "error" ? "PayPal could not cancel just now. Please try again. " : ""}<button className="st-link" onClick={() => setCancelling("ask")}>Cancel plan</button> and move to Free.</p>
+          )}
+        </div>
+      )}
     </>
   );
 }
