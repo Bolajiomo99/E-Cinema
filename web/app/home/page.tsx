@@ -9,6 +9,7 @@ import WeekCalendar from "@/components/ai/WeekCalendar";
 import Countdown from "@/components/Countdown";
 import Logo from "@/components/landing/Logo";
 import AccountMenu from "@/components/AccountMenu";
+import { DashShell, SidebarToggle } from "@/components/dash/DashShell";
 import PremiereStrip from "@/components/landing/PremiereStrip";
 import { myTickets } from "@/lib/api";
 import { currentAccount, SESSION_COOKIE } from "@/lib/auth";
@@ -54,6 +55,7 @@ export default async function Home() {
 
   return (
     <TicketsProvider initial={tickets}>
+      <DashShell>
       <div className="lp hm">
         <header className="lp-hero hm-hero">
           <span className="lp-glow a" aria-hidden />
@@ -62,7 +64,7 @@ export default async function Home() {
           <span className="lp-fade-bottom" aria-hidden />
           <nav className="lp-nav hm-nav">
             <div className="lp-nav-left">
-              <Logo />
+              <span className="dash-brand"><SidebarToggle /><Logo /></span>
               <div className="lp-nav-links">
                 <Link href="/home" className="on">Home</Link>
                 <Link href="/releases">Coming soon</Link>
@@ -140,6 +142,7 @@ export default async function Home() {
           </div>
         </footer>
       </div>
+      </DashShell>
     </TicketsProvider>
   );
 }

@@ -1014,3 +1014,74 @@ html, body { overflow-x: clip; }
 .room-player.audio-only video { visibility: hidden; }
 .room-player.audio-only::after { content: "Audio only"; position: absolute; color: #a3a3ab; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
 .room-badges button.badge { cursor: pointer; font: inherit; background: none; color: inherit; }
+
+/* Dashboard sidebar (Figma 31:603) */
+.dash-side { position: fixed; inset: 0 auto 0 0; width: 248px; z-index: 60; box-sizing: border-box; padding: 28px 16px; background: #131317; border-right: 1px solid #26262e; display: flex; flex-direction: column; gap: 6px; transform: translateX(-100%); transition: transform .25s ease; overflow-y: auto; }
+.dash.open .dash-side { transform: none; }
+.dash-side-top { display: flex; align-items: flex-start; justify-content: space-between; padding: 0 0 24px 12px; }
+.dash-side nav { display: flex; flex-direction: column; gap: 6px; }
+.dash-item { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 10px; color: #a6a6b0; font-size: 14px; font-weight: 600; letter-spacing: .1px; text-decoration: none; }
+.dash-item:hover { background: #1b1b21; color: #f4f4f6; }
+.dash-item.on { background: #1b1b21; color: #f4f4f6; }
+.dash-item.soon { cursor: default; opacity: .55; }
+.dash-item.soon:hover { background: none; color: #a6a6b0; }
+.dash-item em { margin-left: auto; font-style: normal; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 999px; background: #26262e; color: #a6a6b0; }
+.dash-main { transition: margin-left .25s ease; min-width: 0; }
+.dash-scrim { display: none; }
+.dash-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(19,19,23,.6); color: #f4f4f6; cursor: pointer; flex: none; }
+.dash-toggle:hover { background: #1b1b21; }
+.dash-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.dash-toggle.inside { width: 34px; height: 34px; margin-top: 6px; border-color: #26262e; }
+.dash.open .dash-main .dash-toggle:not(.inside) { visibility: hidden; }
+@media (min-width: 901px) {
+  .dash.open .dash-main { margin-left: 248px; }
+}
+@media (max-width: 900px) {
+  .dash-side { width: min(300px, 84vw); box-shadow: 0 0 60px rgba(0,0,0,.6); }
+  .dash.open .dash-scrim { display: block; position: fixed; inset: 0; z-index: 55; border: 0; background: rgba(0,0,0,.55); }
+}
+.dash-brand { display: inline-flex; align-items: center; gap: 16px; }
+
+/* My tickets (Figma 31:605) */
+.tk { box-sizing: border-box; min-height: 100dvh; padding: 32px 40px 48px; display: flex; flex-direction: column; gap: 24px; background: #0a0a0c; color: #f4f4f6; max-width: 1240px; }
+.tk-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tk-title { display: flex; align-items: center; gap: 14px; }
+.tk-head h1 { font-size: 32px; line-height: 40px; font-weight: 800; letter-spacing: -.5px; margin: 0; }
+.tk-head p { margin: 4px 0 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #a6a6b0; }
+.tk-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.tk-chips a, .tk-chips span { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 999px; background: #1b1b21; border: 1px solid #26262e; color: #a6a6b0; font-size: 13px; font-weight: 600; text-decoration: none; box-sizing: border-box; }
+.tk-chips a.on { background: #f4f4f6; color: #0a0a0c; border-color: #f4f4f6; }
+.tk-chips .soon { opacity: .5; cursor: default; }
+.tk-row { display: flex; align-items: center; gap: 18px; padding: 16px; border-radius: 16px; background: #131317; border: 1px solid #26262e; }
+.tk-poster { position: relative; flex: none; width: 72px; height: 104px; border-radius: 10px; overflow: hidden; display: flex; align-items: flex-end; padding: 14px 10px; box-sizing: border-box; }
+.tk-poster i { position: absolute; width: 90px; height: 90px; right: -30px; top: -20px; }
+.tk-poster span { position: relative; font-family: "Bebas Neue", sans-serif; font-size: 15px; line-height: 15px; letter-spacing: .5px; }
+.tk-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tk-info h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 700; letter-spacing: -.2px; }
+.tk-info p { margin: 0; font-size: 13px; line-height: 18px; color: #a6a6b0; font-weight: 500; }
+.tk-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.tk-badges .b { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; box-sizing: border-box; }
+.tk-badges .b.live { background: #ff2d46; color: #fff; }
+.tk-badges .b.live i { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.tk-badges .b.white { background: #fff; color: #0a0a0c; }
+.tk-badges .b.warn { background: #d4a23a; color: #1a1405; }
+.tk-badges .b.out { background: rgba(0,0,0,.5); border: 1px solid #3a3a44; color: #a6a6b0; }
+.tk-actions { display: flex; gap: 8px; flex: none; }
+.state-btn.ghost { background: none; border: 1px solid #3a3a44; }
+.tk-actions .state-btn { height: 34px; font-size: 13px; font-weight: 600; padding: 0 14px; }
+.tk-note { display: flex; gap: 12px; align-items: center; padding: 16px; border-radius: 12px; background: #1b1b21; color: #a6a6b0; }
+.tk-note p { margin: 0; font-size: 13px; line-height: 18px; font-weight: 500; }
+.tk-empty { padding: 48px 24px; border: 1px dashed #26262e; border-radius: 16px; text-align: center; }
+.tk-empty h2 { margin: 0 0 8px; font-size: 18px; }
+.tk-empty p { margin: 0 0 18px; color: #a6a6b0; font-size: 14px; }
+.dash.open .tk .tk-title .dash-toggle { display: none; }
+@media (max-width: 640px) {
+  .tk { padding: 20px 16px 96px; }
+  .tk-head h1 { font-size: 26px; line-height: 32px; }
+  .tk-row { flex-wrap: wrap; align-items: flex-start; }
+  .tk-actions { width: 100%; }
+  .tk-actions .state-btn { flex: 1; justify-content: center; }
+}
+.tk-note svg { flex: none; }
+.lp-nav-links > * { white-space: nowrap; }
+@media (min-width: 901px) { .dash.open .dash-brand { display: none; } }
