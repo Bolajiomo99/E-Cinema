@@ -4,8 +4,9 @@ import { useState } from "react";
 import type Anthropic from "@anthropic-ai/sdk";
 import PayPalTicketButton from "./PayPalTicketButton";
 import type { PendingOrder } from "@/lib/concierge";
+import type { ShopItem } from "@/lib/shop";
 
-type Turn = { role: "viewer" | "concierge"; text: string; orders?: PendingOrder[] };
+type Turn = { role: "viewer" | "concierge"; text: string; orders?: PendingOrder[]; shop?: ShopItem[] };
 
 function textOf(content: Anthropic.Beta.BetaMessageParam["content"]): string {
   if (!content) return "";
@@ -36,7 +37,7 @@ export default function Concierge() {
       const added = (data.messages as Anthropic.Beta.BetaMessageParam[]).slice(messages.length);
       const reply = added.filter((m) => m.role === "assistant").map((m) => textOf(m.content)).filter(Boolean).at(-1);
       setHistory(data.messages);
-      setTurns((t) => [...t, { role: "concierge", text: data.refused ? "Sorry, I can't help with that one." : reply || "Done.", orders: data.orders }]);
+      setTurns((t) => [...t, { role: "concierge", text: data.refused ? "Sorry, I can't help with that one." : reply || "Done.", orders: data.orders, shop: data.shop }]);
     } catch {
       setTurns((t) => [...t, { role: "concierge", text: "I couldn't reach the booking desk. Please try again." }]);
     } finally {
@@ -58,6 +59,19 @@ export default function Concierge() {
                 <PayPalTicketButton orderId={o.orderId} />
               </div>
             ))}
+            {t.shop && t.shop.length > 0 && (
+              <div className="shop-row">
+                {t.shop.map((p) => (
+                  <a key={p.id} className="shop-card" href={p.url} target="_blank" rel="noopener noreferrer sponsored">
+                    {/* Retailer images come from many domains, so next/image is not used. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {p.image && <img src={p.image} alt="" loading="lazy" />}
+                    <span className="shop-title">{p.title}</span>
+                    <span className="shop-meta">{p.currency} {p.price.toFixed(2)} · {p.store}</span>
+                  </a>
+                ))}
+              </div>
+            )}
           </li>
         ))}
         {busy && <li className="agent"><p className="typing">Thinking…</p></li>}
