@@ -149,6 +149,13 @@ const webEnv = {
   WEB_URL: process.env.WEB_PUBLIC_URL || existingWeb?.serviceDetails?.url,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  // Sign-in codes, reset links and "This wasn't me" emails go out through Resend.
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  // Each payment method switches on when its key exists.
+  PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
+  PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,
+  FLUTTERWAVE_SECRET_KEY: process.env.FLUTTERWAVE_SECRET_KEY,
+  COINBASE_COMMERCE_API_KEY: process.env.COINBASE_COMMERCE_API_KEY,
 };
 if (existingWeb) {
   const webhookId = (await currentEnv(existingWeb.id)).PAYPAL_WEBHOOK_ID;
