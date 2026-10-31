@@ -331,3 +331,14 @@ func (s Store) LockAccount(ctx context.Context, token string) (string, error) {
 	}
 	return email, tx.Commit(ctx)
 }
+
+// IssueLockToken makes a "This wasn't me" link token, for example for a new-sign-in email.
+func (s Store) IssueLockToken(ctx context.Context, accountID string) (string, error) {
+	token, err := newToken()
+	if err != nil {
+		return "", err
+	}
+	_, err = s.DB.Exec(ctx, `INSERT INTO auth_codes (account_id, purpose, code_hash, expires_at) VALUES ($1, 'lock', $2, now() + $3::interval)`,
+		accountID, hashToken(token), lockTokenFor.String())
+	return token, err
+}

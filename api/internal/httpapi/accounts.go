@@ -13,6 +13,18 @@ import (
 
 // Account routes are internal: only the web app calls them, passing the viewer's
 // session token (kept in an httpOnly cookie on the web side) in X-Session-Token.
+// signedInReply answers a sign-in. A new device on an account with login alerts gets a lock token
+// so the web app can send the "New sign-in" email with a working "This wasn't me" button.
+func (s *Server) signedInReply(w http.ResponseWriter, r *http.Request, acct accounts.Account, sess accounts.Session) {
+	out := map[string]any{"account": acct, "session": sess}
+	if sess.Alert {
+		if t, err := s.Accounts.IssueLockToken(r.Context(), acct.ID); err == nil {
+			out["lockToken"] = t
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 func (s *Server) accountRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/accounts", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ Email, Name, Password, Device string }
@@ -49,7 +61,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
+		s.signedInReply(w, r, acct, sess)
 	}))
 	// One-time codes: sign in without a password, or reset it (Figma 16:296, 105:1186-105:1447).
 	// The web app emails the code when the reply carries one; texts go out from here.
@@ -79,7 +91,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
+		s.signedInReply(w, r, acct, sess)
 	}))
 	mux.HandleFunc("POST /v1/codes/reset", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ Identifier, Code string }
@@ -200,12 +212,25 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, fmt.Errorf("%w: type DELETE to confirm", accounts.ErrBadInput))
 			return
 		}
+		tickets, err := s.Accounts.UpcomingTickets(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		at, err := s.Accounts.ScheduleDelete(r.Context(), a.ID)
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"deleteAfter": at, "email": a.Email})
+		writeJSON(w, http.StatusOK, map[string]any{"deleteAfter": at, "email": a.Email, "ticketsLost": tickets})
+	}))
+	mux.HandleFunc("GET /v1/me/upcoming", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		n, err := s.Accounts.UpcomingTickets(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"tickets": n})
 	}))
 	mux.HandleFunc("GET /v1/me/export", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		out, err := s.Accounts.Export(r.Context(), a.ID)
@@ -361,7 +386,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
+		s.signedInReply(w, r, acct, sess)
 	}))
 	mux.HandleFunc("GET /v1/passkeys", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		list, err := s.Accounts.Passkeys(r.Context(), a.ID)

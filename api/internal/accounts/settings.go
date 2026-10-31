@@ -273,6 +273,14 @@ func (s Store) RemoveIdentity(ctx context.Context, accountID, provider string) e
 	return tx.Commit(ctx)
 }
 
+// UpcomingTickets counts paid seats for screenings that have not started, for the delete warning.
+func (s Store) UpcomingTickets(ctx context.Context, accountID string) (int, error) {
+	var n int
+	err := s.DB.QueryRow(ctx, `SELECT count(*) FROM holds h JOIN showtimes st ON st.id = h.showtime_id
+		WHERE h.account_id = $1 AND h.status = 'paid' AND st.starts_at > now()`, accountID).Scan(&n)
+	return n, err
+}
+
 // ScheduleDelete marks the account for deletion after the grace period and signs it out everywhere.
 // Signing in again before then cancels it.
 func (s Store) ScheduleDelete(ctx context.Context, accountID string) (time.Time, error) {
