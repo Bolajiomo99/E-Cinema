@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,6 +54,8 @@ type SMS interface {
 type Store struct {
 	DB  *pgxpool.Pool
 	SMS SMS
+	// WebAuthn signs in with passkeys; nil until the site's domain is configured.
+	WebAuthn *webauthn.WebAuthn
 }
 
 type Account struct {

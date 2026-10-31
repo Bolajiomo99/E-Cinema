@@ -18,6 +18,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 func main() {
@@ -62,10 +63,23 @@ func run() error {
 		}
 	}
 
+	// Passkeys are bound to the web app's domain (e.g. e-cinema.net) and the origins it serves from.
+	var passkeys *webauthn.WebAuthn
+	if rp := os.Getenv("WEBAUTHN_RP_ID"); rp != "" {
+		passkeys, err = webauthn.New(&webauthn.Config{
+			RPID:          rp,
+			RPDisplayName: "E-Cinema",
+			RPOrigins:     strings.Split(env("WEBAUTHN_ORIGINS", "https://"+rp), ","),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	srv := &httpapi.Server{
 		Identity:       idCheck,
 		Tickets:        tickets.Store{DB: pool},
-		Accounts:       accounts.Store{DB: pool, SMS: texts},
+		Accounts:       accounts.Store{DB: pool, SMS: texts, WebAuthn: passkeys},
 		AllowedOrigins: strings.Split(env("ALLOWED_ORIGINS", "e-cinema.net,*.e-cinema.net,localhost:3000"), ","),
 		InternalToken:  os.Getenv("INTERNAL_API_TOKEN"),
 	}
