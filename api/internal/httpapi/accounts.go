@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"time"
@@ -35,6 +36,75 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
+	}))
+	// One-time codes: sign in without a password, or reset it (Figma 16:296, 105:1186-105:1447).
+	// The web app emails the code when the reply carries one; texts go out from here.
+	mux.HandleFunc("POST /v1/codes", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Identifier, Purpose string }
+		if !decode(w, r, &b) {
+			return
+		}
+		out, err := s.Accounts.IssueCode(r.Context(), b.Identifier, b.Purpose)
+		if errors.Is(err, accounts.ErrPaused) {
+			writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": err.Error(), "pausedFor": out.PausedFor})
+			return
+		}
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
+	mux.HandleFunc("POST /v1/codes/login", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Identifier, Code, Device string }
+		if !decode(w, r, &b) {
+			return
+		}
+		acct, sess, err := s.Accounts.SignInWithCode(r.Context(), b.Identifier, b.Code, b.Device)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "session": sess})
+	}))
+	mux.HandleFunc("POST /v1/codes/reset", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Identifier, Code string }
+		if !decode(w, r, &b) {
+			return
+		}
+		token, err := s.Accounts.VerifyResetCode(r.Context(), b.Identifier, b.Code)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"resetToken": token})
+	}))
+	mux.HandleFunc("POST /v1/password/reset", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Token, Password, Device string
+			SignOutOthers           bool
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		res, err := s.Accounts.ResetPassword(r.Context(), b.Token, b.Password, b.Device, b.SignOutOthers)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}))
+	mux.HandleFunc("POST /v1/password/lock", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Token string }
+		if !decode(w, r, &b) {
+			return
+		}
+		email, err := s.Accounts.LockAccount(r.Context(), b.Token)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"email": email})
 	}))
 	mux.HandleFunc("POST /v1/sessions/external", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct {
