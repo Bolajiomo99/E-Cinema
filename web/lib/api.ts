@@ -9,10 +9,10 @@ export const apiEnabled = Boolean(base && token);
 
 export class SoldOutError extends Error {}
 
-async function call<T>(path: string, body: unknown): Promise<T | undefined> {
+async function call<T>(path: string, body: unknown, session?: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(session ? { "X-Session-Token": session } : {}) },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(8000),
   });
@@ -23,9 +23,11 @@ async function call<T>(path: string, body: unknown): Promise<T | undefined> {
 
 export type Hold = { id: string; totalCents: number; currency: string; expiresAt: string };
 
-export async function holdSeats(showtimeId: string, seats: number, viewerRef: string): Promise<Hold | undefined> {
+// With the buyer's session the API links the seats to their account, which is what lets
+// them into the watch room later.
+export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string): Promise<Hold | undefined> {
   if (!apiEnabled) return undefined;
-  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef });
+  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef }, session);
 }
 
 export async function attachOrder(holdId: string, orderId: string) {

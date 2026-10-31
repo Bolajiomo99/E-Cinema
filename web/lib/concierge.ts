@@ -5,7 +5,7 @@ import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { findShowtime, showtimes } from "@/lib/catalog";
 import { paypalOrders } from "@/lib/paypal";
 import { shopFor, type ShopItem } from "@/lib/shop";
-import { attachOrder, holdSeats, SoldOutError } from "@/lib/api";
+import { apiEnabled, attachOrder, holdSeats, SoldOutError } from "@/lib/api";
 
 // The E-Cinema Concierge: Claude plans the booking, PayPal takes the payment.
 // The agent can only prepare orders priced by the server. The viewer approves every payment in PayPal.
@@ -55,7 +55,7 @@ const tools: Anthropic.Tool[] = [
   },
 ];
 
-async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], shop: ShopItem[]): Promise<Anthropic.ToolResultBlockParam> {
+async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], shop: ShopItem[], session?: string): Promise<Anthropic.ToolResultBlockParam> {
   const reply = (content: string, isError = false): Anthropic.ToolResultBlockParam => ({
     type: "tool_result",
     tool_use_id: block.id,
@@ -71,9 +71,10 @@ async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], sh
     if (!showtime) return reply("Unknown showtimeId. Call list_showtimes first.", true);
     if (!Number.isInteger(seats) || seats < 1 || seats > MAX_SEATS) return reply(`Seats must be 1 to ${MAX_SEATS}.`, true);
 
+    if (apiEnabled && !session) return reply("The viewer is not signed in. Tickets belong to an account, so ask them to sign in at /signin first, then try again.", true);
     let hold;
     try {
-      hold = await holdSeats(showtime.id, seats, randomUUID());
+      hold = await holdSeats(showtime.id, seats, randomUUID(), session);
     } catch (err) {
       if (err instanceof SoldOutError) return reply("Not enough seats left for that screening. Offer another one.", true);
       throw err;
@@ -114,7 +115,7 @@ async function runTool(block: Anthropic.ToolUseBlock, orders: PendingOrder[], sh
 let client: Anthropic | undefined;
 
 // Runs one viewer turn. `messages` is the full conversation so far, ending with the viewer's message.
-export async function concierge(messages: Anthropic.Beta.BetaMessageParam[]) {
+export async function concierge(messages: Anthropic.Beta.BetaMessageParam[], session?: string) {
   client ??= new Anthropic();
   const orders: PendingOrder[] = [];
   const shop: ShopItem[] = [];
@@ -138,7 +139,7 @@ export async function concierge(messages: Anthropic.Beta.BetaMessageParam[]) {
 
     const calls = response.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     const results = await Promise.all(
-      calls.map((c) => runTool(c as unknown as Anthropic.ToolUseBlock, orders, shop).catch(() => ({
+      calls.map((c) => runTool(c as unknown as Anthropic.ToolUseBlock, orders, shop, session).catch(() => ({
         type: "tool_result" as const,
         tool_use_id: c.id,
         content: "That step failed. Tell the viewer to try again shortly.",

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { cookies } from "next/headers";
 import { concierge } from "@/lib/concierge";
+import { SESSION_COOKIE } from "@/lib/auth";
 
 const MAX_TURNS = 60;
 
@@ -14,7 +16,7 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "Concierge is not configured" }, { status: 503 });
 
   try {
-    const result = await concierge(messages);
+    const result = await concierge(messages, (await cookies()).get(SESSION_COOKIE)?.value);
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "Busy, try again" }, { status: 429 });
