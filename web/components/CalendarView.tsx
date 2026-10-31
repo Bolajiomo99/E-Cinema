@@ -136,14 +136,14 @@ export default function CalendarView() {
             { tag: "p", className: "ec-tip-when", text: `${day(p.startDate as Date)} · ${time(p.startDate as Date)} your time · ${hm(p.minutes)}` },
             { tag: "p", className: "ec-tip-audio", text: `Audio: ${p.audio.join(", ")}` },
             show
-              ? { tag: "a", className: "ec-tip-cta", href: `/checkout#${p.id}`, text: `Get a seat · ${show.price.currency} ${show.price.value}` }
+              ? { tag: "a", className: "ec-tip-cta", href: `/checkout?film=${p.id}`, text: `Get a seat · ${show.price.currency} ${show.price.value}` }
               : { tag: "span", className: "ec-tip-soon", text: "Tickets open soon" },
           ],
         };
       },
     },
     onEventClick({ eventRecord }) {
-      if (bookable.has(eventRecord.id as string)) window.location.assign(`/checkout#${eventRecord.id}`);
+      if (bookable.has(eventRecord.id as string)) window.location.assign(`/checkout?film=${eventRecord.id}`);
     },
   }));
 

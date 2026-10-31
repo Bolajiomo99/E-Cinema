@@ -105,7 +105,7 @@ export default async function Home() {
               {heroTicket ? (
                 <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? t.joinTheRoom : "Open my room"}</Link>
               ) : (
-                <Link href={`/checkout#${hero.id}`} className="lp-btn lg">{t.getASeat} · ${hero.price.value}</Link>
+                <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · ${hero.price.value}</Link>
               )}
               <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn lg secondary">{t.addToCalendar}</a>
             </div>

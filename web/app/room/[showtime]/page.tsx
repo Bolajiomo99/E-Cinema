@@ -34,7 +34,7 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
         <Link href="/" className="wordmark">E-CINEMA</Link>
         <h1>{room.showtime.film}</h1>
         <p className="muted">This room is for ticket holders. Get a seat and you can come straight back in.</p>
-        <Link href={`/checkout#${room.showtime.id}`} className="cta big">Get a seat</Link>
+        <Link href={`/checkout?film=${room.showtime.id}`} className="cta big">Get a seat</Link>
       </section>
     );
   }

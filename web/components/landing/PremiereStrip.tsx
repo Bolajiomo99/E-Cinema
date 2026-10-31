@@ -64,7 +64,7 @@ export default function PremiereStrip({ tiles, eyebrow = "THIS WEEK ONLY", title
           const p = t.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
           return (
             <li key={t.id} className="lp-tile">
-              <Link href={live ? `/room/${t.id}` : `/checkout#${t.id}`} className="lp-poster" style={{ background: `linear-gradient(180deg, ${p.from} 0%, ${p.via} 60%, ${p.to} 100%)` }}>
+              <Link href={live ? `/room/${t.id}` : `/checkout?film=${t.id}`} className="lp-poster" style={{ background: `linear-gradient(180deg, ${p.from} 0%, ${p.via} 60%, ${p.to} 100%)` }}>
                 <span className="lp-poster-glow" style={{ background: p.glow }} aria-hidden />
                 <span className="lp-poster-shade" aria-hidden />
                 <span className="lp-poster-title">{title.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</span>

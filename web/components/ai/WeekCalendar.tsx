@@ -58,7 +58,7 @@ export default function WeekCalendar({ items }: { items: Item[] }) {
     const s = state(i);
     const g = genreOf(i);
     const start = Date.parse(i.startsAt);
-    const href = s === "mine" || s === "live" ? `/room/${i.id}` : i.soon ? "/releases" : `/checkout#${i.id}`;
+    const href = s === "mine" || s === "live" ? `/room/${i.id}` : i.soon ? "/releases" : `/checkout?film=${i.id}`;
     return (
       <Link key={i.id} href={href} className={`hm-prem ${s}`} style={{ "--g": colorOf(g) } as React.CSSProperties}>
         <span className="hm-prem-top">

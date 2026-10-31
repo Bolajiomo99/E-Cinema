@@ -91,7 +91,7 @@ function TicketRow({ t, now, past }: { t: Row; now: number; past: boolean }) {
       </div>
       <div className="tk-actions">
         {t.status === "paid" && <Link href={`/receipts/${t.holdId}`} className="state-btn ghost">Receipt</Link>}
-        {t.status === "held" ? <Link href={`/checkout#${s.id}`} className="state-btn primary">Finish payment</Link>
+        {t.status === "held" ? <Link href={`/checkout?film=${s.id}`} className="state-btn primary">Finish payment</Link>
           : past ? null
           : open ? <Link href={`/room/${s.id}`} className="state-btn primary">Join room</Link>
           : <a href={`/api/calendar/${s.id}.ics`} className="state-btn">Add to calendar</a>}

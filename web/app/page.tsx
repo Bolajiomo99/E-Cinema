@@ -136,7 +136,7 @@ export default async function Home() {
           <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. One night, one screening, the whole world in the same seat.`}</p>
           <Countdown to={hero.startsAt} />
           <div className="lp-ctas">
-            <Link href={`/checkout#${hero.id}`} className="lp-btn lg">{t.getASeat} · {money(hero.price)}</Link>
+            <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · {money(hero.price)}</Link>
             <TrailerButton film={hero.id} title={hero.film} className="lp-btn lg secondary" label={t.watchTrailer} />
           </div>
           {heroSeats && (
