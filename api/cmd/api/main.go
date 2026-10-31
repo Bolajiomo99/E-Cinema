@@ -12,8 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/httpapi"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
@@ -38,8 +40,20 @@ func run() error {
 		return err
 	}
 
+	// Phone checks switch on once Termii has approved a sender ID.
+	var texts accounts.SMS
+	if key, from := os.Getenv("TERMII_API_KEY"), os.Getenv("TERMII_SENDER_ID"); key != "" && from != "" {
+		texts = sms.Termii{
+			BaseURL:  env("TERMII_BASE_URL", "https://v3.api.termii.com"),
+			APIKey:   key,
+			SenderID: from,
+			Channel:  env("TERMII_CHANNEL", "dnd"),
+		}
+	}
+
 	srv := &httpapi.Server{
 		Tickets:        tickets.Store{DB: pool},
+		Accounts:       accounts.Store{DB: pool, SMS: texts},
 		AllowedOrigins: strings.Split(env("ALLOWED_ORIGINS", "e-cinema.net,*.e-cinema.net,localhost:3000"), ","),
 		InternalToken:  os.Getenv("INTERNAL_API_TOKEN"),
 	}

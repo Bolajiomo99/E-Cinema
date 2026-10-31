@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
 type Server struct {
 	Tickets        tickets.Store
+	Accounts       accounts.Store
 	AllowedOrigins []string
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
@@ -131,6 +133,7 @@ func (s *Server) Routes() http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	s.accountRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -171,6 +174,18 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrBadInput), errors.Is(err, accounts.ErrBadCode):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrBadLogin), errors.Is(err, accounts.ErrNoSession):
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrEmailTaken), errors.Is(err, accounts.ErrPhoneTaken):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrLocked), errors.Is(err, accounts.ErrTooSoon):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrSMSUnavailable):
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
