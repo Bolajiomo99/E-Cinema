@@ -48,6 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ act
   if (!session) return json(401, { error: "not signed in" });
   if (action === "me") return relay(await accountApi("GET", "/v1/sessions/current", undefined, session));
   if (action === "devices") return relay(await accountApi("GET", "/v1/devices", undefined, session));
+  if (action === "passkeys") return relay(await accountApi("GET", "/v1/passkeys", undefined, session));
   return json(404, { error: "not found" });
 }
 
@@ -75,6 +76,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     case "phone/confirm":
       if (!session) return json(401, { error: "not signed in" });
       return relay(await accountApi("POST", "/v1/phone/confirm", { code: b.code }, session));
+    case "passkeys/login/begin":
+      return relay(await accountApi("POST", "/v1/passkeys/login/begin", {}));
+    case "passkeys/login/finish":
+      return withSession(await accountApi("POST", "/v1/passkeys/login/finish", { challengeId: b.challengeId, credential: b.credential, device }));
+    case "passkeys/register/begin":
+      if (!session) return json(401, { error: "not signed in" });
+      return relay(await accountApi("POST", "/v1/passkeys/register/begin", {}, session));
+    case "passkeys/register/finish":
+      if (!session) return json(401, { error: "not signed in" });
+      return relay(await accountApi("POST", "/v1/passkeys/register/finish", { challengeId: b.challengeId, credential: b.credential, name: device }, session));
     case "identity/token":
     case "identity/refresh":
       if (!session) return json(401, { error: "not signed in" });
@@ -90,6 +101,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ a
   if (!session) return json(401, { error: "not signed in" });
   if (kind === "devices" && id && /^[0-9a-f-]{36}$/.test(id)) {
     return relay(await accountApi("DELETE", `/v1/devices/${id}`, undefined, session));
+  }
+  if (kind === "passkeys" && id && /^[0-9a-f]{2,1000}$/.test(id)) {
+    return relay(await accountApi("DELETE", `/v1/passkeys/${id}`, undefined, session));
   }
   return json(404, { error: "not found" });
 }

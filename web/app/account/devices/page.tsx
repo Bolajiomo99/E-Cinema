@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { DevicesList } from "@/components/AuthForms";
+import { DevicesList, PasskeysList } from "@/components/AuthForms";
 import SiteFooter from "@/components/SiteFooter";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 
@@ -13,12 +13,15 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
   if (!r || r.status !== 200) redirect("/signin");
   const { devices, max } = r.body as { devices: { id: string; device: string; lastSeenAt: string; current: boolean }[]; max: number };
   const { signedOut } = await searchParams;
+  const pk = await accountApi("GET", "/v1/passkeys", undefined, session);
+  const passkeys = pk.status === 200 ? (pk.body as { passkeys: { id: string; name: string; createdAt: string; lastUsedAt?: string }[] }).passkeys : [];
   return (
     <section className="auth">
       <p className="eyebrow">Settings</p>
       <h1 className="page-title">Security and devices</h1>
       {signedOut && <p className="pp-note">You were signed in on too many devices, so the oldest one was signed out.</p>}
       <DevicesList devices={devices} max={max} />
+      <PasskeysList passkeys={passkeys} />
       <SiteFooter />
     </section>
   );

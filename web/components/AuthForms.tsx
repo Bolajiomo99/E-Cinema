@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import FaceCheck from "@/components/FaceCheck";
+import { addPasskey, signInWithPasskey } from "@/lib/passkey-client";
 
 async function post(path: string, body: unknown, method = "POST") {
   const res = await fetch(`/api/auth/${path}`, {
@@ -121,6 +122,13 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
         </div>
         <FaceCheck initialStatus={identityStatus} />
       </section>
+      <section className="verify-row">
+        <div>
+          <strong>Passkey for this device</strong>
+          <p className="muted">Sign in with your fingerprint or face instead of a password.</p>
+        </div>
+        <PasskeyButton />
+      </section>
       {error && <p className="pp-note pp-err" role="alert">{error}</p>}
       <p className="muted small">Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>
       <button className="cta" onClick={() => router.push("/checkout")}>{verified ? "Continue" : "Skip for now"}</button>
@@ -155,6 +163,25 @@ export function SignInForm() {
       <label>Email<input name="email" type="email" autoComplete="email" required /></label>
       <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
       <button className="cta" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      <button
+        type="button"
+        className="ghost wide"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError("");
+          try {
+            const r = await signInWithPasskey();
+            router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : "/checkout");
+            router.refresh();
+          } catch (err) {
+            setError((err as Error).message);
+            setBusy(false);
+          }
+        }}
+      >
+        Sign in with a passkey
+      </button>
       {error && <p className="pp-note pp-err" role="alert">{error}</p>}
       <p className="muted small">You can be signed in on 2 devices. Signing in here signs out the oldest one.</p>
       <p className="muted">New to E-Cinema? <a href="/join">Join free</a></p>
@@ -208,6 +235,73 @@ export function DevicesList({ devices: initial, max }: { devices: Device[]; max:
       >
         Sign out of this device
       </button>
+    </div>
+  );
+}
+
+export function PasskeyButton({ onAdded }: { onAdded?: (p: Passkey) => void }) {
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [error, setError] = useState("");
+  if (state === "done") return <span className="tag ok">Passkey added</span>;
+  return (
+    <div className="face-check">
+      <button
+        className="cta"
+        disabled={state === "busy"}
+        onClick={async () => {
+          setState("busy");
+          setError("");
+          try {
+            const p = await addPasskey();
+            setState("done");
+            onAdded?.(p);
+          } catch (e) {
+            setError((e as Error).message);
+            setState("idle");
+          }
+        }}
+      >
+        Add a passkey
+      </button>
+      {error && <p className="pp-note pp-err" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+type Passkey = { id: string; name: string; createdAt: string; lastUsedAt?: string };
+
+export function PasskeysList({ passkeys: initial }: { passkeys: Passkey[] }) {
+  const [passkeys, setPasskeys] = useState(initial);
+  const [error, setError] = useState("");
+  return (
+    <div className="auth-card wide">
+      <h2>Passkeys</h2>
+      <p className="muted">Sign in with your fingerprint or face. Each passkey stays on the device that made it.</p>
+      <ul className="devices">
+        {passkeys.map((p) => (
+          <li key={p.id}>
+            <div>
+              <strong>{p.name}</strong>
+              <span className="muted">{p.lastUsedAt ? `Last used ${new Date(p.lastUsedAt).toLocaleString()}` : `Added ${new Date(p.createdAt).toLocaleDateString()}`}</span>
+            </div>
+            <button
+              className="ghost"
+              onClick={async () => {
+                try {
+                  await post(`passkeys/${p.id}`, {}, "DELETE");
+                  setPasskeys((list) => list.filter((x) => x.id !== p.id));
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="pp-note pp-err" role="alert">{error}</p>}
+      <PasskeyButton key={passkeys.length} onAdded={(p) => setPasskeys((list) => [...list, p])} />
     </div>
   );
 }
