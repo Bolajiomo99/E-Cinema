@@ -63,7 +63,13 @@ export async function releaseHold(session: string, holdId: string) {
   if (apiEnabled) await viewer("DELETE", `/v1/me/holds/${encodeURIComponent(holdId)}`, session);
 }
 
-export type LiveStat = { showtimeId: string; watching: number; countries: number };
+export type LiveStat = {
+  showtimeId: string;
+  watching: number;
+  countries: number;
+  byCountry?: Record<string, number>; // distinct viewers per home country
+  chatByCountry?: Record<string, number>; // messages per home country, last 10 minutes
+};
 
 // Audience numbers for every room with people in it (public, counts only).
 export async function liveStats(): Promise<LiveStat[]> {
@@ -71,6 +77,19 @@ export async function liveStats(): Promise<LiveStat[]> {
   try {
     const r = await fetch(`${base}/v1/live`, { signal: AbortSignal.timeout(2500), cache: "no-store" });
     return r.ok ? ((await r.json()) as LiveStat[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export type TonightStat = { showtimeId: string; seats: number; byCountry: Record<string, number> };
+
+// Paid seats for screenings in the next 24 hours, by the buyers' home countries (counts only).
+export async function tonightAudience(): Promise<TonightStat[]> {
+  if (!base) return [];
+  try {
+    const r = await fetch(`${base}/v1/audience/tonight`, { signal: AbortSignal.timeout(2500), cache: "no-store" });
+    return r.ok ? ((await r.json()) as TonightStat[]) : [];
   } catch {
     return [];
   }
