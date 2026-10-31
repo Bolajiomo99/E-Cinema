@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const r = await accountApi("POST", "/v1/sessions/external", { provider: "google", ...id, device: await deviceLabel() });
     if (r.status !== 200) return back(r.status === 400 ? "google-email" : "google-failed");
     const { session, created } = r.body as { session: Session; created: boolean };
-    const res = NextResponse.redirect(`${base}${created ? "/join" : session.signedOut ? "/account/devices?signedOut=1" : "/checkout"}`);
+    const res = NextResponse.redirect(`${base}${created ? "/join" : session.signedOut ? "/settings/security?signedOut=1" : "/checkout"}`);
     res.cookies.delete({ name: "g_oauth", path: "/api/auth/google" });
     res.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly: true,

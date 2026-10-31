@@ -28,7 +28,7 @@ the viewer approves the payment themselves with the PayPal button under your rep
 Spending limit: a booking above $${SPEND_LIMIT} total needs the viewer to say yes to that total in this chat first; only then set overLimitConfirmed to true.
 If the viewer wants to change or cancel seats they have not paid for, call release_hold. Paid seats are refunded through Help, not by you.
 Offer add_to_calendar after a booking or when the viewer wants a reminder. Offer shop_the_film when it fits, products are bought on the retailer's site.
-Adult (18+) screenings need the face and ID check in the viewer's account; if booking fails for that reason, tell them where to do it (/account/devices).
+Adult (18+) screenings need the face and ID check in the viewer's account; if booking fails for that reason, tell them where to do it (/settings/account).
 Keep replies short, warm and clear. Use the viewer's language.`;
 
 const tools: Anthropic.Tool[] = [
@@ -150,7 +150,7 @@ async function runTool(block: Anthropic.ToolUseBlock, out: AgentOutput, session?
       hold = await holdSeats(showtime.id, seats, randomUUID(), session);
     } catch (err) {
       if (err instanceof SoldOutError) return reply("Not enough seats left for that screening. Offer another one.", true);
-      if (err instanceof AdultOnlyError) return reply("This is an 18+ screening and the viewer has not passed the face and ID check. Point them to /account/devices to do it.", true);
+      if (err instanceof AdultOnlyError) return reply("This is an 18+ screening and the viewer has not passed the face and ID check. Point them to /settings/account to do it.", true);
       throw err;
     }
     const unitCents = Math.round(Number(showtime.price.value) * 100);

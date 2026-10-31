@@ -44,7 +44,7 @@ export default function TabBar({ signedIn }: { signedIn: boolean }) {
     { key: "premieres", label: "Premieres", href: "/releases", on: path.startsWith("/releases") },
     { key: "clips", label: "Clips", href: null, on: false },
     { key: "parties", label: "Parties", href: signedIn ? "/home#live" : "/#premieres", on: false },
-    { key: "me", label: "Me", href: signedIn ? "/account/devices" : "/signin", on: path.startsWith("/account") || path === "/signin" },
+    { key: "me", label: "Me", href: signedIn ? "/settings/account" : "/signin", on: path.startsWith("/settings") || path.startsWith("/account") || path === "/signin" },
   ];
   return (
     <nav className="tabbar" aria-label="Main">

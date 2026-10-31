@@ -136,7 +136,7 @@ export default async function Home() {
           </div>
           <div className="lp-footer-cols">
             <div><p>Help</p><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
-            <div><p>Account</p><a href="/account/devices">Devices and security</a><a href="/checkout">Buy a seat</a></div>
+            <div><p>Account</p><a href="/settings/security">Devices and security</a><a href="/checkout">Buy a seat</a></div>
           </div>
         </footer>
       </div>
