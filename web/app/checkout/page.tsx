@@ -10,7 +10,7 @@ export default function CheckoutPage() {
       <h1>Book a seat</h1>
       <ul>
         {showtimes.map((s) => (
-          <li key={s.id} className="showtime">
+          <li key={s.id} id={s.id} className="showtime">
             <div>
               <strong>{s.film}</strong>
               <span>{s.studio}</span>
