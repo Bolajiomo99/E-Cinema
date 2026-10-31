@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type Anthropic from "@anthropic-ai/sdk";
 import PayPalTicketButton from "./PayPalTicketButton";
+import SiteFooter from "./SiteFooter";
 import type { PendingOrder } from "@/lib/concierge";
 import type { ShopItem } from "@/lib/shop";
 
@@ -80,6 +81,7 @@ export default function Concierge() {
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Two seats for something Nollywood on Monday" maxLength={500} aria-label="Message the concierge" />
         <button disabled={busy || !draft.trim()}>Send</button>
       </form>
+      <SiteFooter />
     </section>
   );
 }

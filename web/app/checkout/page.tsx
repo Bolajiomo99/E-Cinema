@@ -1,3 +1,4 @@
+import SiteFooter from "@/components/SiteFooter";
 import { showtimes } from "@/lib/catalog";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
 
@@ -22,6 +23,7 @@ export default function CheckoutPage() {
           </li>
         ))}
       </ul>
+      <SiteFooter />
     </section>
   );
 }

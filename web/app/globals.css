@@ -62,3 +62,4 @@ body:has(.exec) { background: #0b0b0d; }
 .grid-tools { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .grid-tools button { background: #16161a; color: #f5f5f1; border: 1px solid #26262c; border-radius: 999px; padding: 8px 14px; font: 600 13px Manrope, sans-serif; cursor: pointer; text-transform: capitalize; }
 .grid-tools button.on { background: #e50914; border-color: #e50914; }
+.site-footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #26262c; color: #6e6e78; font-size: 12px; }

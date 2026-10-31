@@ -1,3 +1,4 @@
+import SiteFooter from "@/components/SiteFooter";
 import { ledger } from "@/lib/exec-demo";
 import PaymentsGrid from "@/components/PaymentsGrid";
 
@@ -29,6 +30,7 @@ export default function PaymentsDashboard() {
         ))}
       </div>
       <PaymentsGrid rows={ledger} />
+      <SiteFooter />
     </section>
   );
 }
