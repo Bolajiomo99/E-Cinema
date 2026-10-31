@@ -15,6 +15,7 @@ var (
 	ErrSoldOut  = errors.New("not enough seats left")
 	ErrBadSeats = errors.New("seats must be between 1 and 10")
 	ErrNoHold   = errors.New("hold not found, expired or already used")
+	ErrAdult    = errors.New("this screening is for verified adults: pass the face and ID check first")
 )
 
 const HoldFor = 10 * time.Minute
@@ -81,12 +82,24 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
 		var capacity, price int
 		var currency string
-		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID).Scan(&capacity, &price, &currency)
+		var adult bool
+		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID).Scan(&capacity, &price, &currency, &adult)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
+		}
+		if adult {
+			var verified bool
+			if accountID != "" {
+				if err := tx.QueryRow(ctx, `SELECT id_verified_at IS NOT NULL AND face_verified_at IS NOT NULL FROM accounts WHERE id = $1`, accountID).Scan(&verified); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					return err
+				}
+			}
+			if !verified {
+				return ErrAdult
+			}
 		}
 		var used int
 		if err := tx.QueryRow(ctx, `SELECT `+taken+` FROM showtimes s WHERE s.id = $1`, showtimeID).Scan(&used); err != nil {

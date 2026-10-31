@@ -122,3 +122,34 @@ func TestSeatLimits(t *testing.T) {
 		t.Fatalf("want ErrNotFound, got %v", err)
 	}
 }
+
+// Adult screenings sell only to accounts that passed the face and ID check.
+func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "adult-test", 10)
+	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET adult = true WHERE id = 'adult-test'`); err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	err := s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('adult-'||gen_random_uuid()||'@example.com', 'A', 'x') RETURNING id`).Scan(&id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'adult-test'`)
+		s.DB.Exec(ctx, `DELETE FROM accounts WHERE id = $1`, id)
+	})
+	if _, err := s.Hold(ctx, "adult-test", "v", 1, ""); !errors.Is(err, tickets.ErrAdult) {
+		t.Fatalf("guest: want ErrAdult, got %v", err)
+	}
+	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); !errors.Is(err, tickets.ErrAdult) {
+		t.Fatalf("unverified: want ErrAdult, got %v", err)
+	}
+	if _, err := s.DB.Exec(ctx, `UPDATE accounts SET face_verified_at = now(), id_verified_at = now() WHERE id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); err != nil {
+		t.Fatalf("verified: %v", err)
+	}
+}
