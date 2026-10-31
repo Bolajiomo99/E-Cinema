@@ -48,9 +48,9 @@ type Settings struct {
 // prefKeys lists every preference a page may store, with the values it may take.
 // Booleans are written as "bool"; anything else is a closed list.
 var prefKeys = map[string][]string{
-	"subtitles":       {"bool:no", "off", "en", "fr", "yo", "ha", "ig", "sw", "ar", "pt", "es", "hi", "zh"},
+	"subtitles":       {"off", "en", "yo", "ha", "ig", "fr", "hi", "ko", "es", "pt", "de", "ar", "sw"},
 	"translateChat":   {"bool"},
-	"voiceLanguage":   {"auto", "en", "fr", "yo", "ha", "ig", "sw", "ar", "pt", "es"},
+	"voiceLanguage":   {"auto", "en", "yo", "ha", "ig", "fr", "hi", "ko", "es", "pt", "de", "ar", "sw"},
 	"volumeBoost":     {"bool"},
 	"dialogue":        {"bool"},
 	"quality":         {"auto", "480p", "1080p", "4k", "audio"},
