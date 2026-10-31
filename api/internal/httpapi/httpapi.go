@@ -92,6 +92,14 @@ func (s *Server) Routes() http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	mux.HandleFunc("GET /v1/payouts/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		ids, err := s.Tickets.DuePayouts(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string][]string{"showtimeIds": ids})
+	}))
 	mux.HandleFunc("GET /v1/showtimes/{id}/statement", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		st, err := s.Tickets.Statement(r.Context(), r.PathValue("id"))
 		if err != nil {

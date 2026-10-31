@@ -40,6 +40,10 @@ func TestStudioPayout(t *testing.T) {
 	}
 	s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '3 hours' WHERE id = 'payout-test'`)
 
+	due, err := s.DuePayouts(ctx)
+	if err != nil || !contains(due, "payout-test") {
+		t.Fatalf("ended screening not listed as due: %v %v", due, err)
+	}
 	st, err := s.ClaimPayout(ctx, "payout-test")
 	if err != nil {
 		t.Fatal(err)
@@ -64,6 +68,9 @@ func TestStudioPayout(t *testing.T) {
 	}
 	if err := s.RecordPayout(ctx, "payout-test", "failed", ""); !errors.Is(err, tickets.ErrNoPayout) {
 		t.Fatalf("a sent payout was changed: %v", err)
+	}
+	if due, _ := s.DuePayouts(ctx); contains(due, "payout-test") {
+		t.Fatal("paid screening still listed as due")
 	}
 	done, _ := s.Statement(ctx, "payout-test")
 	if done.Status != "sent" || done.PaypalBatchID != "BATCH1" {
@@ -90,4 +97,13 @@ func TestNothingDueAndUnknownStudio(t *testing.T) {
 	if err := s.RecordPayout(ctx, "payout-empty", "paid", ""); !errors.Is(err, tickets.ErrBadOutcome) {
 		t.Fatalf("bad status accepted: %v", err)
 	}
+}
+
+func contains(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }

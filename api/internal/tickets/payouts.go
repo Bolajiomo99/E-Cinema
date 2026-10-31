@@ -120,3 +120,16 @@ func (st Store) RecordPayout(ctx context.Context, showtimeID, status, batchID st
 	}
 	return err
 }
+
+// DuePayouts lists ended screenings whose studio has not been paid yet (never claimed, pending or failed).
+func (st Store) DuePayouts(ctx context.Context) ([]string, error) {
+	rows, err := st.DB.Query(ctx, `SELECT s.id FROM showtimes s
+	  LEFT JOIN studio_payouts p ON p.showtime_id = s.id
+	  WHERE s.starts_at + make_interval(mins => s.duration_min) < now()
+	    AND (p.status IS NULL OR p.status IN ('pending', 'failed'))
+	  ORDER BY s.starts_at LIMIT 500`)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
