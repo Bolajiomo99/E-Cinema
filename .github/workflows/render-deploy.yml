@@ -39,4 +39,11 @@ jobs:
         run: |
           curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
           curl -fsS "${{ steps.render.outputs.api_url }}/v1/showtimes" | head -c 300; echo
-          curl -fsS -o /dev/null -w "checkout %{http_code}\n" "${{ steps.render.outputs.web_url }}/checkout"
+          # The web service can answer 502 for a short while after going live.
+          for i in $(seq 1 18); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.render.outputs.web_url }}/checkout")
+            echo "checkout $code"
+            [ "$code" = 200 ] && exit 0
+            sleep 10
+          done
+          exit 1
