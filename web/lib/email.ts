@@ -1,23 +1,45 @@
 import "server-only";
 
 // Transactional email through Resend (sending-only key in RESEND_API_KEY).
+// Layout follows the Figma "08 Emails" page (106:84 reset code, 106:117 password changed).
 export const emailEnabled = Boolean(process.env.RESEND_API_KEY);
-const FROM = "E-Cinema <no-reply@e-cinema.net>";
+const FROM = "E-Cinema <security@e-cinema.net>";
 const site = () => process.env.WEB_URL || "https://e-cinema.net";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const FONT = "Manrope,'Segoe UI',Helvetica,Arial,sans-serif";
 
-function layout(title: string, body: string) {
-  return `<!doctype html><html><body style="margin:0;background:#0b0b0d;font-family:Manrope,Arial,sans-serif;color:#f4f4f6">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" style="max-width:480px;background:#131317;border:1px solid #26262e;border-radius:16px" cellpadding="0" cellspacing="0">
-<tr><td style="padding:32px">
-<div style="font:700 22px/1 'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#e50914">E-CINEMA</div>
-<h1 style="font-size:22px;margin:24px 0 8px">${esc(title)}</h1>
+function layout(preview: string, title: string, body: string) {
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;background:#ececef;font-family:${FONT};color:#16161a">
+<div style="display:none;max-height:0;overflow:hidden">${esc(preview)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 0">
+<table role="presentation" width="100%" style="max-width:600px;background:#ffffff" cellpadding="0" cellspacing="0">
+<tr><td style="background:#0b0b0d;padding:24px 28px"><table role="presentation" width="100%"><tr>
+<td><img src="${site()}/email/logo.png" width="116" height="34" alt="E-CINEMA" style="display:block;border:0"></td>
+<td align="right" style="font:700 12px/1 ${FONT};letter-spacing:1px;color:#a6a6b0">SECURITY</td></tr></table></td></tr>
+<tr><td style="padding:36px 36px 32px">
+<h1 style="margin:0 0 20px;font:800 28px/1.2 ${FONT};color:#16161a">${esc(title)}</h1>
 ${body}
-<p style="color:#6e6e78;font-size:12px;margin:28px 0 0">Online Cinema Ltd, trading as E-Cinema. We will never ask for your password or code by phone, chat or email.</p>
+</td></tr>
+<tr><td style="background:#f4f4f6;padding:24px 36px;font:500 12px/1.6 ${FONT};color:#7a7a84">
+<p style="margin:0 0 8px">This is a service message about your account. You cannot unsubscribe from security, payment and order emails.</p>
+<p style="margin:0 0 8px">Online Cinema Ltd, trading as E-Cinema · Lagos, Nigeria · e-cinema.net · Help: help@e-cinema.net</p>
+<p style="margin:0">We never ask for your password, code or card number by email, phone or chat.</p>
 </td></tr></table></td></tr></table></body></html>`;
 }
+
+const p = (t: string) => `<p style="margin:0 0 20px;font:500 16px/1.55 ${FONT};color:#3a3a42">${t}</p>`;
+const button = (href: string, label: string) =>
+  `<p style="margin:0 0 20px"><a href="${esc(href)}" style="display:inline-block;background:#e5182e;color:#ffffff;text-decoration:none;font:600 16px/1 ${FONT};padding:16px 24px;border-radius:8px">${esc(label)}</a></p>`;
+const codeBox = (code: string) =>
+  `<div style="margin:0 0 20px;background:#f4f4f6;border-radius:12px;padding:22px;text-align:center;font:400 40px/1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:2px;color:#16161a">${code.slice(0, 3)} ${code.slice(3)}</div>`;
+const note = (t: string) =>
+  `<div style="margin:0;background:#f8efe4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
+const facts = (rows: [string, string][]) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #e2e2e6;border-radius:10px;border-collapse:separate;overflow:hidden">${rows
+    .map(([k, v], i) => `<tr style="background:${i % 2 ? "#ffffff" : "#f4f4f6"}"><td style="padding:12px 16px;font:500 14px ${FONT};color:#7a7a84">${esc(k)}</td><td align="right" style="padding:12px 16px;font:600 14px ${FONT};color:#16161a">${esc(v)}</td></tr>`)
+    .join("")}</table>`;
 
 async function send(to: string, subject: string, html: string, text: string) {
   if (!emailEnabled) throw new Error("Email is not switched on here");
@@ -30,39 +52,44 @@ async function send(to: string, subject: string, html: string, text: string) {
   if (!res.ok) throw new Error(`Email failed (${res.status})`);
 }
 
-const codeBox = (code: string) =>
-  `<div style="font:800 32px/1 monospace;letter-spacing:10px;background:#1c1c22;border-radius:12px;padding:18px;text-align:center;margin:20px 0">${esc(code)}</div>`;
+export type Where = { device: string; place: string };
 
-export async function sendLoginCode(to: string, name: string, code: string) {
+export async function sendLoginCode(to: string, code: string, where: Where) {
   await send(
     to,
     `${code} is your E-Cinema sign-in code`,
-    layout("Your sign-in code", `<p style="color:#a6a6b0">Hi ${esc(name)}, use this code to sign in. It works once and ends in 10 minutes.</p>${codeBox(code)}
-<p style="color:#a6a6b0;font-size:13px">Did not ask for this? You can ignore this email; nobody can sign in without the code.</p>`),
+    layout("Your code is inside. It ends in 10 minutes", "Your sign-in code",
+      p(`We got a request to sign in to ${esc(to)} from ${esc(where.device)}${where.place ? `, ${esc(where.place)}` : ""}.`) +
+      codeBox(code) +
+      note("Did not ask for this? Ignore this email. Nobody can sign in without this code, and it ends in 10 minutes.")),
     `Your E-Cinema sign-in code is ${code}. It works once and ends in 10 minutes.`,
   );
 }
 
-export async function sendResetCode(to: string, name: string, code: string, identifier: string) {
+export async function sendResetCode(to: string, code: string, identifier: string, where: Where) {
   const link = `${site()}/forgot?id=${encodeURIComponent(identifier)}&code=${code}`;
   await send(
     to,
     "Reset your E-Cinema password",
-    layout("Reset your password", `<p style="color:#a6a6b0">Hi ${esc(name)}, tap the button or enter the code. It works once and ends in 10 minutes.</p>
-<p style="margin:24px 0"><a href="${esc(link)}" style="display:inline-block;background:#e50914;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:10px">Reset password</a></p>${codeBox(code)}
-<p style="color:#a6a6b0;font-size:13px">Did not ask for this? Ignore this email and your password stays the same.</p>`),
+    layout("Your code is inside. It ends in 10 minutes", "Reset your password",
+      p(`We got a request to reset the password for ${esc(to)} from ${esc(where.device)}${where.place ? `, ${esc(where.place)}` : ""}.`) +
+      codeBox(code) +
+      button(link, "Enter code on the reset page") +
+      note("Did not ask for this? Ignore this email. Your password stays the same, and nobody can reset it without this code.")),
     `Reset your E-Cinema password: ${link}\nOr enter the code ${code}. It works once and ends in 10 minutes.`,
   );
 }
 
-export async function sendPasswordChanged(to: string, name: string, lockToken: string, signedOut: number) {
+export async function sendPasswordChanged(to: string, lockToken: string, signedOut: number, where: Where) {
   const link = `${site()}/account/lock?t=${encodeURIComponent(lockToken)}`;
+  const when = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Africa/Lagos", timeZoneName: "short" }).format(new Date());
   await send(
     to,
     "Your E-Cinema password was changed",
-    layout("Password changed", `<p style="color:#a6a6b0">Hi ${esc(name)}, your password was just changed${signedOut ? " and every other device was signed out" : ""}.</p>
-<p style="color:#a6a6b0">Was this not you? Tap below and we lock the account straight away.</p>
-<p style="margin:24px 0"><a href="${esc(link)}" style="display:inline-block;background:#26262e;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:10px">This wasn't me</a></p>`),
-    `Your E-Cinema password was changed. Not you? Lock your account: ${link}`,
+    layout("If this was you, you do not need to do anything", "Your password was changed",
+      facts([["When", when], ["Device", where.device], ["Place", where.place || "Unknown"], ["Other devices", signedOut ? "Signed out" : "Still signed in"]]) +
+      p("If this was you, you are all set.") +
+      button(link, "This wasn’t me, lock my account")),
+    `Your E-Cinema password was changed (${when}, ${where.device}). Not you? Lock your account: ${link}`,
   );
 }

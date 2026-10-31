@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { accountApi, deviceLabel, SESSION_COOKIE } from "@/lib/auth";
 import { emailEnabled, sendLoginCode, sendPasswordChanged, sendResetCode } from "@/lib/email";
 import { timesLeaked } from "@/lib/pwned";
+import { countryName } from "@/lib/plans";
 
 const RESET_COOKIE = process.env.NODE_ENV === "production" ? "__Host-ecr" : "ecr";
 
@@ -50,7 +51,12 @@ function withSession(r: { status: number; body: unknown }, keep = true) {
 type Issued = { found: boolean; code?: string; email?: string; name?: string; phone?: string; maskedTo: string };
 
 // Sends a one-time code. The answer looks the same whether or not the account exists.
-async function issueCode(identifier: string, purpose: "login" | "reset") {
+async function where(req: NextRequest) {
+  const cc = req.headers.get("cf-ipcountry") ?? "";
+  return { device: await deviceLabel(), place: /^[A-Z]{2}$/.test(cc) && cc !== "XX" ? countryName(cc) : "" };
+}
+
+async function issueCode(req: NextRequest, identifier: string, purpose: "login" | "reset") {
   if (!emailEnabled && process.env.NODE_ENV === "production" && !process.env.E2E_LOG_CODES) {
     return json(503, { error: "Codes by email are being switched on. Please use your password or a passkey for now." });
   }
@@ -61,8 +67,8 @@ async function issueCode(identifier: string, purpose: "login" | "reset") {
   if (out.found && out.code && out.email) {
     if (emailEnabled) {
       try {
-        if (purpose === "login") await sendLoginCode(out.email, out.name ?? "", out.code);
-        else await sendResetCode(out.email, out.name ?? "", out.code, identifier);
+        if (purpose === "login") await sendLoginCode(out.email, out.code, await where(req));
+        else await sendResetCode(out.email, out.code, identifier, await where(req));
       } catch {
         return json(502, { error: "We could not send the email just now. Please try again in a minute." });
       }
@@ -97,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
       return withSession(await accountApi("POST", "/v1/sessions", { email: b.email, password: b.password, device }), b.keep !== false);
     case "codes":
       if (typeof b.identifier !== "string" || (b.purpose !== "login" && b.purpose !== "reset")) return json(400, { error: "Enter your email or mobile number" });
-      return issueCode(b.identifier, b.purpose);
+      return issueCode(req, b.identifier, b.purpose);
     case "codes/login":
       return withSession(await accountApi("POST", "/v1/codes/login", { identifier: b.identifier, code: b.code, device }), b.keep !== false);
     case "codes/reset": {
@@ -128,7 +134,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
       let emailed = false;
       if (emailEnabled) {
         try {
-          await sendPasswordChanged(out.account.email, out.account.name, out.lockToken, out.signedOutOthers);
+          await sendPasswordChanged(out.account.email, out.lockToken, out.signedOutOthers, await where(req));
           emailed = true;
         } catch {}
       }
