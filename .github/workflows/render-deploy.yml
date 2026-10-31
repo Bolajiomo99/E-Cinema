@@ -106,6 +106,12 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/rooms/red-earth-2026-11-02/pass")" = 403 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.render.outputs.api_url }}/v1/rooms/red-earth-2026-11-02/live?t=forged.pass")" = 401 ]
           echo "home, releases and watch room gate ok"
+          # Signed-in home: guests are sent to sign in, the viewer sees their home and seats.
+          curl -s -o /dev/null -w '%{redirect_url}' https://e-cinema.net/home | grep -q '/signin'
+          curl -fsS -b "$jar" "$web/home" | grep -q "Ask E-Cinema AI"
+          curl -fsS -o /dev/null -b "$jar" "$web/api/me/tickets"
+          curl -fsS "$web/api/calendar/the-last-harmattan-2026-11-01.ics" | grep -q "BEGIN:VCALENDAR"
+          echo "my home, seats and calendar invite ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
