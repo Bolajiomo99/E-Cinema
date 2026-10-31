@@ -40,7 +40,7 @@ export async function markPaid(orderId: string, captureId: string) {
   if (apiEnabled) await call(`/v1/payments/captured`, { orderId, captureId });
 }
 
-export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; orderId?: string; expiresAt: string };
+export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; orderId?: string; expiresAt: string; createdAt?: string };
 
 async function viewer<T>(method: string, path: string, session: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
