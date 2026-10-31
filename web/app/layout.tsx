@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "@bryntum/calendar/fontawesome/css/fontawesome.css";
 import "@bryntum/calendar/fontawesome/css/solid.css";
 import "@bryntum/calendar/calendar.css";
-import "@bryntum/calendar/svalbard-light.css";
+import "@bryntum/calendar/svalbard-dark.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
