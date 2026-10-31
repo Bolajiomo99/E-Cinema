@@ -5,6 +5,36 @@ import { useRouter } from "next/navigation";
 import FaceCheck from "@/components/FaceCheck";
 import { addPasskey, signInWithPasskey } from "@/lib/passkey-client";
 
+
+export function GoogleButton({ enabled }: { enabled: boolean }) {
+  const [note, setNote] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="ghost wide social"
+        onClick={() => (enabled ? window.location.assign("/api/auth/google/start") : setNote(true))}
+        aria-describedby={note ? "google-note" : undefined}
+      >
+        Continue with Google{!enabled && <span className="soon-tag">Soon</span>}
+      </button>
+      {note && <p id="google-note" className="pp-note" role="status">Google sign-in is being switched on. Please use your email for now.</p>}
+    </>
+  );
+}
+
+export function PasswordField({ label = "Password", ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span className="pw">
+      <input {...props} type={shown ? "text" : "password"} aria-label={label} />
+      <button type="button" className="pw-eye" onClick={() => setShown((v) => !v)} aria-label={shown ? "Hide password" : "Show password"} aria-pressed={shown}>
+        {shown ? "Hide" : "Show"}
+      </button>
+    </span>
+  );
+}
+
 async function post(path: string, body: unknown, method = "POST") {
   const res = await fetch(`/api/auth/${path}`, {
     method,
@@ -35,7 +65,7 @@ function Steps({ at }: { at: 1 | 2 }) {
   );
 }
 
-export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; identityStatus?: string }) {
+export function JoinFlow({ startAt = 1, identityStatus, google = false }: { startAt?: 1 | 2; identityStatus?: string; google?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(startAt);
   const [busy, setBusy] = useState(false);
@@ -45,6 +75,8 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
   const [sentTo, setSentTo] = useState("");
   const [code, setCode] = useState("");
   const [verified, setVerified] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [termsError, setTermsError] = useState(false);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -65,6 +97,7 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
+          if (!agreed) { setTermsError(true); return; }
           run(async () => {
             await post("signup", { name: f.get("name"), email: f.get("email"), password, terms: f.get("terms") === "on" });
             setStep(2);
@@ -74,19 +107,20 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
         <Steps at={1} />
         <h2>Create your account</h2>
         <p className="muted">One account per person. It takes about two minutes.</p>
-        <button type="button" className="ghost wide social" onClick={() => window.location.assign("/api/auth/google/start")}>Continue with Google</button>
+        <GoogleButton enabled={google} />
         <p className="or">or with email</p>
         <label>Full name<input name="name" autoComplete="name" required maxLength={80} /></label>
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>
         <label>
           Password
-          <input type="password" autoComplete="new-password" required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordField autoComplete="new-password" required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} />
           {password && <span className="hint">{strength(password)}</span>}
         </label>
         <label className="check">
-          <input type="checkbox" name="terms" required />
-          <span>I agree to the Terms and Privacy Policy. E-Cinema never sells my data and I can download or delete it any time.</span>
+          <input type="checkbox" name="terms" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setTermsError(false); }} aria-invalid={termsError} aria-describedby={termsError ? "terms-note" : undefined} />
+          <span>I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>. E-Cinema never sells my data and I can download or delete it any time.</span>
         </label>
+        {termsError && <p id="terms-note" className="pp-note pp-err" role="alert">One last step: tick the box to agree to our Terms and Privacy Policy, then press Continue.</p>}
         <button className="cta" disabled={busy}>{busy ? "Creating…" : "Continue"}</button>
         {error && <p className="pp-note pp-err" role="alert">{error}</p>}
         <p className="muted">Already have an account? <a href="/signin">Sign in</a></p>
@@ -149,7 +183,7 @@ function safeNext(next?: string) {
   return next && /^\/(?![/\\])[\w\-/.?=&#%]*$/.test(next) ? next : "/home";
 }
 
-export function SignInForm({ initialError, next }: { initialError?: string; next?: string }) {
+export function SignInForm({ initialError, next, google = false }: { initialError?: string; next?: string; google?: boolean }) {
   const dest = safeNext(next);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -174,10 +208,10 @@ export function SignInForm({ initialError, next }: { initialError?: string; next
     >
       <h2>Welcome back</h2>
       <p className="muted">Sign in to take your seat.</p>
-      <button type="button" className="ghost wide social" onClick={() => window.location.assign("/api/auth/google/start")}>Continue with Google</button>
+      <GoogleButton enabled={google} />
       <p className="or">or with email</p>
       <label>Email<input name="email" type="email" autoComplete="email" required /></label>
-      <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
+      <label>Password<PasswordField name="password" autoComplete="current-password" required /></label>
       <button className="cta" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       <button
         type="button"

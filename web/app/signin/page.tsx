@@ -1,4 +1,5 @@
 import { SignInForm } from "@/components/AuthForms";
+import { googleEnabled } from "@/lib/google";
 import SiteFooter from "@/components/SiteFooter";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const { error, next } = await searchParams;
   return (
     <section className="auth">
-      <SignInForm initialError={error} next={next} />
+      <SignInForm initialError={error} next={next} google={googleEnabled} />
       <SiteFooter />
     </section>
   );

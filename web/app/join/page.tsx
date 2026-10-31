@@ -1,6 +1,7 @@
 import { JoinFlow } from "@/components/AuthForms";
 import SiteFooter from "@/components/SiteFooter";
 import { currentAccount } from "@/lib/auth";
+import { googleEnabled } from "@/lib/google";
 
 export const metadata = { title: "Join · E-Cinema" };
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function JoinPage() {
         <h1>{me ? "One person, one seat" : "Your seat is waiting"}</h1>
         <p>{me ? "No shared logins, no bots buying up premieres. That is how we keep tickets fair." : "Join free. Upgrade when you want to talk, request older films or bring the whole group."}</p>
       </div>
-      <JoinFlow startAt={me ? 2 : 1} identityStatus={me?.faceVerified ? "approved" : undefined} />
+      <JoinFlow startAt={me ? 2 : 1} identityStatus={me?.faceVerified ? "approved" : undefined} google={googleEnabled} />
       <SiteFooter />
     </section>
   );
