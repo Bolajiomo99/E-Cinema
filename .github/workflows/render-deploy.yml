@@ -45,6 +45,10 @@ jobs:
           SUMSUB_SECRET_KEY: ${{ secrets.SUMSUB_SECRET_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          # The public address: passkeys and Google sign-in are bound to it.
+          WEBAUTHN_RP_ID: e-cinema.net
+          WEBAUTHN_ORIGINS: https://e-cinema.net,https://www.e-cinema.net
+          WEB_PUBLIC_URL: https://e-cinema.net
       - name: Smoke test the live services
         run: |
           curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
