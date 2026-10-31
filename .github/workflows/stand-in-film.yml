@@ -1,0 +1,57 @@
+name: Stand-in film
+
+# Puts a freely licensed film in private R2 storage so watch rooms can be tested before
+# studios upload their own. Tears of Steel (c) Blender Foundation, CC BY 3.0, mango.blender.org.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/stand-in-film.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+      - name: Download the film
+        run: |
+          set -euo pipefail
+          for url in \
+            https://download.blender.org/demo/movies/ToS/tears_of_steel_720p.mov \
+            https://archive.org/download/tears-of-steel/tears_of_steel_720p.mov \
+            https://archive.org/download/Tears-of-Steel/tears_of_steel_720p.mov; do
+            echo "trying $url"
+            if curl -fL --retry 3 -o source.mov "$url"; then break; fi
+          done
+          test -s source.mov
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 source.mov
+      - name: Encode for the web (720p and data saver 360p)
+        run: |
+          set -euo pipefail
+          ffmpeg -v error -i source.mov -vf scale=-2:720 -c:v libx264 -preset veryfast -crf 23 -profile:v high \
+            -c:a aac -b:a 128k -movflags +faststart feature-720p.mp4
+          ffmpeg -v error -i source.mov -vf scale=-2:360 -c:v libx264 -preset veryfast -crf 28 \
+            -c:a aac -b:a 64k -movflags +faststart feature-360p.mp4
+          ls -lh feature-*.mp4
+          ffprobe -v error -show_entries format=duration -of csv=p=0 feature-720p.mp4 > duration.txt
+          printf '{"title":"Tears of Steel","credit":"(c) Blender Foundation | mango.blender.org","license":"CC BY 3.0","durationSec":%s}\n' "$(cat duration.txt)" > info.json
+          cat info.json
+      - name: Upload to private R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN1 }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCOUNT_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ACCOUNT_TOKEN }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+          account=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/zones?name=e-cinema.net" | jq -r '.result[0].account.id')
+          ep="https://$account.r2.cloudflarestorage.com"
+          for f in feature-720p.mp4 feature-360p.mp4; do
+            aws s3 cp "$f" "s3://e-cinema-media/films/stand-in/$f" --endpoint-url "$ep" --content-type video/mp4 --only-show-errors
+          done
+          aws s3 cp info.json s3://e-cinema-media/films/stand-in/info.json --endpoint-url "$ep" --content-type application/json --only-show-errors
+          aws s3 ls s3://e-cinema-media/films/stand-in/ --endpoint-url "$ep"
