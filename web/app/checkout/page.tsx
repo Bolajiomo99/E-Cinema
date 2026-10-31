@@ -102,6 +102,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         </div>
         <hr />
         <p className="co-line"><span>Seat</span><span>{money(q.currency, q.seat)}</span></p>
+        {Number(q.late) > 0 && <p className="co-line"><span>Late entry (after the first 15 minutes)</span><span>{money(q.currency, q.late)}</span></p>}
         {q.member ? (
           <p className="co-line"><span>{planName} member discount</span><span className="co-good">−{money(q.currency, q.discount)}</span></p>
         ) : (
@@ -110,7 +111,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         {q.vatRate > 0 && <p className="co-line"><span>VAT ({(q.vatRate * 100).toFixed(q.vatRate * 1000 % 10 ? 1 : 0)}%)</span><span>{money(q.currency, q.vat)}</span></p>}
         <hr />
         <p className="co-total"><span>Total</span><b>{money(q.currency, q.total)}</b></p>
-        {owned ? (
+        {q.phase === "grace" && <p className="co-owned">The film has started. Join in the first 15 minutes at the normal price; after that, late entry costs double.</p>}
+        {q.phase === "ended" ? (
+          <p className="co-owned">This premiere has ended. <Link href="/browse">Find another one</Link>.</p>
+        ) : owned ? (
           <>
             <p className="co-owned">You already have a seat for this premiere.</p>
             <Link href={`/room/${s.id}`} className="lp-btn lg co-cta">Go to the room lobby</Link>

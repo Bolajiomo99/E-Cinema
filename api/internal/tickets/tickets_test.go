@@ -194,3 +194,22 @@ func TestMineAndRelease(t *testing.T) {
 		t.Fatalf("after release: %+v", list)
 	}
 }
+
+// Late entry: seats sell while the film is running, but not once it has ended.
+func TestLateEntryUntilTheEnd(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "late-test", 10)
+	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '30 minutes' WHERE id = 'late-test'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Hold(ctx, "late-test", "viewer", 1, ""); err != nil {
+		t.Fatalf("hold during the film: %v", err)
+	}
+	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '2 hours' WHERE id = 'late-test'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Hold(ctx, "late-test", "viewer", 1, ""); !errors.Is(err, tickets.ErrEnded) {
+		t.Fatalf("hold after the end: %v, want ErrEnded", err)
+	}
+}

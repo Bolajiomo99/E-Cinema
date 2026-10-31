@@ -22,6 +22,8 @@ export async function POST(req: Request) {
   const prof = session ? await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null) : null;
   const q = quote(showtime, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined);
   const cur = q.currency;
+  if (q.phase === "ended") return NextResponse.json({ error: "This premiere has ended" }, { status: 410 });
+  const itemTotal = (Number(q.seat) + Number(q.late)).toFixed(2);
   const body: OrderRequest = {
     intent: CheckoutPaymentIntent.Capture,
     purchaseUnits: [
@@ -33,12 +35,15 @@ export async function POST(req: Request) {
           currencyCode: cur,
           value: q.total,
           breakdown: {
-            itemTotal: { currencyCode: cur, value: q.seat },
+            itemTotal: { currencyCode: cur, value: itemTotal },
             ...(Number(q.discount) ? { discount: { currencyCode: cur, value: q.discount } } : {}),
             ...(Number(q.vat) ? { taxTotal: { currencyCode: cur, value: q.vat } } : {}),
           },
         },
-        items: [{ name: `${showtime.film} · premiere seat`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) }],
+        items: [
+          { name: `${showtime.film} · premiere seat`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) },
+          ...(Number(q.late) ? [{ name: "Late entry (after the first 15 minutes)", quantity: "1", unitAmount: { currencyCode: cur, value: q.late }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: "0.00" } } : {}) }] : []),
+        ],
       },
     ],
   };

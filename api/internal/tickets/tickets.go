@@ -13,6 +13,7 @@ import (
 var (
 	ErrNotFound = errors.New("showtime not found")
 	ErrSoldOut  = errors.New("not enough seats left")
+	ErrEnded    = errors.New("this screening has ended")
 	ErrBadSeats = errors.New("seats must be between 1 and 10")
 	ErrNoHold   = errors.New("hold not found, expired or already used")
 	ErrAdult    = errors.New("this screening is for verified adults: pass the face and ID check first")
@@ -82,13 +83,18 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
 		var capacity, price int
 		var currency string
-		var adult bool
-		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID).Scan(&capacity, &price, &currency, &adult)
+		var adult, ended bool
+		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult, starts_at + make_interval(mins => duration_min) <= now()
+		  FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID).Scan(&capacity, &price, &currency, &adult, &ended)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
+		}
+		// Late entry is allowed until the credits roll, never after.
+		if ended {
+			return ErrEnded
 		}
 		if adult {
 			var verified bool
