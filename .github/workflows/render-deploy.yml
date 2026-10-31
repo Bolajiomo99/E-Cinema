@@ -47,7 +47,15 @@ jobs:
           for i in $(seq 1 18); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.render.outputs.web_url }}/checkout")
             echo "checkout $code"
-            [ "$code" = 200 ] && exit 0
+            [ "$code" = 200 ] && break
+            [ "$i" = 18 ] && exit 1
+            sleep 10
+          done
+          # Dub playback: the web app lists the AI dubs stored in R2 (may wait for a fresh deploy).
+          for i in $(seq 1 30); do
+            body=$(curl -s "${{ steps.render.outputs.web_url }}/api/dubs/red-earth-sample" || true)
+            echo "dubs $body"
+            echo "$body" | grep -q '"fr"' && exit 0
             sleep 10
           done
           exit 1

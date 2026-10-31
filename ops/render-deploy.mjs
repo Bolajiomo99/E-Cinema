@@ -108,6 +108,23 @@ const apiSvc = await upsertService(
   },
 );
 
+// R2 (Cloudflare) media storage: shared by the web app (dub playback) and the workflows (dubbing).
+let r2Endpoint;
+if (process.env.CLOUDFLARE_API_TOKEN) {
+  const zone = await fetch("https://api.cloudflare.com/client/v4/zones?name=e-cinema.net", {
+    headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
+  }).then((r) => r.json());
+  const account = zone.result?.[0]?.account?.id;
+  if (account) r2Endpoint = `https://${account}.r2.cloudflarestorage.com`;
+  else console.log("Could not read the Cloudflare account; R2 endpoint not set");
+}
+const r2Env = {
+  R2_ENDPOINT: r2Endpoint,
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  R2_BUCKET: "e-cinema-media",
+};
+
 const webEnv = {
   NODE_VERSION: "22",
   API_URL: apiSvc.serviceDetails.url,
@@ -118,6 +135,7 @@ const webEnv = {
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   CHANNEL3_API_KEY: process.env.CHANNEL3_API_KEY,
   NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY,
+  ...r2Env,
 };
 const existingWeb = await findService("e-cinema-web");
 if (existingWeb) {
@@ -195,18 +213,8 @@ const wfEnv = {
   PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
-  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
-  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
-  R2_BUCKET: "e-cinema-media",
+  ...r2Env,
 };
-if (process.env.CLOUDFLARE_API_TOKEN) {
-  const zone = await fetch("https://api.cloudflare.com/client/v4/zones?name=e-cinema.net", {
-    headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
-  }).then((r) => r.json());
-  const account = zone.result?.[0]?.account?.id;
-  if (account) wfEnv.R2_ENDPOINT = `https://${account}.r2.cloudflarestorage.com`;
-  else console.log("Could not read the Cloudflare account; R2 endpoint not set");
-}
 const wfVars = Object.entries(wfEnv).filter(([, v]) => v).map(([key, value]) => ({ key, value: String(value) }));
 const wfList = await api("GET", `/workflows?ownerId=${OWNER}&name=e-cinema-workflows&limit=20`);
 let wf = (wfList ?? []).map((w) => w.workflow ?? w).find((w) => w.name === "e-cinema-workflows");
