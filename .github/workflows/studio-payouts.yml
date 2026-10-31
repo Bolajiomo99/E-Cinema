@@ -1,0 +1,39 @@
+name: Studio payouts
+
+# Runs the Render Workflow task that pays studios their 70% after each screening ends.
+# Schedules only fire from the default branch; run it by hand from any branch.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-payouts
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Start payEndedScreenings and wait for it
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
+        run: |
+          set -euo pipefail
+          api() { curl -fsS -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" "$@"; }
+          run=$(api -X POST https://api.render.com/v1/task-runs \
+            -d '{"task":"e-cinema-workflows/payEndedScreenings","input":[]}' | jq -r .id)
+          for i in $(seq 1 120); do
+            body=$(api "https://api.render.com/v1/task-runs/$run")
+            status=$(jq -r .status <<<"$body")
+            case "$status" in
+              completed|succeeded) jq -c .results <<<"$body"; exit 0 ;;
+              failed|canceled) echo "payout sweep $status"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "payout sweep still running"; exit 1
