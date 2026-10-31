@@ -58,7 +58,7 @@ func run() error {
 			BaseURL:   env("SUMSUB_BASE_URL", "https://api.sumsub.com"),
 			AppToken:  t,
 			SecretKey: k,
-			Level:     env("SUMSUB_LEVEL", "basic-kyc-level"),
+			Level:     env("SUMSUB_LEVEL", "id-and-liveness"),
 		}
 	}
 
