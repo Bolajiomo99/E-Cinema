@@ -88,6 +88,17 @@ jobs:
           echo "face check token ok"
           curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
           echo "passkeys ok"
+          # Google sign-in: once the client secrets exist, start must hand off to Google.
+          if [ -n "$GOOGLE_CLIENT_ID" ]; then
+            loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://e-cinema.net/api/auth/google/start")
+            echo "google start -> ${loc%%\?*}"
+            echo "$loc" | grep -q '^https://accounts.google.com/' || exit 1
+            echo "$loc" | grep -q 'redirect_uri=https%3A%2F%2Fe-cinema.net%2Fapi%2Fauth%2Fgoogle%2Fcallback' || exit 1
+          fi
+          # Legal pages Google links to.
+          curl -fsS -o /dev/null https://e-cinema.net/privacy
+          curl -fsS -o /dev/null https://e-cinema.net/terms
+          echo "google and legal ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
