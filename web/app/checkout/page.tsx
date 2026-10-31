@@ -48,7 +48,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       <main className="co">
         <HashToFilm />
         <div className="co-pay">
-          <Link href={me ? "/home" : "/"}><Logo /></Link>
+          <Logo href={me ? "/home" : "/"} />
           <h1 className="co-h1">Pick a premiere</h1>
           <p className="co-eyebrow">EACH TITLE SCREENS ONCE</p>
           <div className="co-methods">
@@ -82,7 +82,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   return (
     <main className="co">
       <div className="co-pay">
-        <Link href={me ? "/home" : "/"} aria-label="E-Cinema home"><Logo /></Link>
+        <Logo href={me ? "/home" : "/"} />
         <Link href={me ? "/home" : "/"} className="su-back">← Back to premieres</Link>
         <h1 className="co-h1">Checkout</h1>
         <p className="co-eyebrow">PAYMENT OPTIONS FOR {(countryName(country) || "your country").toUpperCase()}</p>

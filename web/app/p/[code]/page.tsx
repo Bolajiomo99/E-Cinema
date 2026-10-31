@@ -37,7 +37,7 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
     <main className="wp party" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
       <span className="wp-glow" style={{ background: `radial-gradient(circle, ${p.glow}, transparent 70%)` }} aria-hidden />
       <span className="wp-dim" aria-hidden />
-      <nav className="party-nav"><Link href={me ? "/home" : "/"}><Logo /></Link></nav>
+      <nav className="party-nav"><Logo href={me ? "/home" : "/"} /></nav>
       <section className="wp-modal" aria-labelledby="party-title">
         {sp.new && <p className="party-new">Your party is ready. Share the link below{Number(sp.emailed) > 0 ? `; we emailed ${Number(sp.emailed)} ${Number(sp.emailed) === 1 ? "person" : "people"}` : ""}.</p>}
         <div className="party-top">
