@@ -1222,3 +1222,51 @@ a.lp-plan:hover .lp-plan-cta { color: #fff; }
 [dir="rtl"] .countdown, [dir="rtl"] .lp-seats, [dir="rtl"] .lp-meta { direction: ltr; }
 [dir="rtl"] .lp-meta { justify-content: flex-end; }
 @media (max-width: 480px) { .lp-nav-right > .lp-btn.ghost[href="/signin"] { display: none; } }
+
+/* Checkout (Figma 18:533) */
+body:has(.co) { background: #0a0a0c; }
+.co { display: flex; gap: 64px; align-items: flex-start; max-width: 1440px; margin: 0 auto; padding: 64px 120px; color: #f4f4f6; font-family: Manrope, sans-serif; }
+.co-pay { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+.co-pay > a:first-child { text-decoration: none; }
+.co-h1 { margin: 0; font: 800 32px/40px Manrope, sans-serif; letter-spacing: -.5px; }
+.co-eyebrow { margin: 0; font: 700 11px/14px Manrope, sans-serif; letter-spacing: .8px; color: #6e6e7a; }
+.co-methods { width: 100%; display: grid; gap: 14px; }
+.co-method { width: 100%; display: flex; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 12px; border: 1px solid #26262e; background: #131317; color: #f4f4f6; text-align: start; font-family: inherit; cursor: pointer; text-decoration: none; }
+.co-method:disabled { cursor: default; }
+.co-method:disabled .co-t, .co-method:disabled .co-icon { opacity: .6; }
+.co-method.on { border-color: #e3182d; background: rgba(227,24,45,.06); }
+.co-radio { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #3a3a44; }
+.co-method.on .co-radio { border-color: #e3182d; box-shadow: inset 0 0 0 3px #16090b, inset 0 0 0 10px #e3182d; }
+.co-icon { flex: none; width: 22px; height: 22px; display: grid; place-items: center; color: #a6a6b0; }
+.co-pp { font: 800 20px/1 Manrope, sans-serif; color: #009cde; }
+.co-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.co-t strong { font: 600 14px/20px Manrope, sans-serif; letter-spacing: .1px; }
+.co-t small { font: 500 13px/18px Manrope, sans-serif; color: #6e6e7a; }
+.co-mini { flex: none; width: 36px; height: 52px; border-radius: 6px; }
+.co-price { font: 600 15px/22px Manrope, sans-serif; }
+.co-note { margin: 0; font: 500 13px/18px Manrope, sans-serif; color: #6e6e7a; max-width: 560px; }
+.co-sum { flex: none; width: 460px; display: flex; flex-direction: column; gap: 18px; padding: 28px; border-radius: 20px; border: 1px solid #26262e; background: #131317; position: sticky; top: 24px; }
+.co-sum h2 { margin: 0; font: 700 18px/26px Manrope, sans-serif; letter-spacing: -.2px; }
+.co-sum hr { width: 100%; border: 0; height: 1px; background: #26262e; margin: 0; }
+.co-item { display: flex; gap: 16px; align-items: center; }
+.co-item .co-t { gap: 4px; }
+.co-poster { position: relative; flex: none; width: 64px; height: 92px; border-radius: 10px; overflow: hidden; }
+.co-poster i { position: absolute; width: 120%; height: 70%; right: -40%; top: -20%; }
+.co-line { margin: 0; display: flex; justify-content: space-between; gap: 12px; font: 500 15px/22px Manrope, sans-serif; color: #f4f4f6; }
+.co-line > span:first-child { color: #a6a6b0; }
+.co-good { color: #22c55e; }
+.co-hint a { color: #f4f4f6; font-size: 13px; }
+.co-total { margin: 0; display: flex; justify-content: space-between; align-items: flex-end; }
+.co-total span { font: 700 18px/26px Manrope, sans-serif; }
+.co-total b { font: 400 40px/44px "Bebas Neue", sans-serif; letter-spacing: .5px; }
+.co-sum .lp-btn, .co-sum > div > .lp-btn { width: 100%; justify-content: center; }
+.co-sum > div:not(.co-item) { display: grid; gap: 10px; }
+.co-owned { margin: 0; color: #22c55e; font: 600 14px/20px Manrope, sans-serif; }
+.co-sec { margin: 0; display: flex; gap: 10px; align-items: flex-start; font: 500 13px/18px Manrope, sans-serif; color: #6e6e7a; }
+.co-sec svg { flex: none; }
+@media (max-width: 1100px) { .co { padding: 48px 32px; gap: 32px; } .co-sum { width: 400px; } }
+@media (max-width: 860px) {
+  .co { flex-direction: column; padding: 24px 16px 40px; gap: 24px; }
+  .co-sum { width: 100%; position: static; padding: 20px; }
+  .co-h1 { font-size: 26px; line-height: 32px; }
+}

@@ -7,7 +7,7 @@ import type { OnApproveDataOneTimePayments } from "@paypal/paypal-js/sdk-v6";
 type Status = "loading" | "ready" | "paying" | "paid" | "unavailable" | "error" | "signin";
 
 // Pass showtimeId to create a one-seat order, or orderId to pay an order the concierge prepared.
-export default function PayPalTicketButton({ showtimeId, orderId }: { showtimeId?: string; orderId?: string }) {
+export default function PayPalTicketButton({ showtimeId, orderId, label = "Pay with PayPal", className = "pp-button" }: { showtimeId?: string; orderId?: string; label?: string; className?: string }) {
   const [status, setStatus] = useState<Status>("loading");
   const startRef = useRef<(() => Promise<void>) | null>(null);
   const statusRef = useRef<Status>("loading");
@@ -73,11 +73,11 @@ export default function PayPalTicketButton({ showtimeId, orderId }: { showtimeId
         Tickets belong to your account. <a href="/signin?next=/checkout">Sign in</a> or <a href="/join">join free</a> to buy a seat.
       </p>
     );
-  if (status === "unavailable") return <p className="pp-note">PayPal is not available right now.</p>;
+  if (status === "unavailable") return <p className="pp-note">PayPal is not available right now. You have not been charged.</p>;
   return (
     <div>
-      <button className="pp-button" disabled={status !== "ready"} onClick={() => startRef.current?.().catch((e: Error) => setStatus(e.message === "signin" ? "signin" : "error"))}>
-        {status === "loading" ? "Loading PayPal…" : status === "paying" ? "Waiting for PayPal…" : "Pay with PayPal"}
+      <button className={className} disabled={status !== "ready"} onClick={() => startRef.current?.().catch((e: Error) => setStatus(e.message === "signin" ? "signin" : "error"))}>
+        {status === "loading" ? "Loading PayPal…" : status === "paying" ? "Waiting for PayPal…" : label}
       </button>
       {status === "error" && <p className="pp-note pp-err">Something went wrong. You have not been charged.</p>}
     </div>

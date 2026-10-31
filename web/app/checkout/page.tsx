@@ -1,29 +1,134 @@
-import SiteFooter from "@/components/SiteFooter";
-import { showtimes } from "@/lib/catalog";
+import Link from "next/link";
+import { cookies } from "next/headers";
+import Logo from "@/components/landing/Logo";
+import LocalWhen from "@/components/dash/LocalWhen";
+import Methods, { type Method } from "@/components/checkout/Methods";
+import HashToFilm from "@/components/checkout/HashToFilm";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
+import { myTickets } from "@/lib/api";
+import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
+import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
+import { langName } from "@/lib/i18n";
+import { readLocale } from "@/lib/locale";
+import { countryName } from "@/lib/plans";
+import { quote } from "@/lib/ticket-quote";
 
-export const metadata = { title: "Tickets · E-Cinema" };
+// Built from the Figma frame "Web / Checkout" (18:533). Prices come from the same quote the
+// PayPal order uses, so the total here is the total PayPal charges.
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Checkout · E-Cinema" };
 
-export default function CheckoutPage() {
+const money = (cur: string, v: string) => (cur === "USD" ? `$${v}` : `${cur} ${v}`);
+
+function methodsFor(country: string | undefined, paypal: boolean): Method[] {
+  const base: Method[] = [
+    { id: "paypal", name: "PayPal", sub: "PayPal balance, card or Pay Later · billed in USD", ready: paypal, icon: "paypal" },
+    { id: "card", name: "Debit or credit card", sub: country === "NG" ? "Mastercard, Visa, Verve · through PayPal, no account needed" : "Mastercard, Visa · through PayPal, no account needed", ready: paypal, icon: "card" },
+  ];
+  const local: Method[] =
+    country === "NG"
+      ? [
+          { id: "paystack", name: "Paystack", sub: "Card, bank, USSD or transfer", ready: false, icon: "phone" },
+          { id: "flutterwave", name: "Flutterwave", sub: "Card, bank, mobile money", ready: false, icon: "phone" },
+          { id: "bank", name: "Bank transfer", sub: "Pay to a one-time account number", ready: false, icon: "bank" },
+        ]
+      : country === "KE" || country === "GH" || country === "UG" || country === "TZ"
+        ? [{ id: "flutterwave", name: "Flutterwave", sub: "Card, bank, mobile money", ready: false, icon: "phone" }]
+        : [];
+  return [...base, ...local, { id: "crypto", name: "Crypto", sub: "Bitcoin, USDC, Ethereum · confirmed on-chain", ready: false, icon: "crypto" }];
+}
+
+export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ film?: string }> }) {
+  const [{ film }, me, loc] = await Promise.all([searchParams, currentAccount(), readLocale()]);
+  const s = film ? findShowtime(film) : undefined;
+
+  if (!s) {
+    const open = showtimes.filter((x) => endsAt(x) > Date.now());
+    return (
+      <main className="co">
+        <HashToFilm />
+        <div className="co-pay">
+          <Link href={me ? "/home" : "/"}><Logo /></Link>
+          <h1 className="co-h1">Pick a premiere</h1>
+          <p className="co-eyebrow">EACH TITLE SCREENS ONCE</p>
+          <div className="co-methods">
+            {(open.length ? open : showtimes).map((x) => (
+              <Link key={x.id} href={`/checkout?film=${x.id}`} className="co-method">
+                <span className="co-mini" style={{ background: `linear-gradient(180deg, ${x.poster?.from ?? "#1b1b21"}, ${x.poster?.to ?? "#000"})` }} />
+                <span className="co-t"><strong>{x.film}</strong><small><LocalWhen iso={x.startsAt} /> · {x.studio}</small></span>
+                <span className="co-price">{money(x.price.currency, x.price.value)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const session = (await cookies()).get(SESSION_COOKIE)?.value;
+  let profile: { plan?: string; planStatus?: string; country?: string; audioLanguage?: string } | undefined;
+  if (me && session) {
+    const r = await accountApi("GET", "/v1/me/profile", undefined, session);
+    if (r.status === 200) profile = r.body as typeof profile;
+  }
+  const owned = me ? (await myTickets(session).catch(() => [])).find((t) => t.showtimeId === s.id && t.status === "paid") : undefined;
+  const country = profile?.country || loc.country;
+  const q = quote(s, profile ? { ...profile, country } : { country: undefined });
+  const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID));
+  const p = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
+  const planName = q.member ? q.member.charAt(0).toUpperCase() + q.member.slice(1) : "";
+  const back = `/checkout?film=${s.id}`;
+
   return (
-    <section className="checkout">
-      <h1>Book a seat</h1>
-      <ul>
-        {showtimes.map((s) => (
-          <li key={s.id} id={s.id} className="showtime">
-            <div>
-              <strong>{s.film}</strong>
-              <span>{s.studio}</span>
-              <time dateTime={s.startsAt}>{new Date(s.startsAt).toUTCString().slice(0, 22)} GMT</time>
-            </div>
-            <div className="buy">
-              <span className="price">{s.price.currency} {s.price.value}</span>
-              <PayPalTicketButton showtimeId={s.id} />
-            </div>
-          </li>
-        ))}
-      </ul>
-      <SiteFooter />
-    </section>
+    <main className="co">
+      <div className="co-pay">
+        <Link href={me ? "/home" : "/"} aria-label="E-Cinema home"><Logo /></Link>
+        <Link href={me ? "/home" : "/"} className="su-back">← Back to premieres</Link>
+        <h1 className="co-h1">Checkout</h1>
+        <p className="co-eyebrow">PAYMENT OPTIONS FOR {(countryName(country) || "your country").toUpperCase()}</p>
+        <Methods methods={methods} />
+        <p className="co-note">Paystack, Flutterwave, bank transfer and crypto switch on as soon as each provider approves our account. Until then PayPal takes cards from every country we sell in.</p>
+      </div>
+
+      <aside className="co-sum" aria-label="Order summary">
+        <h2>Order summary</h2>
+        <div className="co-item">
+          <span className="co-poster" style={{ background: `linear-gradient(180deg, ${p.from} 0%, ${p.via} 60%, ${p.to} 100%)` }}><i style={{ background: `radial-gradient(circle, ${p.glow}, transparent 70%)` }} /></span>
+          <div className="co-t">
+            <strong>{s.film} · Premiere seat</strong>
+            <small><LocalWhen iso={s.startsAt} /> · {s.studio}</small>
+            <small>Audio: {profile?.audioLanguage && profile.audioLanguage !== "en" ? `${langName(profile.audioLanguage)} (AI)` : s.language ?? "Original"} · Subtitles: {langName(loc.lang)}</small>
+          </div>
+        </div>
+        <hr />
+        <p className="co-line"><span>Seat</span><span>{money(q.currency, q.seat)}</span></p>
+        {q.member ? (
+          <p className="co-line"><span>{planName} member discount</span><span className="co-good">−{money(q.currency, q.discount)}</span></p>
+        ) : (
+          <p className="co-line co-hint"><span>Members save 10% on every seat</span><Link href="/plans">See plans</Link></p>
+        )}
+        {q.vatRate > 0 && <p className="co-line"><span>VAT ({(q.vatRate * 100).toFixed(q.vatRate * 1000 % 10 ? 1 : 0)}%)</span><span>{money(q.currency, q.vat)}</span></p>}
+        <hr />
+        <p className="co-total"><span>Total</span><b>{money(q.currency, q.total)}</b></p>
+        {owned ? (
+          <>
+            <p className="co-owned">You already have a seat for this premiere.</p>
+            <Link href={`/room/${s.id}`} className="lp-btn lg co-cta">Go to the room lobby</Link>
+          </>
+        ) : me ? (
+          <PayPalTicketButton showtimeId={s.id} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
+        ) : (
+          <>
+            <Link href={`/signin?next=${encodeURIComponent(back)}`} className="lp-btn lg co-cta">Sign in to buy · {money(q.currency, q.total)}</Link>
+            <Link href={`/join?next=${encodeURIComponent(back)}`} className="lp-btn lg secondary co-cta">Join free</Link>
+          </>
+        )}
+        {s.adult && <p className="co-sec">18+ screening. You need a finished face and ID check to book.</p>}
+        <p className="co-sec">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" aria-hidden><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /></svg>
+          You pay on PayPal&apos;s own page. E‑Cinema never sees or stores your card number.
+        </p>
+      </aside>
+    </main>
   );
 }
