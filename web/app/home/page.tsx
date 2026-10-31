@@ -68,10 +68,22 @@ export default async function Home() {
                 <Link href="/releases">Coming soon</Link>
                 <a href="#calendar">Calendar</a>
                 <a href="#live">Live</a>
+                {["Community", "Clips", "Shop", "Library"].map((l) => (
+                  <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
+                ))}
               </div>
             </div>
             <div className="lp-nav-right">
               <AskAIButton />
+              <span className="hm-icon soon" title="Search is coming soon. Ask AI can find any film for you now." aria-label="Search, coming soon" role="img">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="10.08" cy="10.08" r="7.33" /><path d="m19.25 19.25-3.94-3.94" /></svg>
+              </span>
+              <span className="hm-icon soon" title="Notifications are coming soon" aria-label="Notifications, coming soon" role="img">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5.5 7.33a5.5 5.5 0 0 1 11 0c0 6.42 2.75 8.25 2.75 8.25H2.75S5.5 13.75 5.5 7.33Z" /></svg>
+              </span>
+              <span className="hm-icon soon" title="The merch cart is coming soon" aria-label="Cart, coming soon" role="img">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="7.33" cy="19.25" r=".92" /><circle cx="17.42" cy="19.25" r=".92" /><path d="M1.88 1.88h1.83l2.44 11.38a1.83 1.83 0 0 0 1.83 1.45h8.97a1.83 1.83 0 0 0 1.79-1.44l1.51-6.81H4.69" /></svg>
+              </span>
               <AccountMenu name={me.name} email={me.email} />
             </div>
           </nav>

@@ -635,3 +635,10 @@ html, body { overflow-x: clip; }
 .soon-tag { margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: #26262e; color: #a6a6b0; font: 700 10px/14px Manrope, sans-serif; vertical-align: middle; }
 .check input[aria-invalid="true"] { outline: 2px solid #ff4d57; outline-offset: 2px; }
 .check a { color: inherit; text-decoration: underline; }
+/* Home nav items from Figma that are not built yet */
+.lp-nav-links .soon { color: #4a4a54; cursor: default; }
+.hm-icon { display: grid; place-items: center; width: 34px; height: 34px; color: #a6a6b0; }
+.hm-icon.soon { color: #4a4a54; cursor: default; }
+.hm-nav .lp-nav-right { gap: 20px; }
+@media (max-width: 1280px) { .lp-nav-links .soon { display: none; } }
+@media (max-width: 640px) { .hm-icon { display: none; } .hm-nav .lp-nav-right { gap: 8px; } }
