@@ -80,6 +80,8 @@ jobs:
           curl -fsS -b "$jar" "$web/api/auth/me" | grep -q "$email"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/identity/token" | grep -q '"token"'
           echo "face check token ok"
+          curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
+          echo "passkeys ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"

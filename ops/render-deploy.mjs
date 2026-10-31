@@ -93,6 +93,10 @@ async function upsertService(name, details, envVars) {
 }
 
 const existingApi = await findService("e-cinema-api");
+const existingWeb = await findService("e-cinema-web");
+// Passkeys are bound to the web app's domain. Override with WEBAUTHN_RP_ID once e-cinema.net points at the site.
+const webOrigin = existingWeb?.serviceDetails?.url;
+const rpId = process.env.WEBAUTHN_RP_ID || (webOrigin ? new URL(webOrigin).hostname : "");
 const token = (existingApi && (await currentEnv(existingApi.id)).INTERNAL_API_TOKEN) || randomBytes(32).toString("hex");
 
 const apiSvc = await upsertService(
@@ -107,6 +111,7 @@ const apiSvc = await upsertService(
     ALLOWED_ORIGINS: "e-cinema.net,*.e-cinema.net,*.onrender.com",
     // Phone codes switch on once Termii approves the sender ID (TERMII_SENDER_ID secret);
     // face and ID checks run through Sumsub.
+    ...(rpId ? { WEBAUTHN_RP_ID: rpId, WEBAUTHN_ORIGINS: process.env.WEBAUTHN_ORIGINS || `https://${rpId}` } : {}),
     ...Object.fromEntries(
       ["TERMII_API_KEY", "TERMII_SENDER_ID", "SUMSUB_APP_TOKEN", "SUMSUB_SECRET_KEY"].filter((k) => process.env[k]).map((k) => [k, process.env[k]]),
     ),
@@ -142,7 +147,6 @@ const webEnv = {
   NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY,
   ...r2Env,
 };
-const existingWeb = await findService("e-cinema-web");
 if (existingWeb) {
   const webhookId = (await currentEnv(existingWeb.id)).PAYPAL_WEBHOOK_ID;
   if (webhookId) webEnv.PAYPAL_WEBHOOK_ID = webhookId;
