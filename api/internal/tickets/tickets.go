@@ -151,3 +151,44 @@ func (st Store) Release(ctx context.Context, holdID string) error {
 	_, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'released' WHERE id = $1 AND status = 'held'`, holdID)
 	return err
 }
+
+// MyTicket is a viewer's paid seats, or seats held for them while they approve the payment.
+type MyTicket struct {
+	HoldID     string    `json:"holdId"`
+	ShowtimeID string    `json:"showtimeId"`
+	Seats      int       `json:"seats"`
+	Status     string    `json:"status"` // held or paid
+	OrderID    string    `json:"orderId,omitempty"`
+	ExpiresAt  time.Time `json:"expiresAt"`
+}
+
+// Mine lists an account's paid seats and its live holds, soonest screening first.
+func (st Store) Mine(ctx context.Context, accountID string) ([]MyTicket, error) {
+	rows, err := st.DB.Query(ctx, `SELECT h.id, h.showtime_id, h.seats, h.status, COALESCE(h.paypal_order_id, ''), h.expires_at
+	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
+	  WHERE h.account_id = $1 AND (h.status = 'paid' OR (h.status = 'held' AND h.expires_at > now()))
+	  ORDER BY s.starts_at, h.created_at`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []MyTicket{}
+	for rows.Next() {
+		var t MyTicket
+		if err := rows.Scan(&t.HoldID, &t.ShowtimeID, &t.Seats, &t.Status, &t.OrderID, &t.ExpiresAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// ReleaseMine gives back seats an account is holding but has not paid for.
+func (st Store) ReleaseMine(ctx context.Context, accountID, holdID string) error {
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'released'
+	  WHERE id::text = $1 AND account_id = $2 AND status = 'held'`, holdID, accountID)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNoHold
+	}
+	return err
+}

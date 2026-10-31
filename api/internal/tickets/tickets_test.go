@@ -153,3 +153,44 @@ func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
 		t.Fatalf("verified: %v", err)
 	}
 }
+
+// A viewer sees their own paid seats and live holds, and can give a hold back.
+func TestMineAndRelease(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "mine-test", 10)
+	var id, other string
+	if err := s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('mine-'||gen_random_uuid()||'@example.com', 'M', 'x') RETURNING id`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('other-'||gen_random_uuid()||'@example.com', 'O', 'x') RETURNING id`).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'mine-test'`)
+		s.DB.Exec(ctx, `DELETE FROM accounts WHERE id IN ($1, $2)`, id, other)
+	})
+	paid, _ := s.Hold(ctx, "mine-test", "v", 2, id)
+	s.AttachOrder(ctx, paid.ID, "ORDER-MINE-1")
+	if err := s.MarkPaid(ctx, "ORDER-MINE-1", "CAP-MINE-1"); err != nil {
+		t.Fatal(err)
+	}
+	held, _ := s.Hold(ctx, "mine-test", "v", 1, id)
+	s.Hold(ctx, "mine-test", "v", 1, other)
+	list, err := s.Mine(ctx, id)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("mine: %v %+v", err, list)
+	}
+	if err := s.ReleaseMine(ctx, other, held.ID); !errors.Is(err, tickets.ErrNoHold) {
+		t.Fatalf("someone else's hold: %v", err)
+	}
+	if err := s.ReleaseMine(ctx, id, held.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseMine(ctx, id, paid.ID); !errors.Is(err, tickets.ErrNoHold) {
+		t.Fatalf("paid seats cannot be released: %v", err)
+	}
+	if list, _ := s.Mine(ctx, id); len(list) != 1 || list[0].Status != "paid" {
+		t.Fatalf("after release: %+v", list)
+	}
+}

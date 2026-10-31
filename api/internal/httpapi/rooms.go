@@ -57,5 +57,21 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			"expiresAt": exp.UTC(),
 		})
 	}))
+	// The viewer's own seats: paid tickets and holds waiting for PayPal approval.
+	mux.HandleFunc("GET /v1/me/tickets", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		list, err := s.Tickets.Mine(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
+	}))
+	mux.HandleFunc("DELETE /v1/me/holds/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if err := s.Tickets.ReleaseMine(r.Context(), a.ID, r.PathValue("id")); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	mux.Handle("GET /v1/rooms/{id}/live", s.Hub.Live(s.Rooms, s.Passes, s.AllowedOrigins))
 }
