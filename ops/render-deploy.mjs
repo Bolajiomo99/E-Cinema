@@ -1,0 +1,157 @@
+// Creates or updates E-Cinema on Render through the Render API, using only the
+// "E-Cinema" workspace. Safe to run again: it looks resources up by name first.
+// Never prints secret values; logs show ids, names, URLs and status codes only.
+import { randomBytes } from "node:crypto";
+
+const KEY = process.env.RENDER_API_KEY;
+const OWNER = process.env.RENDER_OWNER_ID; // E-Cinema workspace
+const BRANCH = process.env.DEPLOY_BRANCH;
+const REPO = "https://github.com/Bolajiomo99/E-Cinema";
+const REGION = "frankfurt";
+const PLAN = "starter";
+
+if (!KEY || !OWNER || !BRANCH) throw new Error("RENDER_API_KEY, RENDER_OWNER_ID and DEPLOY_BRANCH are required");
+
+async function api(method, path, body) {
+  const res = await fetch(`https://api.render.com/v1${path}`, {
+    method,
+    headers: { authorization: `Bearer ${KEY}`, accept: "application/json", "content-type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(`${method} ${path.split("?")[0]} -> ${res.status} ${data?.message ?? ""}`);
+  return data;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 1. Workspace guard: refuse to touch anything but "E-Cinema".
+const owner = await api("GET", `/owners/${OWNER}`);
+if (owner.name !== "E-Cinema") throw new Error(`Workspace is "${owner.name}", expected "E-Cinema"`);
+console.log(`Workspace: ${owner.name}`);
+
+// 2. Project and production environment.
+let project = (await api("GET", `/projects?ownerId=${OWNER}&name=e-cinema&limit=20`))
+  .map((p) => p.project).find((p) => p.name === "e-cinema");
+if (!project) {
+  project = await api("POST", "/projects", { name: "e-cinema", ownerId: OWNER, environments: [{ name: "production" }] });
+  console.log(`Created project ${project.id}`);
+}
+const envs = await api("GET", `/environments?projectId=${project.id}&limit=20`);
+const env = envs.map((e) => e.environment).find((e) => e.name === "production");
+if (!env) throw new Error("production environment missing");
+console.log(`Project ${project.name}, environment ${env.name}`);
+
+// 3. Postgres 16.
+let db = (await api("GET", `/postgres?ownerId=${OWNER}&name=e-cinema-db&limit=20`))
+  .map((p) => p.postgres).find((p) => p.name === "e-cinema-db");
+if (!db) {
+  db = await api("POST", "/postgres", {
+    name: "e-cinema-db", ownerId: OWNER, environmentId: env.id, plan: "basic_256mb", region: REGION,
+    version: "16", databaseName: "ecinema", databaseUser: "ecinema", ipAllowList: [],
+  });
+  console.log(`Created database ${db.id}`);
+}
+for (let i = 0; i < 60 && db.status !== "available"; i++) {
+  await sleep(10_000);
+  db = await api("GET", `/postgres/${db.id}`);
+  console.log(`Database status: ${db.status}`);
+}
+if (db.status !== "available") throw new Error("database did not become available");
+const { internalConnectionString } = await api("GET", `/postgres/${db.id}/connection-info`);
+
+// 4. Services.
+async function findService(name) {
+  const list = await api("GET", `/services?ownerId=${OWNER}&name=${name}&limit=20`);
+  return list.map((s) => s.service).find((s) => s.name === name);
+}
+async function currentEnv(id) {
+  const vars = await api("GET", `/services/${id}/env-vars?limit=100`);
+  return Object.fromEntries(vars.map((v) => [v.envVar.key, v.envVar.value]));
+}
+async function upsertService(name, details, envVars) {
+  let svc = await findService(name);
+  const list = Object.entries(envVars).map(([key, value]) => ({ key, value: String(value) }));
+  if (!svc) {
+    const created = await api("POST", "/services", {
+      type: "web_service", name, ownerId: OWNER, environmentId: env.id, repo: REPO, branch: BRANCH,
+      rootDir: details.rootDir, autoDeploy: "yes", envVars: list,
+      serviceDetails: {
+        runtime: details.runtime, plan: PLAN, region: REGION, healthCheckPath: details.healthCheckPath,
+        envSpecificDetails: { buildCommand: details.buildCommand, startCommand: details.startCommand },
+      },
+    });
+    svc = created.service;
+    console.log(`Created ${name}: ${svc.serviceDetails.url}`);
+  } else {
+    await api("PUT", `/services/${svc.id}/env-vars`, list);
+    await api("POST", `/services/${svc.id}/deploys`, {});
+    console.log(`Updated ${name} and started a deploy: ${svc.serviceDetails.url}`);
+  }
+  return svc;
+}
+
+const existingApi = await findService("e-cinema-api");
+const token = (existingApi && (await currentEnv(existingApi.id)).INTERNAL_API_TOKEN) || randomBytes(32).toString("hex");
+
+const apiSvc = await upsertService(
+  "e-cinema-api",
+  {
+    runtime: "go", rootDir: "api", healthCheckPath: "/healthz",
+    buildCommand: 'go build -trimpath -ldflags="-s -w" -o bin/api ./cmd/api', startCommand: "./bin/api",
+  },
+  {
+    DATABASE_URL: internalConnectionString,
+    INTERNAL_API_TOKEN: token,
+    ALLOWED_ORIGINS: "e-cinema.net,*.e-cinema.net,*.onrender.com",
+  },
+);
+
+const webEnv = {
+  NODE_VERSION: "22",
+  API_URL: apiSvc.serviceDetails.url,
+  INTERNAL_API_TOKEN: token,
+  PAYPAL_ENV: "sandbox",
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  CHANNEL3_API_KEY: process.env.CHANNEL3_API_KEY,
+  NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY,
+};
+const existingWeb = await findService("e-cinema-web");
+if (existingWeb) {
+  const webhookId = (await currentEnv(existingWeb.id)).PAYPAL_WEBHOOK_ID;
+  if (webhookId) webEnv.PAYPAL_WEBHOOK_ID = webhookId;
+}
+if (process.env.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID;
+for (const [k, v] of Object.entries(webEnv)) if (!v) { console.log(`Skipping empty ${k}`); delete webEnv[k]; }
+
+const webSvc = await upsertService(
+  "e-cinema-web",
+  { runtime: "node", rootDir: "web", healthCheckPath: "/checkout", buildCommand: "npm ci && npm run build", startCommand: "npm start" },
+  webEnv,
+);
+
+// 5. Wait for both services to go live.
+async function waitLive(svc) {
+  for (let i = 0; i < 90; i++) {
+    const [latest] = await api("GET", `/services/${svc.id}/deploys?limit=1`);
+    const status = latest?.deploy?.status;
+    if (status === "live") return console.log(`${svc.name} is live`);
+    if (["build_failed", "update_failed", "canceled", "pre_deploy_failed"].includes(status)) {
+      throw new Error(`${svc.name} deploy ${status}`);
+    }
+    if (i % 3 === 0) console.log(`${svc.name}: ${status}`);
+    await sleep(10_000);
+  }
+  throw new Error(`${svc.name} did not go live in time`);
+}
+await waitLive(apiSvc);
+await waitLive(webSvc);
+
+const out = process.env.GITHUB_OUTPUT;
+if (out) {
+  const { appendFileSync } = await import("node:fs");
+  appendFileSync(out, `api_url=${apiSvc.serviceDetails.url}\nweb_url=${webSvc.serviceDetails.url}\n`);
+}

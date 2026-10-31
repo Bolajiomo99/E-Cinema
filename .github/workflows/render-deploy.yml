@@ -1,0 +1,42 @@
+name: Deploy to Render
+
+# Creates or updates the E-Cinema project on Render (workspace "E-Cinema" only).
+on:
+  workflow_dispatch:
+  push:
+    paths: [ops/render-deploy.mjs, .github/workflows/render-deploy.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Create or update Render resources
+        id: render
+        run: node ops/render-deploy.mjs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
+          RENDER_OWNER_ID: tea-db7ej9e7bikc73ajmkmg
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID_SANDBOX }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET_SANDBOX }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CHANNEL3_API_KEY: ${{ secrets.CHANNEL3_API_KEY }}
+          NEXT_PUBLIC_AG_GRID_LICENSE_KEY: ${{ secrets.AG_GRID_LICENSE_KEY }}
+      - name: Smoke test the live services
+        run: |
+          curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
+          curl -fsS "${{ steps.render.outputs.api_url }}/v1/showtimes" | head -c 300; echo
+          curl -fsS -o /dev/null -w "checkout %{http_code}\n" "${{ steps.render.outputs.web_url }}/checkout"
