@@ -114,3 +114,5 @@ body:has(.exec) { background: #0b0b0d; }
 .face-host { min-height: 420px; border-radius: 12px; overflow: hidden; background: #0b0b0d; }
 .tag.ok { color: #46d369; border-color: #1f5f33; }
 .ghost.wide { justify-self: stretch; }
+.social { text-align: center; text-decoration: none; }
+.or { margin: 0; text-align: center; color: #6e6e78; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }

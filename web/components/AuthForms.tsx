@@ -74,6 +74,8 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
         <Steps at={1} />
         <h2>Create your account</h2>
         <p className="muted">One account per person. It takes about two minutes.</p>
+        <button type="button" className="ghost wide social" onClick={() => window.location.assign("/api/auth/google/start")}>Continue with Google</button>
+        <p className="or">or with email</p>
         <label>Full name<input name="name" autoComplete="name" required maxLength={80} /></label>
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>
         <label>
@@ -136,10 +138,16 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
   );
 }
 
-export function SignInForm() {
+const SIGNIN_ERRORS: Record<string, string> = {
+  "google-off": "Google sign-in is not switched on yet. Use your email or a passkey.",
+  "google-failed": "Google sign-in did not finish. Please try again.",
+  "google-email": "Your Google account needs a verified email address.",
+};
+
+export function SignInForm({ initialError }: { initialError?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError ? SIGNIN_ERRORS[initialError] ?? "" : "");
   return (
     <form
       className="auth-card"
@@ -160,6 +168,8 @@ export function SignInForm() {
     >
       <h2>Welcome back</h2>
       <p className="muted">Sign in to take your seat.</p>
+      <button type="button" className="ghost wide social" onClick={() => window.location.assign("/api/auth/google/start")}>Continue with Google</button>
+      <p className="or">or with email</p>
       <label>Email<input name="email" type="email" autoComplete="email" required /></label>
       <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
       <button className="cta" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
