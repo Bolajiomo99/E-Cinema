@@ -161,3 +161,16 @@ func TestTicketsAndChatLimits(t *testing.T) {
 		t.Fatal("message marked as mine for another viewer")
 	}
 }
+
+func TestPassCarriesCountry(t *testing.T) {
+	p := rooms.Passes{Key: []byte("k1")}
+	now := time.Now()
+	got, err := p.Check(p.Issue(rooms.Pass{AccountID: "a1", ShowtimeID: "s1", Name: "Tolu", Expires: now.Add(time.Minute), Country: "NG"}), "s1", now)
+	if err != nil || got.Country != "NG" || got.Name != "Tolu" {
+		t.Fatalf("Check = %+v, %v", got, err)
+	}
+	old, err := p.Check(p.Issue(rooms.Pass{AccountID: "a1", ShowtimeID: "s1", Name: "Tolu", Expires: now.Add(time.Minute)}), "s1", now)
+	if err != nil || old.Country != "" {
+		t.Fatalf("pass without a country = %+v, %v", old, err)
+	}
+}

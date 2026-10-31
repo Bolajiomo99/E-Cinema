@@ -115,13 +115,18 @@ type Pass struct {
 	ShowtimeID string
 	Name       string
 	Expires    time.Time
+	Country    string // two-letter home country, for the room's "N countries" count
 }
 
 // Passes signs and checks room passes with a key only the API knows.
 type Passes struct{ Key []byte }
 
 func (p Passes) Issue(pass Pass) string {
-	payload := strings.Join([]string{pass.AccountID, pass.ShowtimeID, strconv.FormatInt(pass.Expires.Unix(), 10), pass.Name}, "\x1f")
+	fields := []string{pass.AccountID, pass.ShowtimeID, strconv.FormatInt(pass.Expires.Unix(), 10), pass.Name}
+	if pass.Country != "" {
+		fields = append(fields, pass.Country)
+	}
+	payload := strings.Join(fields, "\x1f")
 	enc := base64.RawURLEncoding.EncodeToString([]byte(payload))
 	return enc + "." + base64.RawURLEncoding.EncodeToString(p.sign(enc))
 }
@@ -139,15 +144,19 @@ func (p Passes) Check(token, showtimeID string, now time.Time) (Pass, error) {
 	if err != nil {
 		return Pass{}, ErrBadPass
 	}
-	parts := strings.SplitN(string(raw), "\x1f", 4)
-	if len(parts) != 4 {
+	parts := strings.SplitN(string(raw), "\x1f", 5)
+	if len(parts) < 4 {
 		return Pass{}, ErrBadPass
+	}
+	country := ""
+	if len(parts) == 5 {
+		country = parts[4]
 	}
 	exp, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil || now.Unix() > exp || parts[1] != showtimeID {
 		return Pass{}, ErrBadPass
 	}
-	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3]}, nil
+	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: country}, nil
 }
 
 func (p Passes) sign(s string) []byte {

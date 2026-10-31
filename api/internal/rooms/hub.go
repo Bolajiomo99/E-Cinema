@@ -23,6 +23,7 @@ type Event struct {
 
 type client struct {
 	accountID string
+	country   string
 	out       chan Event
 }
 
@@ -60,6 +61,31 @@ func (h *Hub) Count(room string) int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return len(h.rooms[room])
+}
+
+// Stat is a live room's audience: connected viewers and how many countries they come from.
+type Stat struct {
+	ShowtimeID string `json:"showtimeId"`
+	Watching   int    `json:"watching"`
+	Countries  int    `json:"countries"`
+}
+
+// Stats lists every room with someone in it. Two tabs from one account count once.
+func (h *Hub) Stats() []Stat {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := make([]Stat, 0, len(h.rooms))
+	for room, cs := range h.rooms {
+		people, countries := map[string]bool{}, map[string]bool{}
+		for c := range cs {
+			people[c.accountID] = true
+			if c.country != "" {
+				countries[c.country] = true
+			}
+		}
+		out = append(out, Stat{ShowtimeID: room, Watching: len(people), Countries: len(countries)})
+	}
+	return out
 }
 
 // broadcast never blocks: a viewer too slow to keep up misses events instead of stalling the room.
@@ -104,7 +130,7 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
-		c := &client{accountID: pass.AccountID, out: make(chan Event, 64)}
+		c := &client{accountID: pass.AccountID, country: pass.Country, out: make(chan Event, 64)}
 		h.broadcast(room, Event{Type: "presence", Count: h.join(room, c)}, nil)
 		defer func() { h.broadcast(room, Event{Type: "presence", Count: h.leave(room, c)}, nil) }()
 

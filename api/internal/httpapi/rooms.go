@@ -52,8 +52,12 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			name = "Guest"
 		}
 		exp := time.Now().Add(rooms.PassFor)
+		country := ""
+		if p, err := s.Accounts.GetProfile(r.Context(), a.ID); err == nil {
+			country = p.Country
+		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp}),
+			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country}),
 			"expiresAt": exp.UTC(),
 		})
 	}))
@@ -73,5 +77,10 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	// Public audience numbers for the "N watching · N countries" badges. Counts only, no people.
+	mux.HandleFunc("GET /v1/live", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=5")
+		writeJSON(w, http.StatusOK, s.Hub.Stats())
+	})
 	mux.Handle("GET /v1/rooms/{id}/live", s.Hub.Live(s.Rooms, s.Passes, s.AllowedOrigins))
 }
