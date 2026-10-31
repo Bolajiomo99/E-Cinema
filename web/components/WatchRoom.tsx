@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FilmStream } from "@/lib/media";
+import StateCard from "@/components/states/StateCard";
 
 export type RoomMessage = { id: number; name: string; body: string; mine?: boolean; createdAt: string };
 
@@ -82,6 +83,7 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [online, setOnline] = useState(false);
   const [notice, setNotice] = useState("");
+  const [signedOut, setSignedOut] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -93,6 +95,11 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
     const connect = async () => {
       const res = await fetch(`/api/rooms/${showtimeId}/pass`, { method: "POST" }).catch(() => null);
       if (closed) return;
+      // A 401 means this device's session ended, usually because a newer device signed in.
+      if (res?.status === 401) {
+        setSignedOut(true);
+        return;
+      }
       if (!res?.ok) {
         timer = setTimeout(connect, retry);
         retry = Math.min(retry * 2, 30000);
@@ -143,7 +150,7 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
     return true;
   }, []);
 
-  return { messages, watching, floaters, online, notice, send };
+  return { messages, watching, floaters, online, notice, signedOut, send };
 }
 
 export default function WatchRoom({
@@ -174,6 +181,8 @@ export default function WatchRoom({
   const [volume, setVolume] = useState(1);
   const [draft, setDraft] = useState("");
   const [mark, setMark] = useState({ x: 12, y: 18 });
+  const [audioOnly, setAudioOnly] = useState(false);
+  const [wasLive, setWasLive] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
@@ -214,6 +223,13 @@ export default function WatchRoom({
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 140) el.scrollTop = el.scrollHeight;
   }, [room.messages]);
 
+  // Remember that the film was running, so a later reconnect reads as a dropped connection
+  // rather than the pre-show lobby.
+  useEffect(() => {
+    if (phase === "playing" && !wasLive) setWasLive(true);
+  }, [phase, wasLive]);
+  const dropped = wasLive && phase === "connecting" && !audioOnly;
+
   const join = () => {
     setJoined(true);
     const v = video.current;
@@ -245,6 +261,7 @@ export default function WatchRoom({
           </div>
           <div className="room-badges">
             {live && <span className="badge live"><i />LIVE</span>}
+            {audioOnly && <button type="button" className="badge outline" onClick={() => setAudioOnly(false)}>AUDIO ONLY · SHOW VIDEO</button>}
             <span className="badge outline">{room.watching.toLocaleString()} HERE</span>
             <span className={`badge outline ${syncMs === null ? "" : "ok"}`}>{syncMs === null ? "SYNCING" : `SYNCED · ${syncMs} MS`}</span>
           </div>
@@ -266,16 +283,25 @@ export default function WatchRoom({
         )}
 
         {phase === "ended" && (
-          <div className="room-lobby">
-            <p className="eyebrow">That&apos;s a wrap</p>
-            <div className="room-count small">Thanks for watching</div>
-            <p className="muted">This screening has ended. See what premieres next.</p>
-            <Link href="/releases" className="cta big">Release calendar</Link>
-          </div>
+          <StateCard overlay icon="film" title="This premiere has ended" action={{ label: "See what is on next", href: "/releases", primary: true }}>
+            Each film screens once. Classic requests and clips from the night are coming soon.
+          </StateCard>
+        )}
+
+        {dropped && (
+          <StateCard overlay icon="offline" title="Your connection dropped" action={{ label: "Switch to audio-only", onClick: () => setAudioOnly(true) }}>
+            We kept your seat. Reconnecting and catching you up to the live moment without buffering.
+          </StateCard>
+        )}
+
+        {room.signedOut && (
+          <StateCard overlay icon="shield" title="Too many devices" action={{ label: "Manage devices", href: `/signin?next=/settings/security`, primary: true }}>
+            You are signed in on another device. Sign out of one to watch here.
+          </StateCard>
         )}
 
         {stream && (
-          <div className={`room-player ${live ? "on" : ""}`} onContextMenu={(e) => e.preventDefault()}>
+          <div className={`room-player ${live ? "on" : ""} ${audioOnly ? "audio-only" : ""}`} onContextMenu={(e) => e.preventDefault()}>
             <video
               ref={video}
               src={saver ? stream.sd : stream.hd}
