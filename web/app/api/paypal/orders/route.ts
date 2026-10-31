@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server";
+import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
+import type { OrderRequest } from "@paypal/paypal-server-sdk";
+import { randomUUID } from "node:crypto";
+import { findShowtime } from "@/lib/catalog";
+import { paypalError, paypalOrders } from "@/lib/paypal";
+
+// Creates a PayPal order for one ticket. The price always comes from the server catalog.
+export async function POST(req: Request) {
+  const { showtimeId } = (await req.json().catch(() => ({}))) as { showtimeId?: string };
+  const showtime = showtimeId ? findShowtime(showtimeId) : undefined;
+  if (!showtime) return NextResponse.json({ error: "Unknown showtime" }, { status: 400 });
+
+  const body: OrderRequest = {
+    intent: CheckoutPaymentIntent.Capture,
+    purchaseUnits: [
+      {
+        referenceId: showtime.id,
+        description: `E-Cinema ticket: ${showtime.film}`,
+        customId: showtime.id,
+        amount: { currencyCode: showtime.price.currency, value: showtime.price.value },
+      },
+    ],
+  };
+
+  try {
+    const { result } = await paypalOrders().createOrder({ body, paypalRequestId: randomUUID(), prefer: "return=minimal" });
+    return NextResponse.json({ orderId: result.id });
+  } catch (err) {
+    return paypalError(err);
+  }
+}
