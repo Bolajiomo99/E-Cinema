@@ -3,7 +3,10 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
 	"net/http"
 	"os"
@@ -82,6 +85,9 @@ func run() error {
 		Accounts:       accounts.Store{DB: pool, SMS: texts, WebAuthn: passkeys},
 		AllowedOrigins: strings.Split(env("ALLOWED_ORIGINS", "e-cinema.net,*.e-cinema.net,localhost:3000"), ","),
 		InternalToken:  os.Getenv("INTERNAL_API_TOKEN"),
+		Rooms:          rooms.Store{DB: pool},
+		Hub:            rooms.NewHub(),
+		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
 	httpSrv := &http.Server{
 		Addr:              ":" + env("PORT", "8080"),
@@ -99,6 +105,17 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// roomKey derives the room-pass signing key from the internal token, so no extra secret is
+// needed and the key changes whenever the token is rotated.
+func roomKey(internal string) []byte {
+	if internal == "" {
+		return nil
+	}
+	m := hmac.New(sha256.New, []byte(internal))
+	m.Write([]byte("e-cinema room passes v1"))
+	return m.Sum(nil)
 }
 
 func env(k, def string) string {

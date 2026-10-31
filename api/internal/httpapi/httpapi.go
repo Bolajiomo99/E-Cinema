@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
 	"net/http"
 	"time"
@@ -21,6 +22,10 @@ type Server struct {
 	// Identity runs face and ID checks; nil until Sumsub keys are set.
 	Identity       *identity.Sumsub
 	AllowedOrigins []string
+	// Rooms, Hub and Passes run watch-room chat; Passes.Key must be secret.
+	Rooms  rooms.Store
+	Hub    *rooms.Hub
+	Passes rooms.Passes
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -61,7 +66,17 @@ func (s *Server) Routes() http.Handler {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seats and viewerRef are required"})
 			return
 		}
-		h, err := s.Tickets.Hold(r.Context(), r.PathValue("id"), body.ViewerRef, body.Seats)
+		// A signed-in buyer's session links the seats to their account; guests stay anonymous.
+		accountID := ""
+		if tok := r.Header.Get("X-Session-Token"); tok != "" {
+			acct, _, err := s.Accounts.Authenticate(r.Context(), tok)
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			accountID = acct.ID
+		}
+		h, err := s.Tickets.Hold(r.Context(), r.PathValue("id"), body.ViewerRef, body.Seats, accountID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -137,6 +152,7 @@ func (s *Server) Routes() http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	s.accountRoutes(mux)
+	s.roomRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -191,6 +207,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, rooms.ErrNoTicket):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
