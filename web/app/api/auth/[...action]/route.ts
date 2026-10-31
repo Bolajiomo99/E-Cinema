@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { accountApi, deviceLabel, SESSION_COOKIE } from "@/lib/auth";
-import { emailEnabled, sendLoginCode, sendPasswordChanged, sendResetCode } from "@/lib/email";
+import { emailEnabled, sendLoginCode, sendNewSignIn, sendPasswordChanged, sendResetCode } from "@/lib/email";
 import { timesLeaked } from "@/lib/pwned";
 import { countryName } from "@/lib/plans";
 
@@ -46,6 +46,19 @@ function withSession(r: { status: number; body: unknown }, keep = true) {
     ...(keep ? { expires: new Date(s.expiresAt) } : {}),
   });
   return res;
+}
+
+// Sends the "New sign-in" email when the API flags a new device, and keeps the lock token
+// out of what the browser sees.
+async function signedIn(req: NextRequest, r: { status: number; body: unknown }, keep = true) {
+  const body = r.body as { account?: { email: string }; lockToken?: string } | null;
+  if (r.status === 200 && body?.lockToken && body.account && emailEnabled) {
+    try {
+      await sendNewSignIn(body.account.email, body.lockToken, await where(req));
+    } catch {}
+  }
+  if (body && "lockToken" in body) delete body.lockToken;
+  return withSession(r, keep);
 }
 
 type Issued = { found: boolean; code?: string; email?: string; name?: string; phone?: string; maskedTo: string };
@@ -99,13 +112,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     case "signup":
       if (b.terms !== true) return json(400, { error: "Please agree to the Terms and Privacy Policy" });
       return withSession(await accountApi("POST", "/v1/accounts", { email: b.email, name: b.name, password: b.password, device }));
-    case "signin":
-      return withSession(await accountApi("POST", "/v1/sessions", { email: b.email, password: b.password, device }), b.keep !== false);
+    case "signin": {
+      const r = await accountApi("POST", "/v1/sessions", { email: b.email, password: b.password, device });
+      if (r.status === 202) {
+        // Two-step verification: email the code (texts go out from the API).
+        const out = r.body as { code: Issued; identifier: string };
+        if (out.code.code && out.code.email) {
+          if (emailEnabled) {
+            try {
+              await sendLoginCode(out.code.email, out.code.code, await where(req));
+            } catch {
+              return json(502, { error: "We could not send your code just now. Please try again in a minute." });
+            }
+          } else if (process.env.E2E_LOG_CODES) console.log(`[e2e] login code for ${out.code.email}: ${out.code.code}`);
+        }
+        return json(202, { secondStep: true, identifier: out.identifier, sentTo: out.code.maskedTo, channel: out.code.phone ? "sms" : "email" });
+      }
+      return signedIn(req, r, b.keep !== false);
+    }
     case "codes":
       if (typeof b.identifier !== "string" || (b.purpose !== "login" && b.purpose !== "reset")) return json(400, { error: "Enter your email or mobile number" });
       return issueCode(req, b.identifier, b.purpose);
     case "codes/login":
-      return withSession(await accountApi("POST", "/v1/codes/login", { identifier: b.identifier, code: b.code, device }), b.keep !== false);
+      return signedIn(req, await accountApi("POST", "/v1/codes/login", { identifier: b.identifier, code: b.code, device }), b.keep !== false);
     case "codes/reset": {
       const r = await accountApi("POST", "/v1/codes/reset", { identifier: b.identifier, code: b.code });
       if (r.status !== 200) return relay(r);
@@ -164,7 +193,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     case "passkeys/login/begin":
       return relay(await accountApi("POST", "/v1/passkeys/login/begin", {}));
     case "passkeys/login/finish":
-      return withSession(await accountApi("POST", "/v1/passkeys/login/finish", { challengeId: b.challengeId, credential: b.credential, device }));
+      return signedIn(req, await accountApi("POST", "/v1/passkeys/login/finish", { challengeId: b.challengeId, credential: b.credential, device }));
     case "passkeys/register/begin":
       if (!session) return json(401, { error: "not signed in" });
       return relay(await accountApi("POST", "/v1/passkeys/register/begin", {}, session));

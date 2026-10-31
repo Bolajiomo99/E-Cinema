@@ -93,3 +93,38 @@ export async function sendPasswordChanged(to: string, lockToken: string, signedO
     `Your E-Cinema password was changed (${when}, ${where.device}). Not you? Lock your account: ${link}`,
   );
 }
+
+const secondary = (href: string, label: string) =>
+  `<p style="margin:0 0 20px"><a href="${esc(href)}" style="display:inline-block;background:#ffffff;color:#16161a;text-decoration:none;font:600 16px/1 ${FONT};padding:15px 23px;border-radius:8px;border:1px solid #d4d4da">${esc(label)}</a></p>`;
+const lagosTime = () =>
+  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Africa/Lagos", timeZoneName: "short" }).format(new Date());
+
+// Figma email 05 "New sign-in on a device" (106:149).
+export async function sendNewSignIn(to: string, lockToken: string, where: Where) {
+  const when = lagosTime();
+  await send(
+    to,
+    `New sign-in to E-Cinema on ${where.device}`,
+    layout(`${where.place ? `${where.place} · ` : ""}${when}`, "New sign-in",
+      facts([["Device", where.device], ["Place", where.place || "Unknown"], ["When", when]]) +
+      p("Your account allows one person only. If this was not you, we will sign every device out and you reset your password with a code.") +
+      button(`${site()}/account/lock?t=${encodeURIComponent(lockToken)}`, "This wasn’t me") +
+      secondary(`${site()}/settings/security`, "Review devices")),
+    `New sign-in to E-Cinema: ${where.device}, ${where.place || "unknown place"}, ${when}. Not you? ${site()}/account/lock?t=${encodeURIComponent(lockToken)}`,
+  );
+}
+
+// Figma email 06 "Account deletion scheduled" (106:181).
+export async function sendDeletionScheduled(to: string, deleteAfter: string, ticketsLost: number) {
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" }).format(new Date(deleteAfter));
+  await send(
+    to,
+    `Your E-Cinema account will be deleted on ${day}`,
+    layout("Sign in before then to keep it", "We are sorry to see you go",
+      p(`Your account and data will be deleted on ${esc(day)}. Until then you can sign in to cancel.`) +
+      facts([["Tickets lost", String(ticketsLost)], ["Your data file", "Download it before that date"]]) +
+      button(`${site()}/signin`, "Keep my account") +
+      secondary(`${site()}/signin?next=${encodeURIComponent("/settings/privacy")}`, "Download my data")),
+    `Your E-Cinema account will be deleted on ${day}. Sign in before then to keep it: ${site()}/signin`,
+  );
+}

@@ -142,7 +142,7 @@ export function SignInCard({ next, initialError }: { next?: string; initialError
   const [left, setLeft] = useCountdown(0);
 
   const done = (r: { session?: { signedOut?: number } }) => {
-    router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : dest);
+    router.push(r.session?.signedOut ? "/settings/security?signedOut=1" : dest);
     router.refresh();
   };
   const run = async (fn: () => Promise<void>) => {
@@ -186,7 +186,19 @@ export function SignInCard({ next, initialError }: { next?: string; initialError
   }
 
   return (
-    <form className="ca-card" onSubmit={(e) => { e.preventDefault(); const pw = new FormData(e.currentTarget).get("password"); run(async () => done(await post("signin", { email: id, password: pw, keep }))); }}>
+    <form className="ca-card" onSubmit={(e) => { e.preventDefault(); const pw = new FormData(e.currentTarget).get("password"); run(async () => {
+        const r = await post("signin", { email: id, password: pw, keep });
+        if (r.secondStep) {
+          // Two-step verification is on: the password was right, now the code.
+          setId(r.identifier);
+          setSent({ sentTo: r.sentTo, channel: r.channel });
+          setCode("");
+          setLeft(60);
+          setBusy(false);
+          return;
+        }
+        done(r);
+      }); }}>
       <h1>Welcome back</h1>
       <p className="ca-sub">Sign in to take your seat.</p>
       <Field label="Email or mobile number">
