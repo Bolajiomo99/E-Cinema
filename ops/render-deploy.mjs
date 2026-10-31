@@ -197,7 +197,7 @@ const wfEnv = {
 };
 const wfVars = Object.entries(wfEnv).filter(([, v]) => v).map(([key, value]) => ({ key, value: String(value) }));
 const wfList = await api("GET", `/workflows?ownerId=${OWNER}&name=e-cinema-workflows&limit=20`);
-let wf = wfList.map((w) => w.workflow ?? w).find((w) => w.name === "e-cinema-workflows");
+let wf = (wfList ?? []).map((w) => w.workflow ?? w).find((w) => w.name === "e-cinema-workflows");
 if (!wf) {
   wf = await api("POST", "/workflows", {
     name: "e-cinema-workflows", ownerId: OWNER, region: REGION, runCommand: "node dist/main.js",
