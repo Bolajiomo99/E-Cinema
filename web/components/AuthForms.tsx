@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import FaceCheck from "@/components/FaceCheck";
 
 async function post(path: string, body: unknown, method = "POST") {
   const res = await fetch(`/api/auth/${path}`, {
@@ -33,7 +34,7 @@ function Steps({ at }: { at: 1 | 2 }) {
   );
 }
 
-export function JoinFlow({ startAt = 1 }: { startAt?: 1 | 2 }) {
+export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; identityStatus?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(startAt);
   const [busy, setBusy] = useState(false);
@@ -116,16 +117,9 @@ export function JoinFlow({ startAt = 1 }: { startAt?: 1 | 2 }) {
       <section className="verify-row">
         <div>
           <strong>Face check</strong>
-          <p className="muted">A 5-second selfie video. No photo is stored, only a match score.</p>
+          <p className="muted">A short selfie video and a photo of your ID, checked by our verification partner. Your documents are encrypted and never stored by E-Cinema.</p>
         </div>
-        <span className="tag">Coming next</span>
-      </section>
-      <section className="verify-row">
-        <div>
-          <strong>Government ID</strong>
-          <p className="muted">Needed only before your first 18+ title or a payout.</p>
-        </div>
-        <span className="tag">Later</span>
+        <FaceCheck initialStatus={identityStatus} />
       </section>
       {error && <p className="pp-note pp-err" role="alert">{error}</p>}
       <p className="muted small">Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>

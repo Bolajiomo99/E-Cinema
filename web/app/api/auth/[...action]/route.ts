@@ -75,6 +75,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     case "phone/confirm":
       if (!session) return json(401, { error: "not signed in" });
       return relay(await accountApi("POST", "/v1/phone/confirm", { code: b.code }, session));
+    case "identity/token":
+    case "identity/refresh":
+      if (!session) return json(401, { error: "not signed in" });
+      return relay(await accountApi("POST", `/v1/${action}`, {}, session));
   }
   return json(404, { error: "not found" });
 }
