@@ -1,0 +1,123 @@
+package tickets_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
+)
+
+func store(t *testing.T) tickets.Store {
+	t.Helper()
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	pool, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if err := db.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	return tickets.Store{DB: pool}
+}
+
+func newShow(t *testing.T, s tickets.Store, id string, capacity int) {
+	t.Helper()
+	ctx := context.Background()
+	s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = $1`, id)
+	s.DB.Exec(ctx, `DELETE FROM showtimes WHERE id = $1`, id)
+	if _, err := s.DB.Exec(ctx, `INSERT INTO showtimes VALUES ($1, 'Test Film', 'Test Studio', now() + interval '1 day', 90, $2, 500, 'USD')`, id, capacity); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 300 buyers race for 50 seats: exactly 50 must win.
+func TestNeverOversells(t *testing.T) {
+	s := store(t)
+	newShow(t, s, "race-test", 50)
+	var won, soldOut atomic.Int32
+	var wg sync.WaitGroup
+	for i := 0; i < 300; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := s.Hold(context.Background(), "race-test", "viewer", 1)
+			switch {
+			case err == nil:
+				won.Add(1)
+			case errors.Is(err, tickets.ErrSoldOut):
+				soldOut.Add(1)
+			default:
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if won.Load() != 50 || soldOut.Load() != 250 {
+		t.Fatalf("won %d, sold out %d; want 50 and 250", won.Load(), soldOut.Load())
+	}
+	st, _ := s.Get(context.Background(), "race-test")
+	if st.Available != 0 {
+		t.Fatalf("available %d, want 0", st.Available)
+	}
+}
+
+func TestPaidIsIdempotentAndExpiredHoldsFree(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "pay-test", 3)
+	h, err := s.Hold(ctx, "pay-test", "viewer", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.TotalCents != 1000 {
+		t.Fatalf("total %d, want 1000", h.TotalCents)
+	}
+	if err := s.AttachOrder(ctx, h.ID, "ORDER-PAY-TEST"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkPaid(ctx, "ORDER-PAY-TEST", "CAPTURE-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkPaid(ctx, "ORDER-PAY-TEST", "CAPTURE-1"); err != nil {
+		t.Fatalf("repeat webhook should be accepted: %v", err)
+	}
+	if err := s.MarkPaid(ctx, "ORDER-PAY-TEST", "CAPTURE-OTHER"); !errors.Is(err, tickets.ErrNoHold) {
+		t.Fatalf("different capture should be refused, got %v", err)
+	}
+
+	h2, err := s.Hold(ctx, "pay-test", "viewer2", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1); !errors.Is(err, tickets.ErrSoldOut) {
+		t.Fatalf("want sold out, got %v", err)
+	}
+	// Expire the second hold: its seat comes back.
+	s.DB.Exec(ctx, `UPDATE holds SET expires_at = now() - interval '1 second' WHERE id = $1`, h2.ID)
+	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1); err != nil {
+		t.Fatalf("expired hold should free its seat: %v", err)
+	}
+}
+
+func TestSeatLimits(t *testing.T) {
+	s := store(t)
+	newShow(t, s, "limit-test", 100)
+	for _, n := range []int{0, 11, -1} {
+		if _, err := s.Hold(context.Background(), "limit-test", "v", n); !errors.Is(err, tickets.ErrBadSeats) {
+			t.Fatalf("seats %d: want ErrBadSeats, got %v", n, err)
+		}
+	}
+	if _, err := s.Hold(context.Background(), "missing", "v", 1); !errors.Is(err, tickets.ErrNotFound) {
+		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
