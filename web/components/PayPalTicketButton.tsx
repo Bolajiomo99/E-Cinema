@@ -6,7 +6,8 @@ import type { OnApproveDataOneTimePayments } from "@paypal/paypal-js/sdk-v6";
 
 type Status = "loading" | "ready" | "paying" | "paid" | "unavailable" | "error";
 
-export default function PayPalTicketButton({ showtimeId }: { showtimeId: string }) {
+// Pass showtimeId to create a one-seat order, or orderId to pay an order the concierge prepared.
+export default function PayPalTicketButton({ showtimeId, orderId }: { showtimeId?: string; orderId?: string }) {
   const [status, setStatus] = useState<Status>("loading");
   const startRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -32,7 +33,7 @@ export default function PayPalTicketButton({ showtimeId }: { showtimeId: string 
 
       startRef.current = async () => {
         setStatus("paying");
-        const order = fetch("/api/paypal/orders", {
+        const order = orderId ? Promise.resolve({ orderId }) : fetch("/api/paypal/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ showtimeId }),
@@ -47,7 +48,7 @@ export default function PayPalTicketButton({ showtimeId }: { showtimeId: string 
     return () => {
       cancelled = true;
     };
-  }, [showtimeId]);
+  }, [showtimeId, orderId]);
 
   if (status === "paid") return <p className="pp-note pp-ok">Payment received. Your seat is booked.</p>;
   if (status === "unavailable") return <p className="pp-note">PayPal is not available right now.</p>;
