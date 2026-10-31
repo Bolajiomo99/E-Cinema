@@ -96,7 +96,7 @@ func TestTicketsAndChatLimits(t *testing.T) {
 	ctx := context.Background()
 	if _, err := p.Exec(ctx, `DELETE FROM room_messages WHERE showtime_id = 'room-test';
 	  DELETE FROM holds WHERE showtime_id = 'room-test';
-	  INSERT INTO showtimes VALUES ('room-test', 'F', 'S', now() + interval '1 hour', 90, 10, 500, 'USD') ON CONFLICT (id) DO NOTHING`); err != nil {
+	  INSERT INTO showtimes VALUES ('room-test', 'F', 'S', now() + interval '1 hour', 90, 10, 500, 'USD') ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at`); err != nil {
 		t.Fatal(err)
 	}
 	buyer := account(t, p, "room-buyer@example.com")

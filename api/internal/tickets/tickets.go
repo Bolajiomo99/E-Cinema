@@ -199,3 +199,42 @@ func (st Store) ReleaseMine(ctx context.Context, accountID, holdID string) error
 	}
 	return err
 }
+
+// Upcoming is the paid audience of a screening that has not started yet, by home country.
+type Upcoming struct {
+	ShowtimeID string         `json:"showtimeId"`
+	Seats      int            `json:"seats"`
+	ByCountry  map[string]int `json:"byCountry"`
+}
+
+// Tonight counts paid seats for screenings starting within the next 24 hours, by the buyer's
+// home country. Seats from accounts with no country set count in Seats only. Counts, never people.
+func (st Store) Tonight(ctx context.Context) ([]Upcoming, error) {
+	rows, err := st.DB.Query(ctx, `SELECT h.showtime_id, COALESCE(a.country, ''), SUM(h.seats)
+	  FROM holds h
+	  JOIN showtimes s ON s.id = h.showtime_id
+	  LEFT JOIN accounts a ON a.id = h.account_id
+	  WHERE h.status = 'paid' AND s.starts_at > now() AND s.starts_at <= now() + interval '24 hours'
+	  GROUP BY 1, 2 ORDER BY 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Upcoming{}
+	for rows.Next() {
+		var id, cc string
+		var n int
+		if err := rows.Scan(&id, &cc, &n); err != nil {
+			return nil, err
+		}
+		if len(out) == 0 || out[len(out)-1].ShowtimeID != id {
+			out = append(out, Upcoming{ShowtimeID: id, ByCountry: map[string]int{}})
+		}
+		u := &out[len(out)-1]
+		u.Seats += n
+		if cc != "" {
+			u.ByCountry[cc] += n
+		}
+	}
+	return out, rows.Err()
+}

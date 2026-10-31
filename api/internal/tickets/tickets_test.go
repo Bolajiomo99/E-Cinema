@@ -213,3 +213,56 @@ func TestLateEntryUntilTheEnd(t *testing.T) {
 		t.Fatalf("hold after the end: %v, want ErrEnded", err)
 	}
 }
+
+func TestTonightCountsPaidSeatsByCountry(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "tonight-test", 20)
+	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() + interval '3 hours' WHERE id = 'tonight-test'`); err != nil {
+		t.Fatal(err)
+	}
+	acct := func(email, cc string) string {
+		var id string
+		s.DB.Exec(ctx, `DELETE FROM accounts WHERE email = $1`, email)
+		if err := s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash, country) VALUES ($1, 'T', '!', NULLIF($2, '')) RETURNING id`, email, cc).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	pay := func(account string, seats int, paid bool) {
+		h, err := s.Hold(ctx, "tonight-test", "v-"+account, seats, account)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !paid {
+			return
+		}
+		order := "ORDER-" + h.ID
+		if err := s.AttachOrder(ctx, h.ID, order); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.MarkPaid(ctx, order, "CAP-"+h.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pay(acct("tn-ng@example.com", "NG"), 2, true)
+	pay(acct("tn-ng2@example.com", "NG"), 1, true)
+	pay(acct("tn-ke@example.com", "KE"), 1, true)
+	pay(acct("tn-none@example.com", ""), 1, true)
+	pay(acct("tn-held@example.com", "GB"), 3, false) // not paid: not counted
+
+	list, err := s.Tonight(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range list {
+		if u.ShowtimeID != "tonight-test" {
+			continue
+		}
+		if u.Seats != 5 || u.ByCountry["NG"] != 3 || u.ByCountry["KE"] != 1 || len(u.ByCountry) != 2 {
+			t.Fatalf("tonight = %+v, want 5 seats, NG:3 KE:1", u)
+		}
+		return
+	}
+	t.Fatal("tonight-test missing from Tonight()")
+}

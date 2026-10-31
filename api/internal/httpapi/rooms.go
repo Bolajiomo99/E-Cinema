@@ -82,5 +82,15 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 		w.Header().Set("Cache-Control", "public, max-age=5")
 		writeJSON(w, http.StatusOK, s.Hub.Stats())
 	})
+	// Paid seats for the next 24 hours by home country, for the world map's "Tonight" view.
+	mux.HandleFunc("GET /v1/audience/tonight", func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.Tickets.Tonight(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=30")
+		writeJSON(w, http.StatusOK, list)
+	})
 	mux.Handle("GET /v1/rooms/{id}/live", s.Hub.Live(s.Rooms, s.Passes, s.AllowedOrigins))
 }
