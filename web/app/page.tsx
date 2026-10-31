@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import AskAIButton from "@/components/ai/AskAIButton";
 import Countdown from "@/components/Countdown";
 import HeroWhen from "@/components/landing/HeroWhen";
@@ -75,7 +74,6 @@ const FOOTER: [string, [string, string][]][] = [
 
 export default async function Home() {
   const [me, seats, h] = await Promise.all([currentAccount(), liveSeats(), headers()]);
-  if (me) redirect("/home");
   const { list, hero } = lineupNow();
   const heroSeats = seats[hero.id];
   const country = h.get("cf-ipcountry");
@@ -106,7 +104,7 @@ export default async function Home() {
             <AskAIButton />
             <span className="lp-chip static">{country && country !== "XX" ? `${country} · ` : ""}English</span>
             {me ? (
-              <Link href="/account/devices" className="lp-btn sm ghost">My account</Link>
+              <Link href="/home" className="lp-btn sm">My home</Link>
             ) : (
               <>
                 <Link href="/signin" className="lp-btn sm ghost">Sign in</Link>
