@@ -1,0 +1,40 @@
+name: Dub sample
+
+# Runs the dubFilm Render Workflow task on a short sample (3 lines) to check translation, ElevenLabs and R2 end to end.
+on:
+  workflow_dispatch:
+    inputs:
+      languages:
+        description: Languages, comma separated
+        default: fr,yo,ko
+
+permissions:
+  contents: read
+
+jobs:
+  dub:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start dubFilm and wait for it
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
+          LANGS: ${{ inputs.languages || 'fr,yo,ko' }}
+        run: |
+          set -euo pipefail
+          api() { curl -fsS -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" "$@"; }
+          body=$(jq -n --rawfile vtt workflows/samples/red-earth-trailer.vtt --arg langs "$LANGS" \
+            '{task: "e-cinema-workflows/dubFilm", input: ["red-earth-sample", $vtt, ($langs | split(",")) ]}')
+          run=$(api -X POST https://api.render.com/v1/task-runs -d "$body" | jq -r .id)
+          echo "task run $run"
+          for i in $(seq 1 150); do
+            res=$(api "https://api.render.com/v1/task-runs/$run")
+            status=$(jq -r .status <<<"$res")
+            case "$status" in
+              completed|succeeded) jq -c .results <<<"$res"; jq -e '.results[0].failed | length == 0' <<<"$res" >/dev/null; exit $? ;;
+              failed|canceled) echo "dubFilm $status: $(jq -r .error <<<"$res")"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "dubFilm still running"; exit 1
