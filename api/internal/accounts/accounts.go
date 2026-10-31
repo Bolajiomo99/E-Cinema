@@ -162,6 +162,15 @@ func (s Store) SignUp(ctx context.Context, email, name, password, device string)
 
 // SignIn checks the password and signs in on this device, signing out the oldest devices beyond MaxDevices.
 func (s Store) SignIn(ctx context.Context, email, password, device string) (Account, Session, error) {
+	// A verified mobile number works in place of the email.
+	if _, isEmail := normEmail(email); !isEmail {
+		if p, ok := NormalizePhone(email); ok {
+			var found string
+			if err := s.DB.QueryRow(ctx, `SELECT email FROM accounts WHERE phone = $1 AND phone_verified_at IS NOT NULL`, p).Scan(&found); err == nil {
+				email = found
+			}
+		}
+	}
 	email, ok := normEmail(email)
 	if !ok {
 		checkPassword(dummyHash, password)
