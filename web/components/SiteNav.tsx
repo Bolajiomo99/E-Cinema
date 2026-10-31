@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AskAIButton from "@/components/ai/AskAIButton";
 
 export default function SiteNav({ signedIn }: { signedIn: boolean }) {
   return (
@@ -10,8 +11,9 @@ export default function SiteNav({ signedIn }: { signedIn: boolean }) {
         <Link href="/concierge">Concierge</Link>
       </div>
       <div className="nav-actions">
+        <AskAIButton />
         {signedIn ? (
-          <Link href="/account/devices" className="nav-btn">My account</Link>
+          <Link href="/home" className="nav-btn">My home</Link>
         ) : (
           <>
             <Link href="/signin" className="nav-btn">Sign in</Link>

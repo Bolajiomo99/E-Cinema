@@ -30,7 +30,7 @@ function matches(f: Filter, t: Tile, now: number) {
   return t.category === f;
 }
 
-export default function PremiereStrip({ tiles }: { tiles: Tile[] }) {
+export default function PremiereStrip({ tiles, eyebrow = "THIS WEEK ONLY", title = "Premieres near your time zone" }: { tiles: Tile[]; eyebrow?: string; title?: string }) {
   const [now, setNow] = useState<number | null>(null);
   const [filter, setFilter] = useState<Filter>("All");
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function PremiereStrip({ tiles }: { tiles: Tile[] }) {
     <>
       <div className="lp-head">
         <div className="lp-titles">
-          <p className="lp-eyebrow">THIS WEEK ONLY</p>
-          <h2>Premieres near your time zone</h2>
+          <p className="lp-eyebrow">{eyebrow}</p>
+          <h2>{title}</h2>
         </div>
         <div className="lp-chips" role="group" aria-label="Filter premieres">
           {FILTERS.map((f) => (

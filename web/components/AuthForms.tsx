@@ -133,7 +133,7 @@ export function JoinFlow({ startAt = 1, identityStatus }: { startAt?: 1 | 2; ide
       </section>
       {error && <p className="pp-note pp-err" role="alert">{error}</p>}
       <p className="muted small">Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>
-      <button className="cta" onClick={() => router.push("/checkout")}>{verified ? "Continue" : "Skip for now"}</button>
+      <button className="cta" onClick={() => router.push("/home")}>{verified ? "Continue" : "Skip for now"}</button>
     </div>
   );
 }
@@ -146,7 +146,7 @@ const SIGNIN_ERRORS: Record<string, string> = {
 
 // Only same-site paths are allowed as a destination, so a link cannot bounce people to another site.
 function safeNext(next?: string) {
-  return next && /^\/(?![/\\])[\w\-/.?=&#%]*$/.test(next) ? next : "/checkout";
+  return next && /^\/(?![/\\])[\w\-/.?=&#%]*$/.test(next) ? next : "/home";
 }
 
 export function SignInForm({ initialError, next }: { initialError?: string; next?: string }) {
