@@ -89,7 +89,7 @@ jobs:
           curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
           echo "passkeys ok"
           # Google sign-in: once the client secrets exist, start must hand off to Google.
-          if [ -n "$GOOGLE_CLIENT_ID" ]; then
+          if [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ]; then
             loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://e-cinema.net/api/auth/google/start")
             echo "google start -> ${loc%%\?*}"
             echo "$loc" | grep -q '^https://accounts.google.com/' || exit 1
