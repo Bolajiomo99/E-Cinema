@@ -136,6 +136,12 @@ jobs:
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/parties/$code/end" >/dev/null
           curl -fsS "$web/classics" | grep -q "Bring back a classic"
           echo "checkout, live, parties and classics ok"
+          curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
+          curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
+          found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
+          echo "search -> $found" | head -c 400; echo
+          echo "$found" | grep -q '"hits":\[{"id"'
+          echo "browse, film detail and search ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
