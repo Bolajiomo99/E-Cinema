@@ -49,6 +49,8 @@ export default async function Home() {
   const [l1, ...l2] = hero.film.toUpperCase().split(" ");
   const heroLines = l2.length > 1 ? [`${l1} ${l2[0]}`, l2.slice(1).join(" ")] : [l1, l2.join(" ")];
   const first = me.name.split(" ")[0] || "there";
+  // Accounts made in the last day are greeted as new, not "welcome back".
+  const isNew = Date.now() - Date.parse(me.createdAt) < 24 * 3600_000;
 
   return (
     <TicketsProvider initial={tickets}>
@@ -76,7 +78,7 @@ export default async function Home() {
           <div className="lp-hero-copy hm-hero-copy">
             <div className="lp-badges">
               {live ? <span className="lp-badge live"><i />LIVE NOW</span> : <span className="lp-badge live"><i />WORLD PREMIERE</span>}
-              <span className="lp-badge outline">WELCOME BACK, {first.toUpperCase()}</span>
+              <span className="lp-badge outline">{isNew ? "WELCOME" : "WELCOME BACK"}, {first.toUpperCase()}</span>
             </div>
             <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
             <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. Screens once, dubbed live in ${hero.dubs ?? 3} languages.`}</p>
