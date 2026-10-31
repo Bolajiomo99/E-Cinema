@@ -16,8 +16,8 @@ export default function AskAIButton() {
   }, []);
   return (
     <>
-      <button type="button" className="ai-pill" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <span className="ai-spark" aria-hidden>✦</span>Ask AI<kbd>⌘K</kbd>
+      <button type="button" className="ai-pill" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label="Ask E-Cinema AI">
+        <span className="ai-spark" aria-hidden>✦</span><span className="ai-pill-label">Ask AI</span><kbd>⌘K</kbd>
       </button>
       {open && (
         <div className="ai-drawer-wrap" onClick={() => setOpen(false)}>

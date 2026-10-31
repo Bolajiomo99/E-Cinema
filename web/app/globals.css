@@ -592,3 +592,19 @@ body:has(.lp) { background: #0a0a0c; }
   .hm-week { grid-template-columns: repeat(7, 150px); }
 }
 @media (max-width: 720px) { .exec { padding: 32px 16px; } }
+
+/* Phone and tablet tab bar (Figma Android "Bottom nav" 23:105) */
+.tabbar { display: none; }
+@media (max-width: 900px) {
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: space-around; align-items: flex-start; height: calc(76px + env(safe-area-inset-bottom)); padding: 9px 8px env(safe-area-inset-bottom); background: rgba(10,10,12,.95); border-top: 1px solid #26262e; backdrop-filter: blur(12px); }
+  .tabbar > a, .tabbar > span { position: relative; width: 72px; height: 40px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #6e6e7a; font: 700 10px/14px Manrope, sans-serif; text-decoration: none; }
+  .tabbar > a.on { color: #f4f4f6; }
+  .tabbar > span.off { opacity: .55; cursor: default; }
+  .tabbar em { position: absolute; top: -6px; right: 6px; font: 700 8px/12px Manrope, sans-serif; font-style: normal; color: #fff; background: #e50914; border-radius: 4px; padding: 0 4px; }
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 480px) {
+  .ai-pill .ai-pill-label { display: none; }
+  .lp-nav { padding: 0 16px; }
+  .lp-nav-right { gap: 8px; }
+}
