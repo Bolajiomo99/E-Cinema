@@ -97,9 +97,9 @@ export default async function Home() {
             </div>
             <div className="lp-nav-right">
               <AskAIButton />
-              <span className="hm-icon soon" title="Search is coming soon. Ask AI can find any film for you now." aria-label="Search, coming soon" role="img">
+              <Link href="/search" className="hm-icon" aria-label="Search">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="10.08" cy="10.08" r="7.33" /><path d="m19.25 19.25-3.94-3.94" /></svg>
-              </span>
+              </Link>
               <span className="hm-icon soon" title="Notifications are coming soon" aria-label="Notifications, coming soon" role="img">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5.5 7.33a5.5 5.5 0 0 1 11 0c0 6.42 2.75 8.25 2.75 8.25H2.75S5.5 13.75 5.5 7.33Z" /></svg>
               </span>
