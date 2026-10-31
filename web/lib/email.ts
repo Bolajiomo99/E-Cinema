@@ -9,7 +9,7 @@ const site = () => process.env.WEB_URL || "https://e-cinema.net";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const FONT = "Manrope,'Segoe UI',Helvetica,Arial,sans-serif";
 
-function layout(preview: string, title: string, body: string) {
+function layout(preview: string, title: string, body: string, tag = "SECURITY", footer?: string) {
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;background:#ececef;font-family:${FONT};color:#16161a">
 <div style="display:none;max-height:0;overflow:hidden">${esc(preview)}</div>
@@ -17,13 +17,13 @@ function layout(preview: string, title: string, body: string) {
 <table role="presentation" width="100%" style="max-width:600px;background:#ffffff" cellpadding="0" cellspacing="0">
 <tr><td style="background:#0b0b0d;padding:24px 28px"><table role="presentation" width="100%"><tr>
 <td><img src="${site()}/email/logo.png" width="116" height="34" alt="E-CINEMA" style="display:block;border:0"></td>
-<td align="right" style="font:700 12px/1 ${FONT};letter-spacing:1px;color:#a6a6b0">SECURITY</td></tr></table></td></tr>
+<td align="right" style="font:700 12px/1 ${FONT};letter-spacing:1px;color:#a6a6b0">${esc(tag)}</td></tr></table></td></tr>
 <tr><td style="padding:36px 36px 32px">
 <h1 style="margin:0 0 20px;font:800 28px/1.2 ${FONT};color:#16161a">${esc(title)}</h1>
 ${body}
 </td></tr>
 <tr><td style="background:#f4f4f6;padding:24px 36px;font:500 12px/1.6 ${FONT};color:#7a7a84">
-<p style="margin:0 0 8px">This is a service message about your account. You cannot unsubscribe from security, payment and order emails.</p>
+<p style="margin:0 0 8px">${footer ? esc(footer) : "This is a service message about your account. You cannot unsubscribe from security, payment and order emails."}</p>
 <p style="margin:0 0 8px">Online Cinema Ltd, trading as E-Cinema · Lagos, Nigeria · e-cinema.net · Help: help@e-cinema.net</p>
 <p style="margin:0">We never ask for your password, code or card number by email, phone or chat.</p>
 </td></tr></table></td></tr></table></body></html>`;
@@ -41,12 +41,12 @@ const facts = (rows: [string, string][]) =>
     .map(([k, v], i) => `<tr style="background:${i % 2 ? "#ffffff" : "#f4f4f6"}"><td style="padding:12px 16px;font:500 14px ${FONT};color:#7a7a84">${esc(k)}</td><td align="right" style="padding:12px 16px;font:600 14px ${FONT};color:#16161a">${esc(v)}</td></tr>`)
     .join("")}</table>`;
 
-async function send(to: string, subject: string, html: string, text: string) {
+async function send(to: string, subject: string, html: string, text: string, from = FROM) {
   if (!emailEnabled) throw new Error("Email is not switched on here");
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [to], subject, html, text }),
+    body: JSON.stringify({ from, to: [to], subject, html, text }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error(`Email failed (${res.status})`);
@@ -126,5 +126,22 @@ export async function sendDeletionScheduled(to: string, deleteAfter: string, tic
       button(`${site()}/signin`, "Keep my account") +
       secondary(`${site()}/signin?next=${encodeURIComponent("/settings/privacy")}`, "Download my data")),
     `Your E-Cinema account will be deleted on ${day}. Sign in before then to keep it: ${site()}/signin`,
+  );
+}
+
+// Watch party invite (Figma "Web / Create watch party", 31:934).
+export async function sendPartyInvite(to: string, host: string, party: string, film: string, when: string, link: string) {
+  await send(
+    to,
+    `${host} invited you to watch ${film} together`,
+    layout(`${party} · ${when}`, `Join ${party}`,
+      p(`${esc(host)} is watching the world premiere of <b>${esc(film)}</b> on E-Cinema and wants you in the party.`) +
+      facts([["Premiere", film], ["When", when], ["Host", host]]) +
+      button(link, "Join the watch party") +
+      p("Each guest gets their own seat. The film plays at the same second for everyone, with dubs and subtitles in your language."),
+      "WATCH PARTY",
+      `You got this email because ${host} added your address to a watch party. We only email you again if someone invites you.`),
+    `${host} invited you to ${party} for the premiere of ${film} (${when}). Join: ${link}`,
+    "E-Cinema <parties@e-cinema.net>",
   );
 }
