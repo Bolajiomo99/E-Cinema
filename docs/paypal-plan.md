@@ -28,3 +28,15 @@ Docs: https://github.com/paypal/AI-Toolkit , https://docs.paypal.ai/ , https://d
 - Developer dashboard (sandbox accounts and apps): https://developer.paypal.com/dashboard/
 - Sandbox guide: https://github.com/paypaldev/getting-started-with-paypal-sandbox
 - Credentials are in GitHub secrets `PAYPAL_CLIENT_ID_SANDBOX`, `PAYPAL_CLIENT_SECRET_SANDBOX`, `PAYPAL_CLIENT_ID_LIVE`, `PAYPAL_CLIENT_SECRET_LIVE`. Build and test against sandbox only until launch.
+
+## Built so far (2026-10-31)
+
+| Piece | Where | Status |
+| --- | --- | --- |
+| Server PayPal client (sandbox by default) | `web/lib/paypal.ts` | Done |
+| Create and capture order routes, prices from the server catalog | `web/app/api/paypal/` | Done |
+| Checkout page with the PayPal JS SDK v6 button | `web/app/checkout/page.tsx` | Done |
+| E-Cinema Concierge (Claude plans, prepares a PayPal order; the viewer approves) | `web/lib/concierge.ts`, `web/app/concierge/page.tsx` | Done |
+| CI proof against the PayPal sandbox and Claude | `.github/workflows/secrets-check.yml` (`paypal-checkout` job) | Runs on every push |
+
+Next: webhooks (payment captured, refunds, disputes), Vault spending cap so the concierge can pay small amounts on its own, Subscriptions for plans, Payouts to studios.
