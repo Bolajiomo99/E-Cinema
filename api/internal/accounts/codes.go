@@ -272,34 +272,7 @@ func (s Store) ResetPassword(ctx context.Context, token, password, device string
 	if err != nil {
 		return ResetResult{}, err
 	}
-	rows, err := tx.Query(ctx, `(SELECT password_hash FROM accounts WHERE id = $1)
-		UNION ALL (SELECT password_hash FROM password_history WHERE account_id = $1 ORDER BY created_at DESC LIMIT 4)`, acctID)
-	if err != nil {
-		return ResetResult{}, err
-	}
-	var old []string
-	for rows.Next() {
-		var h string
-		if err := rows.Scan(&h); err != nil {
-			rows.Close()
-			return ResetResult{}, err
-		}
-		old = append(old, h)
-	}
-	rows.Close()
-	for _, h := range old {
-		if checkPassword(h, password) {
-			return ResetResult{}, ErrReusedPass
-		}
-	}
-	hash, err := hashPassword(password)
-	if err != nil {
-		return ResetResult{}, err
-	}
-	if _, err := tx.Exec(ctx, `INSERT INTO password_history (account_id, password_hash) SELECT id, password_hash FROM accounts WHERE id = $1 AND password_hash NOT LIKE '!%'`, acctID); err != nil {
-		return ResetResult{}, err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE accounts SET password_hash = $2 WHERE id = $1`, acctID, hash); err != nil {
+	if err := setPassword(ctx, tx, acctID, password); err != nil {
 		return ResetResult{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE auth_codes SET used_at = now() WHERE id = $1`, codeID); err != nil {

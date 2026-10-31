@@ -74,6 +74,10 @@ type Session struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 	// SignedOut counts older devices signed out to stay within MaxDevices.
 	SignedOut int `json:"signedOut"`
+	// Restored is set when signing in cancelled a scheduled deletion.
+	Restored bool `json:"restored,omitempty"`
+	// Alert asks the web app to send a "new sign-in" email: login alerts are on and this device is new.
+	Alert bool `json:"alert,omitempty"`
 }
 
 type Device struct {
@@ -197,6 +201,16 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 		}
 		return Account{}, Session{}, ErrBadLogin
 	}
+	var twoStep bool
+	if err := s.DB.QueryRow(ctx, `SELECT two_step FROM accounts WHERE email = $1`, email).Scan(&twoStep); err != nil {
+		return Account{}, Session{}, err
+	}
+	if twoStep {
+		if _, err := s.DB.Exec(ctx, `DELETE FROM sign_in_failures WHERE email = $1`, email); err != nil {
+			return Account{}, Session{}, err
+		}
+		return Account{Email: email}, Session{}, ErrSecondStep
+	}
 	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return Account{}, Session{}, err
@@ -219,8 +233,16 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 // startSession must run inside a transaction holding the account row, so two
 // simultaneous sign-ins cannot both slip under the device limit.
 func startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Session, error) {
-	if _, err := tx.Exec(ctx, `SELECT 1 FROM accounts WHERE id = $1 FOR UPDATE`, accountID); err != nil {
+	var restored, alerts, known bool
+	if err := tx.QueryRow(ctx, `SELECT delete_after IS NOT NULL, login_alerts,
+		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2)
+		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device)).Scan(&restored, &alerts, &known); err != nil {
 		return Session{}, err
+	}
+	if restored {
+		if _, err := tx.Exec(ctx, `UPDATE accounts SET delete_after = NULL WHERE id = $1`, accountID); err != nil {
+			return Session{}, err
+		}
 	}
 	token, err := newToken()
 	if err != nil {
@@ -242,7 +264,7 @@ func startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Ses
 	if err != nil {
 		return Session{}, err
 	}
-	return Session{Token: token, ExpiresAt: expires, SignedOut: int(tag.RowsAffected())}, nil
+	return Session{Token: token, ExpiresAt: expires, SignedOut: int(tag.RowsAffected()), Restored: restored, Alert: alerts && !known}, nil
 }
 
 // Authenticate returns the account behind a session token and marks the device as seen.
