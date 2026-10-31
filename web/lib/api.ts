@@ -62,3 +62,16 @@ export async function myTickets(session?: string): Promise<MyTicket[]> {
 export async function releaseHold(session: string, holdId: string) {
   if (apiEnabled) await viewer("DELETE", `/v1/me/holds/${encodeURIComponent(holdId)}`, session);
 }
+
+export type LiveStat = { showtimeId: string; watching: number; countries: number };
+
+// Audience numbers for every room with people in it (public, counts only).
+export async function liveStats(): Promise<LiveStat[]> {
+  if (!base) return [];
+  try {
+    const r = await fetch(`${base}/v1/live`, { signal: AbortSignal.timeout(2500), cache: "no-store" });
+    return r.ok ? ((await r.json()) as LiveStat[]) : [];
+  } catch {
+    return [];
+  }
+}
