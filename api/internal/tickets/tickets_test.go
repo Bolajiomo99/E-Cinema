@@ -51,7 +51,7 @@ func TestNeverOversells(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := s.Hold(context.Background(), "race-test", "viewer", 1)
+			_, err := s.Hold(context.Background(), "race-test", "viewer", 1, "")
 			switch {
 			case err == nil:
 				won.Add(1)
@@ -76,7 +76,7 @@ func TestPaidIsIdempotentAndExpiredHoldsFree(t *testing.T) {
 	s := store(t)
 	ctx := context.Background()
 	newShow(t, s, "pay-test", 3)
-	h, err := s.Hold(ctx, "pay-test", "viewer", 2)
+	h, err := s.Hold(ctx, "pay-test", "viewer", 2, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,16 +96,16 @@ func TestPaidIsIdempotentAndExpiredHoldsFree(t *testing.T) {
 		t.Fatalf("different capture should be refused, got %v", err)
 	}
 
-	h2, err := s.Hold(ctx, "pay-test", "viewer2", 1)
+	h2, err := s.Hold(ctx, "pay-test", "viewer2", 1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1); !errors.Is(err, tickets.ErrSoldOut) {
+	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1, ""); !errors.Is(err, tickets.ErrSoldOut) {
 		t.Fatalf("want sold out, got %v", err)
 	}
 	// Expire the second hold: its seat comes back.
 	s.DB.Exec(ctx, `UPDATE holds SET expires_at = now() - interval '1 second' WHERE id = $1`, h2.ID)
-	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1); err != nil {
+	if _, err := s.Hold(ctx, "pay-test", "viewer3", 1, ""); err != nil {
 		t.Fatalf("expired hold should free its seat: %v", err)
 	}
 }
@@ -114,11 +114,11 @@ func TestSeatLimits(t *testing.T) {
 	s := store(t)
 	newShow(t, s, "limit-test", 100)
 	for _, n := range []int{0, 11, -1} {
-		if _, err := s.Hold(context.Background(), "limit-test", "v", n); !errors.Is(err, tickets.ErrBadSeats) {
+		if _, err := s.Hold(context.Background(), "limit-test", "v", n, ""); !errors.Is(err, tickets.ErrBadSeats) {
 			t.Fatalf("seats %d: want ErrBadSeats, got %v", n, err)
 		}
 	}
-	if _, err := s.Hold(context.Background(), "missing", "v", 1); !errors.Is(err, tickets.ErrNotFound) {
+	if _, err := s.Hold(context.Background(), "missing", "v", 1, ""); !errors.Is(err, tickets.ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
 	}
 }

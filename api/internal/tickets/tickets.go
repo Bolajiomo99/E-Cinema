@@ -72,7 +72,8 @@ func (st Store) Get(ctx context.Context, id string) (Showtime, error) {
 
 // Hold reserves seats for HoldFor. The showtime row is locked, so concurrent buyers queue
 // on it and the availability check plus insert happen as one step.
-func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats int) (Hold, error) {
+// accountID links the seats to a signed-in viewer; it is empty for guest holds.
+func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats int, accountID string) (Hold, error) {
 	if seats < 1 || seats > 10 {
 		return Hold{}, ErrBadSeats
 	}
@@ -95,9 +96,9 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 			return ErrSoldOut
 		}
 		h = Hold{ShowtimeID: showtimeID, Seats: seats, TotalCents: price * seats, Currency: currency}
-		return tx.QueryRow(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, expires_at)
-		  VALUES ($1, $2, $3, now() + $4::interval) RETURNING id, expires_at`,
-			showtimeID, seats, viewerRef, HoldFor.String()).Scan(&h.ID, &h.ExpiresAt)
+		return tx.QueryRow(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, expires_at, account_id)
+		  VALUES ($1, $2, $3, now() + $4::interval, NULLIF($5, '')::uuid) RETURNING id, expires_at`,
+			showtimeID, seats, viewerRef, HoldFor.String(), accountID).Scan(&h.ID, &h.ExpiresAt)
 	})
 	return h, err
 }
@@ -122,6 +123,14 @@ func (st Store) MarkPaid(ctx context.Context, orderID, captureID string) error {
 		return ErrNoHold
 	}
 	return err
+}
+
+// HasTicket reports whether the account has paid for at least one seat at the screening.
+func (st Store) HasTicket(ctx context.Context, showtimeID, accountID string) (bool, error) {
+	var ok bool
+	err := st.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM holds
+	  WHERE showtime_id = $1 AND account_id = $2 AND status = 'paid')`, showtimeID, accountID).Scan(&ok)
+	return ok, err
 }
 
 // Release frees a hold early, for example when the viewer cancels in PayPal.

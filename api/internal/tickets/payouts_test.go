@@ -11,7 +11,7 @@ import (
 func paidSeats(t *testing.T, s tickets.Store, id string, seats int, order string) {
 	t.Helper()
 	ctx := context.Background()
-	h, err := s.Hold(ctx, id, "viewer", seats)
+	h, err := s.Hold(ctx, id, "viewer", seats, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestStudioPayout(t *testing.T) {
 	s.DB.Exec(ctx, `DELETE FROM holds WHERE paypal_order_id IN ('PAYOUTA', 'PAYOUTB')`)
 	paidSeats(t, s, "payout-test", 2, "PAYOUTA")
 	paidSeats(t, s, "payout-test", 1, "PAYOUTB")
-	if _, err := s.Hold(ctx, "payout-test", "viewer", 4); err != nil { // unpaid hold must not count
+	if _, err := s.Hold(ctx, "payout-test", "viewer", 4, ""); err != nil { // unpaid hold must not count
 		t.Fatal(err)
 	}
 
