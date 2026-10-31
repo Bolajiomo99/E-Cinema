@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 )
@@ -59,6 +60,38 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}))
+	mux.HandleFunc("GET /v1/me/profile", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, err := s.Accounts.GetProfile(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+	}))
+	mux.HandleFunc("PUT /v1/me/profile", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b accounts.Profile
+		if !decode(w, r, &b) {
+			return
+		}
+		p, err := s.Accounts.SaveProfile(r.Context(), a.ID, b, time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+	}))
+	mux.HandleFunc("PUT /v1/me/plan", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ Plan string }
+		if !decode(w, r, &b) {
+			return
+		}
+		p, err := s.Accounts.ChoosePlan(r.Context(), a.ID, b.Plan)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
 	}))
 	mux.HandleFunc("GET /v1/devices", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		list, err := s.Accounts.Devices(r.Context(), a.ID, sid)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
@@ -271,5 +272,29 @@ func TestSignInExternal(t *testing.T) {
 	}
 	if _, _, _, err := s.SignInExternal(ctx, "google", "g-2", "x@example.com", false, "", "x"); !errors.Is(err, accounts.ErrBadInput) {
 		t.Fatalf("unverified email: %v", err)
+	}
+}
+
+func TestProfileAndPlan(t *testing.T) {
+	s, _ := store(t)
+	ctx := context.Background()
+	a, _, _ := s.SignUp(ctx, "prof@example.com", "Prof", pw, "x")
+	now := time.Date(2026, 10, 31, 0, 0, 0, 0, time.UTC)
+	p, err := s.SaveProfile(ctx, a.ID, accounts.Profile{Country: "ng", BirthDate: "1998-03-14", Gender: "female", AppLanguage: "en", AudioLanguage: "yo", ContactPhone: "0803 555 0142"}, now)
+	if err != nil || p.Country != "NG" || p.ContactPhone != "+2348035550142" || p.Plan != "free" || p.PlanStatus != "active" {
+		t.Fatalf("save: %v %+v", err, p)
+	}
+	if _, err := s.SaveProfile(ctx, a.ID, accounts.Profile{BirthDate: "2015-01-01"}, now); !errors.Is(err, accounts.ErrBadInput) {
+		t.Fatalf("under 13: %v", err)
+	}
+	if _, err := s.SaveProfile(ctx, a.ID, accounts.Profile{Country: "Nigeria"}, now); !errors.Is(err, accounts.ErrBadInput) {
+		t.Fatalf("bad country: %v", err)
+	}
+	p, err = s.ChoosePlan(ctx, a.ID, "pro")
+	if err != nil || p.Plan != "pro" || p.PlanStatus != "awaiting_payment" || p.AudioLanguage != "yo" {
+		t.Fatalf("plan: %v %+v", err, p)
+	}
+	if _, err := s.ChoosePlan(ctx, a.ID, "gold"); !errors.Is(err, accounts.ErrBadInput) {
+		t.Fatalf("bad plan: %v", err)
 	}
 }
