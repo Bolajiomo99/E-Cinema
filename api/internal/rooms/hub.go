@@ -31,9 +31,35 @@ type client struct {
 type Hub struct {
 	mu    sync.Mutex
 	rooms map[string]map[*client]struct{}
+	chat  map[string][]chatTick // recent messages per room, for the chat heat map
 }
 
-func NewHub() *Hub { return &Hub{rooms: map[string]map[*client]struct{}{}} }
+type chatTick struct {
+	at      time.Time
+	country string
+}
+
+// ChatWindow is how far back the chat heat looks.
+const ChatWindow = 10 * time.Minute
+
+func NewHub() *Hub {
+	return &Hub{rooms: map[string]map[*client]struct{}{}, chat: map[string][]chatTick{}}
+}
+
+// noteChat records that someone from country sent a message in room.
+func (h *Hub) noteChat(room, country string, now time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.chat[room] = append(pruneTicks(h.chat[room], now), chatTick{at: now, country: country})
+}
+
+func pruneTicks(ts []chatTick, now time.Time) []chatTick {
+	i := 0
+	for i < len(ts) && now.Sub(ts[i].at) > ChatWindow {
+		i++
+	}
+	return ts[i:]
+}
 
 func (h *Hub) join(room string, c *client) int {
 	h.mu.Lock()
@@ -70,12 +96,23 @@ type Stat struct {
 	Countries  int    `json:"countries"`
 	// ByCountry counts distinct viewers per ISO country code. Country level only, never a city.
 	ByCountry map[string]int `json:"byCountry"`
+	// ChatByCountry counts messages per country over the last ChatWindow.
+	ChatByCountry map[string]int `json:"chatByCountry"`
 }
 
 // Stats lists every room with someone in it. Two tabs from one account count once.
-func (h *Hub) Stats() []Stat {
+func (h *Hub) Stats() []Stat { return h.statsAt(time.Now()) }
+
+func (h *Hub) statsAt(now time.Time) []Stat {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	for room, ts := range h.chat {
+		if ts = pruneTicks(ts, now); len(ts) == 0 || h.rooms[room] == nil {
+			delete(h.chat, room)
+		} else {
+			h.chat[room] = ts
+		}
+	}
 	out := make([]Stat, 0, len(h.rooms))
 	for room, cs := range h.rooms {
 		people := map[string]bool{}
@@ -93,7 +130,13 @@ func (h *Hub) Stats() []Stat {
 		for cc, who := range seen {
 			by[cc] = len(who)
 		}
-		out = append(out, Stat{ShowtimeID: room, Watching: len(people), Countries: len(by), ByCountry: by})
+		chat := map[string]int{}
+		for _, t := range h.chat[room] {
+			if t.country != "" {
+				chat[t.country]++
+			}
+		}
+		out = append(out, Stat{ShowtimeID: room, Watching: len(people), Countries: len(by), ByCountry: by, ChatByCountry: chat})
 	}
 	return out
 }
@@ -193,6 +236,7 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 					}
 					continue
 				}
+				h.noteChat(room, c.country, time.Now())
 				h.broadcast(room, Event{Type: "msg", Message: &m}, c)
 			case "react":
 				if Reactions[in.Emoji] && time.Since(lastReact) > 400*time.Millisecond {

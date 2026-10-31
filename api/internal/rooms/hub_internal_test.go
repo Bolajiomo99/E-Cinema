@@ -1,6 +1,9 @@
 package rooms
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestHubStatsCountsPeopleAndCountries(t *testing.T) {
 	h := NewHub()
@@ -36,4 +39,17 @@ func got2(h *Hub, room string) *client {
 		return c
 	}
 	return nil
+}
+
+func TestHubChatHeatForgetsOldMessages(t *testing.T) {
+	h := NewHub()
+	h.join("s1", &client{accountID: "a", country: "NG"})
+	now := time.Now()
+	h.noteChat("s1", "NG", now.Add(-ChatWindow-time.Minute))
+	h.noteChat("s1", "NG", now.Add(-time.Minute))
+	h.noteChat("s1", "KE", now)
+	st := h.statsAt(now)
+	if len(st) != 1 || st[0].ChatByCountry["NG"] != 1 || st[0].ChatByCountry["KE"] != 1 {
+		t.Fatalf("chat heat = %+v, want NG:1 KE:1", st)
+	}
 }
