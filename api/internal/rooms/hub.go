@@ -68,6 +68,8 @@ type Stat struct {
 	ShowtimeID string `json:"showtimeId"`
 	Watching   int    `json:"watching"`
 	Countries  int    `json:"countries"`
+	// ByCountry counts distinct viewers per ISO country code. Country level only, never a city.
+	ByCountry map[string]int `json:"byCountry"`
 }
 
 // Stats lists every room with someone in it. Two tabs from one account count once.
@@ -76,14 +78,22 @@ func (h *Hub) Stats() []Stat {
 	defer h.mu.Unlock()
 	out := make([]Stat, 0, len(h.rooms))
 	for room, cs := range h.rooms {
-		people, countries := map[string]bool{}, map[string]bool{}
+		people := map[string]bool{}
+		seen := map[string]map[string]bool{}
 		for c := range cs {
 			people[c.accountID] = true
 			if c.country != "" {
-				countries[c.country] = true
+				if seen[c.country] == nil {
+					seen[c.country] = map[string]bool{}
+				}
+				seen[c.country][c.accountID] = true
 			}
 		}
-		out = append(out, Stat{ShowtimeID: room, Watching: len(people), Countries: len(countries)})
+		by := make(map[string]int, len(seen))
+		for cc, who := range seen {
+			by[cc] = len(who)
+		}
+		out = append(out, Stat{ShowtimeID: room, Watching: len(people), Countries: len(by), ByCountry: by})
 	}
 	return out
 }

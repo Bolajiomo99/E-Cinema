@@ -19,6 +19,9 @@ func TestHubStatsCountsPeopleAndCountries(t *testing.T) {
 	if s := got["s1"]; s.Watching != 3 || s.Countries != 2 {
 		t.Fatalf("s1 = %+v, want 3 people from 2 countries", s)
 	}
+	if by := got["s1"].ByCountry; by["NG"] != 1 || by["IN"] != 1 || len(by) != 2 {
+		t.Fatalf("s1 byCountry = %v, want NG:1 IN:1 (two tabs count once)", by)
+	}
 	if s := got["s2"]; s.Watching != 1 || s.Countries != 1 {
 		t.Fatalf("s2 = %+v", s)
 	}
