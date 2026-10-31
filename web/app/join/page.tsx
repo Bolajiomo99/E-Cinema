@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import JoinFlow, { type Step } from "@/components/signup/JoinFlow";
 import Logo from "@/components/landing/Logo";
+import LocalePicker from "@/components/LocalePicker";
+import { readLocale } from "@/lib/locale";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { googleEnabled } from "@/lib/google";
 import { subscriptionsEnabled } from "@/lib/paypal-subs";
@@ -19,7 +20,7 @@ const ART: Record<number, [string, string]> = {
 };
 
 export default async function JoinPage({ searchParams }: { searchParams: Promise<{ step?: string; plan?: string; failed?: string; cancelled?: string; cycle?: string }> }) {
-  const [me, h, sp] = await Promise.all([currentAccount(), headers(), searchParams]);
+  const [me, loc, sp] = await Promise.all([currentAccount(), readLocale(), searchParams]);
   const asked = Number(sp.step);
   let step: Step = me ? ((asked >= 2 && asked <= 4 ? asked : sp.plan ? 3 : 2) as Step) : 1;
   let profile: { country?: string; contactPhone?: string; plan?: "free" | "student" | "pro" | "vip" | "enterprise"; planStatus?: string; pendingPlan?: "student" | "pro" | "vip" | "enterprise" } | undefined;
@@ -31,8 +32,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
   } else if (sp.step) {
     redirect(sp.plan ? `/join?plan=${encodeURIComponent(sp.plan)}` : "/join");
   }
-  const ip = h.get("cf-ipcountry");
-  const country = profile?.country || (ip && ip !== "XX" && ip !== "T1" ? ip : undefined);
+  const country = profile?.country || loc.country;
   const ready = {
     paypal: subscriptionsEnabled(),
     paystack: Boolean(process.env.PAYSTACK_SECRET_KEY),
@@ -61,7 +61,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
       ) : (
         <header className="su-top">
           <Logo />
-          <span className="lp-chip static">{country ?? "Global"} · English · {cur === "NGN" ? "₦ NGN" : cur === "EUR" ? "€ EUR" : "$ USD"}</span>
+          <span className="su-top-r"><LocalePicker country={loc.country} homeCountry={profile?.country} lang={loc.lang} signedIn={Boolean(me)} /><span className="lp-chip static">{cur === "NGN" ? "₦ NGN" : cur === "EUR" ? "€ EUR" : "$ USD"}</span></span>
         </header>
       )}
       <div className="su-panel">

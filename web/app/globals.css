@@ -1205,3 +1205,20 @@ a.lp-plan:hover .lp-plan-cta { color: #fff; }
   .ok-grid { grid-template-columns: 1fr; gap: 14px; }
   .ok-foot { flex-direction: column; }
 }
+
+/* Country and language picker */
+.loc { position: relative; }
+.loc-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.loc-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: 300px; display: grid; gap: 12px; padding: 18px; border-radius: 14px; border: 1px solid #2a2a32; background: #141418; box-shadow: 0 18px 50px rgba(0,0,0,.55); color: #f4f4f6; text-align: start; }
+.loc-pop strong { font: 700 15px/22px Manrope, sans-serif; }
+.loc-field { display: grid; gap: 6px; font: 500 12px/16px Manrope, sans-serif; color: #a6a6b0; }
+.loc-field select { height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid #2a2a32; background: #0d0d10; color: #f4f4f6; font: 500 14px Manrope, sans-serif; }
+.loc-note { margin: 0; font: 500 12px/18px Manrope, sans-serif; color: #8c8c96; }
+.loc-note a { color: #f4f4f6; text-decoration: underline; }
+@media (max-width: 640px) { .loc-pop { position: fixed; left: 16px; right: 16px; top: 72px; width: auto; } }
+.pl-nav-r, .su-top-r { display: flex; align-items: center; gap: 10px; }
+.lp-nav .lp-chip.loc-pill { display: inline-flex; }
+@media (max-width: 760px) { .loc-pill .loc-label { display: none; } .loc-pill { padding: 0 10px; } }
+[dir="rtl"] .countdown, [dir="rtl"] .lp-seats, [dir="rtl"] .lp-meta { direction: ltr; }
+[dir="rtl"] .lp-meta { justify-content: flex-end; }
+@media (max-width: 480px) { .lp-nav-right > .lp-btn.ghost[href="/signin"] { display: none; } }

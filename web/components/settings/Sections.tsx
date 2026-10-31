@@ -245,6 +245,7 @@ export function SecuritySection({ me, settings, devices: initialDevices, max, si
 /* ---------- Language and region (Figma 33:901) ---------- */
 
 export function LanguageSection({ profile, settings, countryLabel }: { profile: ProfileData; settings: SettingsData; countryLabel: string }) {
+  const router = useRouter();
   const { prefs, set, msg } = usePrefs({ subtitles: "en", translateChat: true, voiceLanguage: "auto", volumeBoost: true, dialogue: true, ...settings.prefs });
   const [app, setApp] = useState(profile.appLanguage || "en");
   const [audio, setAudio] = useState(profile.audioLanguage || "en");
@@ -270,7 +271,7 @@ export function LanguageSection({ profile, settings, countryLabel }: { profile: 
         <p className="st-info">When you move country, re-verify once and everything switches: language, currency, payment methods and local times.</p>
       </Card>
       <Card title="Languages">
-        <Row title="App language" sub="Menus, emails and notifications">{select(app, (v) => { setApp(v); saveProfile({ appLanguage: v }); }, LANGS, "App language")}</Row>
+        <Row title="App language" sub="Menus, emails and notifications">{select(app, (v) => { setApp(v); saveProfile({ appLanguage: v }); fetch("/api/locale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: v }) }).then(() => router.refresh()).catch(() => {}); }, LANGS, "App language")}</Row>
         <Row title="Audio language" sub="Dub track to play first. Change per film any time">{select(audio, (v) => { setAudio(v); saveProfile({ audioLanguage: v }); }, LANGS, "Audio language")}</Row>
         <Row title="Subtitles" sub="Shown when audio is not in your app language">{select(String(prefs.subtitles), (v) => set("subtitles", v), [["off", "Off"], ...LANGS], "Subtitles")}</Row>
         <Row title="Translate chat" sub="Messages from other languages appear in yours, with the original one tap away"><Toggle label="Translate chat" on={Boolean(prefs.translateChat)} onChange={(v) => set("translateChat", v)} /></Row>

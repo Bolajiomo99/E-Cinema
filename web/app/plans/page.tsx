@@ -1,5 +1,7 @@
+import LocalePicker from "@/components/LocalePicker";
+import { readLocale } from "@/lib/locale";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import Logo from "@/components/landing/Logo";
 import PlanCards from "@/components/plans/PlanCards";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
@@ -23,15 +25,14 @@ const COMPARE: [string, string, string, string, string, string][] = [
 ];
 
 export default async function Plans() {
-  const [me, h] = await Promise.all([currentAccount(), headers()]);
+  const [me, loc] = await Promise.all([currentAccount(), readLocale()]);
   let profile: { country?: string; plan?: PlanId; planStatus?: string; pendingPlan?: PlanId } | undefined;
   if (me) {
     const session = (await cookies()).get(SESSION_COOKIE)?.value;
     const r = await accountApi("GET", "/v1/me/profile", undefined, session);
     if (r.status === 200) profile = r.body as typeof profile;
   }
-  const ip = h.get("cf-ipcountry");
-  const country = profile?.country || (ip && ip !== "XX" && ip !== "T1" ? ip : undefined);
+  const country = profile?.country || loc.country;
   const currency = currencyFor(country);
   const tiers = VIP_TIERS[currency].map(([a, b, v]) => `${money(v, currency)} for ${a} to ${b}`);
   const current = profile ? (profile.planStatus === "active" ? profile.plan ?? "free" : "free") : undefined;
@@ -40,7 +41,10 @@ export default async function Plans() {
     <main className="pl">
       <nav className="pl-nav">
         <Logo />
-        <Link href={me ? "/home" : "/"} className="state-btn ghost">Back to premieres</Link>
+        <div className="pl-nav-r">
+          <LocalePicker country={loc.country} homeCountry={profile?.country} lang={loc.lang} signedIn={Boolean(me)} />
+          <Link href={me ? "/home" : "/"} className="state-btn ghost">Back to premieres</Link>
+        </div>
       </nav>
       <PlanCards
         country={country}

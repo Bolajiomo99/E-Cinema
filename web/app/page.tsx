@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import AskAIButton from "@/components/ai/AskAIButton";
 import Countdown from "@/components/Countdown";
 import HeroWhen from "@/components/landing/HeroWhen";
@@ -9,6 +8,8 @@ import AccountMenu from "@/components/AccountMenu";
 import PremiereStrip from "@/components/landing/PremiereStrip";
 import PlanPickLink from "@/components/plans/PlanPickLink";
 import TrailerButton from "@/components/landing/TrailerButton";
+import LocalePicker from "@/components/LocalePicker";
+import { readLocale } from "@/lib/locale";
 import { countryName, currencyFor, money as planMoney, priceOf, type PlanId } from "@/lib/plans";
 import { currentAccount } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
@@ -77,11 +78,11 @@ const FOOTER: [string, [string, string][]][] = [
 ];
 
 export default async function Home() {
-  const [me, seats, h] = await Promise.all([currentAccount(), liveSeats(), headers()]);
+  const [me, seats, loc] = await Promise.all([currentAccount(), liveSeats(), readLocale()]);
+  const { t } = loc;
   const { list, hero } = lineupNow();
   const heroSeats = seats[hero.id];
-  const country = h.get("cf-ipcountry");
-  const planCountry = country && country !== "XX" && country !== "T1" ? country : undefined;
+  const planCountry = loc.country;
   const planCurrency = currencyFor(planCountry);
   const [l1, ...l2] = hero.film.toUpperCase().split(" ");
   const heroLines = l2.length > 1 ? [`${l1} ${l2[0]}`, l2.slice(1).join(" ")] : [l1, l2.join(" ")];
@@ -100,21 +101,21 @@ export default async function Home() {
           <div className="lp-nav-left">
             <Logo />
             <div className="lp-nav-links">
-              <a href="#premieres" className="on">Premieres</a>
-              <Link href="/releases">Watch parties</Link>
-              <Link href="/plans">Plans</Link>
-              <a href="mailto:admin@e-cinema.net?subject=E-Cinema%20for%20business">For business</a>
+              <a href="#premieres" className="on">{t.premieres}</a>
+              <Link href="/releases">{t.watchParties}</Link>
+              <Link href="/plans">{t.plans}</Link>
+              <a href="mailto:admin@e-cinema.net?subject=E-Cinema%20for%20business">{t.forBusiness}</a>
             </div>
           </div>
           <div className="lp-nav-right">
             <AskAIButton />
-            <span className="lp-chip static">{country && country !== "XX" ? `${country} · ` : ""}English</span>
+            <LocalePicker country={loc.country} lang={loc.lang} signedIn={Boolean(me)} />
             {me ? (
-              <><Link href="/home" className="lp-btn sm">My home</Link><AccountMenu name={me.name} email={me.email} /></>
+              <><Link href="/home" className="lp-btn sm">{t.myHome}</Link><AccountMenu name={me.name} email={me.email} /></>
             ) : (
               <>
-                <Link href="/signin" className="lp-btn sm ghost">Sign in</Link>
-                <Link href="/join" className="lp-btn sm">Join free</Link>
+                <Link href="/signin" className="lp-btn sm ghost">{t.signIn}</Link>
+                <Link href="/join" className="lp-btn sm">{t.joinFree}</Link>
               </>
             )}
           </div>
@@ -122,7 +123,7 @@ export default async function Home() {
 
         <div className="lp-hero-copy">
           <div className="lp-badges">
-            <span className="lp-badge live"><i />WORLD PREMIERE</span>
+            <span className="lp-badge live"><i />{t.worldPremiere}</span>
             <HeroWhen startsAt={hero.startsAt} />
           </div>
           <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
@@ -135,8 +136,8 @@ export default async function Home() {
           <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. One night, one screening, the whole world in the same seat.`}</p>
           <Countdown to={hero.startsAt} />
           <div className="lp-ctas">
-            <Link href={`/checkout#${hero.id}`} className="lp-btn lg">Get a seat · {money(hero.price)}</Link>
-            <TrailerButton film={hero.id} title={hero.film} className="lp-btn lg secondary" />
+            <Link href={`/checkout#${hero.id}`} className="lp-btn lg">{t.getASeat} · {money(hero.price)}</Link>
+            <TrailerButton film={hero.id} title={hero.film} className="lp-btn lg secondary" label={t.watchTrailer} />
           </div>
           {heroSeats && (
             <div className="lp-seats">
@@ -153,8 +154,8 @@ export default async function Home() {
 
       <section className="lp-section" id="how">
         <div className="lp-titles">
-          <p className="lp-eyebrow">HOW IT WORKS</p>
-          <h2>A cinema seat without the cinema</h2>
+          <p className="lp-eyebrow">{t.howItWorks}</p>
+          <h2>{t.howTitle}</h2>
         </div>
         <ol className="lp-steps">
           {STEPS.map(([n, t, d]) => (
@@ -167,8 +168,8 @@ export default async function Home() {
 
       <section className="lp-section">
         <div className="lp-titles">
-          <p className="lp-eyebrow">BUILT FOR WATCHING TOGETHER</p>
-          <h2>Everything a night out has, minus the traffic</h2>
+          <p className="lp-eyebrow">{t.builtFor}</p>
+          <h2>{t.builtTitle}</h2>
         </div>
         <ul className="lp-features">
           {FEATURES.map(([icon, t, d, soon]) => (
@@ -184,10 +185,10 @@ export default async function Home() {
       <section className="lp-section" id="plans">
         <div className="lp-head">
           <div className="lp-titles">
-            <p className="lp-eyebrow">PLANS</p>
-            <h2>Choose how loud you want to be</h2>
+            <p className="lp-eyebrow">{t.plansEyebrow}</p>
+            <h2>{t.plansTitle}</h2>
           </div>
-          <p className="lp-body-m">Prices shown for {countryName(planCountry) || "your country"} · <Link href="/plans">Compare plans</Link></p>
+          <p className="lp-body-m">Prices shown for {countryName(planCountry) || "your country"} · <a href="#locale" data-open-locale>Change country</a> · <Link href="/plans">{t.compare}</Link></p>
         </div>
         <ul className="lp-plans">
           {PLANS.map((p) => (
@@ -218,7 +219,7 @@ export default async function Home() {
       </div>
 
       <section className="lp-section lp-payments">
-        <h3>Pay the way your country pays</h3>
+        <h3>{t.payTitle}</h3>
         <ul className="lp-methods">
           {METHODS.map((m) => <li key={m} className={LIVE_METHODS.has(m) ? "" : "later"}>{m}</li>)}
         </ul>
@@ -233,7 +234,7 @@ export default async function Home() {
         <div className="lp-footer-cols">
           {FOOTER.map(([head, links]) => (
             <div key={head}>
-              <p>{head}</p>
+              <p>{({ Watch: t.watch, Account: t.account, Company: t.company, Help: t.help } as Record<string, string>)[head] ?? head}</p>
               {links.map(([t, href]) => <a key={t} href={href}>{t}</a>)}
             </div>
           ))}

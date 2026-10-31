@@ -14,6 +14,8 @@ import PremiereStrip from "@/components/landing/PremiereStrip";
 import { myTickets } from "@/lib/api";
 import { currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
+import LocalePicker from "@/components/LocalePicker";
+import { readLocale } from "@/lib/locale";
 import { SPEND_LIMIT } from "@/lib/concierge";
 
 // Built from the Figma frame "Web / Home · AI concierge and release calendar" (298:1362).
@@ -36,7 +38,8 @@ function pick() {
 }
 
 export default async function Home() {
-  const me = await currentAccount();
+  const [me, loc] = await Promise.all([currentAccount(), readLocale()]);
+  const { t } = loc;
   if (!me) redirect("/signin?next=/home");
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   const tickets = await myTickets(session).catch(() => []);
@@ -66,10 +69,10 @@ export default async function Home() {
             <div className="lp-nav-left">
               <span className="dash-brand"><SidebarToggle /><Logo /></span>
               <div className="lp-nav-links">
-                <Link href="/home" className="on">Home</Link>
-                <Link href="/releases">Coming soon</Link>
-                <a href="#calendar">Calendar</a>
-                <a href="#live">Live</a>
+                <Link href="/home" className="on">{t.home}</Link>
+                <Link href="/releases">{t.comingSoon}</Link>
+                <a href="#calendar">{t.calendar}</a>
+                <a href="#live">{t.live}</a>
                 {["Community", "Clips", "Shop", "Library"].map((l) => (
                   <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
                 ))}
@@ -86,24 +89,25 @@ export default async function Home() {
               <span className="hm-icon soon" title="The merch cart is coming soon" aria-label="Cart, coming soon" role="img">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="7.33" cy="19.25" r=".92" /><circle cx="17.42" cy="19.25" r=".92" /><path d="M1.88 1.88h1.83l2.44 11.38a1.83 1.83 0 0 0 1.83 1.45h8.97a1.83 1.83 0 0 0 1.79-1.44l1.51-6.81H4.69" /></svg>
               </span>
+              <LocalePicker country={loc.country} lang={loc.lang} signedIn />
               <AccountMenu name={me.name} email={me.email} />
             </div>
           </nav>
           <div className="lp-hero-copy hm-hero-copy">
             <div className="lp-badges">
-              {live ? <span className="lp-badge live"><i />LIVE NOW</span> : <span className="lp-badge live"><i />WORLD PREMIERE</span>}
-              <span className="lp-badge outline">{isNew ? "WELCOME" : "WELCOME BACK"}, {first.toUpperCase()}</span>
+              {live ? <span className="lp-badge live"><i />{t.liveNow}</span> : <span className="lp-badge live"><i />{t.worldPremiere}</span>}
+              <span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span>
             </div>
             <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
             <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. Screens once, dubbed live in ${hero.dubs ?? 3} languages.`}</p>
             {!live && <Countdown to={hero.startsAt} />}
             <div className="lp-ctas">
               {heroTicket ? (
-                <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? "Join the room" : "Open my room"}</Link>
+                <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? t.joinTheRoom : "Open my room"}</Link>
               ) : (
-                <Link href={`/checkout#${hero.id}`} className="lp-btn lg">Get a seat · ${hero.price.value}</Link>
+                <Link href={`/checkout#${hero.id}`} className="lp-btn lg">{t.getASeat} · ${hero.price.value}</Link>
               )}
-              <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn lg secondary">Add to calendar</a>
+              <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn lg secondary">{t.addToCalendar}</a>
             </div>
           </div>
         </header>
