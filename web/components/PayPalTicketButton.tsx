@@ -29,6 +29,7 @@ export default function PayPalTicketButton({ showtimeId, orderId }: { showtimeId
       const session = sdk.createPayPalOneTimePaymentSession({
         onApprove: async ({ orderId }: OnApproveDataOneTimePayments) => {
           const res = await fetch(`/api/paypal/orders/${orderId}/capture`, { method: "POST" });
+          if (res.ok && showtimeId) return window.location.assign(`/tickets/confirmed?film=${encodeURIComponent(showtimeId)}`);
           setStatus(res.ok ? "paid" : "error");
         },
         onCancel: () => setStatus("ready"),
