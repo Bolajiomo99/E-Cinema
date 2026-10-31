@@ -117,6 +117,13 @@ jobs:
           curl -fsS -o /dev/null -b "$jar" "$web/api/me/tickets"
           curl -fsS "$web/api/calendar/the-last-harmattan-2026-11-01.ics" | grep -q "BEGIN:VCALENDAR"
           echo "my home, seats and calendar invite ok"
+          # Plans: pick Pro, then PayPal must hand back a sandbox approval page for the subscription.
+          curl -fsS -o /dev/null https://e-cinema.net/plans
+          curl -fsS -b "$jar" -X PUT -H "content-type: application/json" -H "origin: $web" -d '{"plan":"pro"}' "$web/api/me/plan" >/dev/null
+          sub=$(curl -sS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{"cycle":"month"}' "$web/api/paypal/subscriptions")
+          echo "subscription -> $(echo "$sub" | grep -o '"approve":"https://[^/"]*' || echo "$sub")"
+          echo "$sub" | grep -q '"approve":"https://www.sandbox.paypal.com/' || exit 1
+          echo "plans and PayPal subscription ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
           echo "accounts ok"
