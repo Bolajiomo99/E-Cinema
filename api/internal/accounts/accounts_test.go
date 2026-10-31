@@ -46,7 +46,7 @@ func store(t *testing.T) (accounts.Store, *fakeSMS) {
 	if err := db.Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `DELETE FROM accounts; DELETE FROM sign_in_failures`); err != nil {
+	if _, err := pool.Exec(ctx, `DELETE FROM room_messages; UPDATE holds SET account_id = NULL; DELETE FROM accounts; DELETE FROM sign_in_failures`); err != nil {
 		t.Fatal(err)
 	}
 	sms := &fakeSMS{}

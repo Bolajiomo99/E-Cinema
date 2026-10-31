@@ -1,0 +1,169 @@
+package rooms
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+	"sync"
+	"time"
+
+	"github.com/coder/websocket"
+)
+
+// Event is everything the server pushes to a room.
+type Event struct {
+	Type    string   `json:"type"` // msg | react | presence | error
+	Message *Message `json:"message,omitempty"`
+	Emoji   string   `json:"emoji,omitempty"`
+	Count   int      `json:"count,omitempty"`
+	Error   string   `json:"error,omitempty"`
+}
+
+type client struct {
+	accountID string
+	out       chan Event
+}
+
+// Hub fans events out to everyone connected to a screening.
+type Hub struct {
+	mu    sync.Mutex
+	rooms map[string]map[*client]struct{}
+}
+
+func NewHub() *Hub { return &Hub{rooms: map[string]map[*client]struct{}{}} }
+
+func (h *Hub) join(room string, c *client) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.rooms[room] == nil {
+		h.rooms[room] = map[*client]struct{}{}
+	}
+	h.rooms[room][c] = struct{}{}
+	return len(h.rooms[room])
+}
+
+func (h *Hub) leave(room string, c *client) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.rooms[room], c)
+	n := len(h.rooms[room])
+	if n == 0 {
+		delete(h.rooms, room)
+	}
+	return n
+}
+
+// Count is how many connections a screening has right now.
+func (h *Hub) Count(room string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.rooms[room])
+}
+
+// broadcast never blocks: a viewer too slow to keep up misses events instead of stalling the room.
+func (h *Hub) broadcast(room string, e Event, mine *client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c := range h.rooms[room] {
+		ev := e
+		if e.Message != nil {
+			m := *e.Message
+			m.Mine = mine != nil && c.accountID == mine.accountID
+			ev.Message = &m
+		}
+		select {
+		case c.out <- ev:
+		default:
+		}
+	}
+}
+
+type incoming struct {
+	Type  string `json:"type"` // msg | react
+	Body  string `json:"body"`
+	Emoji string `json:"emoji"`
+}
+
+// Live serves the room WebSocket. The pass in ?t= was issued only to a ticket holder.
+func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		room := r.PathValue("id")
+		pass, err := passes.Check(r.URL.Query().Get("t"), room, time.Now())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: origins})
+		if err != nil {
+			return
+		}
+		defer conn.CloseNow()
+		conn.SetReadLimit(4096)
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		c := &client{accountID: pass.AccountID, out: make(chan Event, 64)}
+		h.broadcast(room, Event{Type: "presence", Count: h.join(room, c)}, nil)
+		defer func() { h.broadcast(room, Event{Type: "presence", Count: h.leave(room, c)}, nil) }()
+
+		go func() {
+			defer cancel()
+			ping := time.NewTicker(25 * time.Second)
+			defer ping.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case e := <-c.out:
+					data, _ := json.Marshal(e)
+					wctx, done := context.WithTimeout(ctx, 5*time.Second)
+					err := conn.Write(wctx, websocket.MessageText, data)
+					done()
+					if err != nil {
+						return
+					}
+				case <-ping.C:
+					if err := conn.Ping(ctx); err != nil {
+						return
+					}
+				}
+			}
+		}()
+
+		// Reactions are capped per connection so one person cannot flood everyone's screen.
+		var lastReact time.Time
+		for {
+			_, data, err := conn.Read(ctx)
+			if err != nil {
+				return
+			}
+			var in incoming
+			if json.Unmarshal(data, &in) != nil {
+				continue
+			}
+			switch in.Type {
+			case "msg":
+				m, err := store.Post(ctx, room, pass.AccountID, pass.Name, in.Body)
+				if err != nil {
+					if !errors.Is(err, ErrTooFast) && !errors.Is(err, ErrEmpty) {
+						slog.Error("room message failed", "err", err)
+						err = errors.New("message not sent, try again")
+					}
+					select {
+					case c.out <- Event{Type: "error", Error: err.Error()}:
+					default:
+					}
+					continue
+				}
+				h.broadcast(room, Event{Type: "msg", Message: &m}, c)
+			case "react":
+				if Reactions[in.Emoji] && time.Since(lastReact) > 400*time.Millisecond {
+					lastReact = time.Now()
+					h.broadcast(room, Event{Type: "react", Emoji: in.Emoji}, nil)
+				}
+			}
+		}
+	}
+}
