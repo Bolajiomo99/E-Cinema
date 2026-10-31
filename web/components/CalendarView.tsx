@@ -8,7 +8,10 @@ import { showtimes } from "@/lib/catalog";
 // Genres double as Bryntum resources so each one gets its own colour.
 const genres = [
   { id: "nollywood", name: "Nollywood", eventColor: "#e3182d" },
+  { id: "bollywood", name: "Bollywood", eventColor: "#f2a516" },
+  { id: "hollywood", name: "Hollywood", eventColor: "#4696ff" },
   { id: "kdrama", name: "K-drama", eventColor: "#9b6bff" },
+  { id: "adult", name: "18+", eventColor: "#b91c1c" },
   { id: "anime", name: "Anime", eventColor: "#ff8a3d" },
   { id: "documentary", name: "Documentary", eventColor: "#2bb7a8" },
 ];
@@ -26,13 +29,29 @@ type Premiere = {
 
 // Bookable screenings come from the catalogue; the rest are announced titles with tickets coming soon.
 // All films and studios are invented. Times are UTC, so every viewer sees their own local time.
+const taglines: Record<string, string> = {
+  "tide-of-lagos-2026-11-01": "A ferry captain, a storm and the last crossing of the night.",
+  "monsoon-hearts-2026-11-01": "Two wedding singers, one monsoon, a hundred songs.",
+  "the-last-harmattan-2026-11-01": "When the dust settles over Kano, someone will not come home.",
+  "orbit-zero-2026-11-01": "Six astronauts wake up with no record of the launch.",
+  "the-kano-ledger-2026-11-02": "An accountant finds one number that could topple a city.",
+  "red-earth-2026-11-02": "A drought, a debt and a family that will not sell the land.",
+  "velvet-hour-2026-11-02": "One Paris hotel bar, one night, verified adults only.",
+  "seoul-after-rain-2026-11-03": "Two strangers share one umbrella and a very long night.",
+  "lagos-lights-2026-11-04": "One night on the island, three hustles, no sleep.",
+};
+const genreOf = (s: (typeof showtimes)[number]) =>
+  s.adult ? "adult" : s.category === "K-Drama" ? "kdrama" : s.category === "Bollywood" ? "bollywood" : s.category === "Hollywood" ? "hollywood" : "nollywood";
+const code = (lang?: string) => (lang ?? "English").slice(0, 2).toUpperCase();
+
 const premieres: Premiere[] = [
-  { id: showtimes[0].id, name: "Red Earth", resourceId: "nollywood", startDate: showtimes[0].startsAt, minutes: 135, studio: showtimes[0].studio, tagline: "A drought, a debt and a family that will not sell the land.", audio: ["EN", "FR", "KO", "YO"] },
-  { id: showtimes[1].id, name: "Seoul After Rain", resourceId: "kdrama", startDate: showtimes[1].startsAt, minutes: 110, studio: showtimes[1].studio, tagline: "Two strangers share one umbrella and a very long night.", audio: ["KO", "EN"] },
-  { id: showtimes[2].id, name: "Lagos Lights", resourceId: "nollywood", startDate: showtimes[2].startsAt, minutes: 130, studio: showtimes[2].studio, tagline: "One night on the island, three hustles, no sleep.", audio: ["EN"] },
+  ...showtimes.map((s) => ({
+    id: s.id, name: s.film, resourceId: genreOf(s), startDate: s.startsAt, minutes: s.runtimeMin ?? 120, studio: s.studio,
+    tagline: taglines[s.id] ?? "", audio: [code(s.language), ...(s.dubs ? [`+${s.dubs} dubs`] : [])],
+  })),
   { id: "paper-moon-riders", name: "Paper Moon Riders", resourceId: "anime", startDate: "2026-11-05T16:00:00Z", minutes: 100, studio: "Kumo Frame Studio", tagline: "Couriers on kites racing a storm across the sky city.", audio: ["JA", "EN"] },
   { id: "the-last-glacier", name: "The Last Glacier", resourceId: "documentary", startDate: "2026-11-06T19:00:00Z", minutes: 90, studio: "North Ledger Films", tagline: "A year on the ice with the people who measure it.", audio: ["EN"] },
-  { id: "seoul-after-rain-encore", name: "Seoul After Rain · encore", resourceId: "kdrama", startDate: "2026-11-07T09:00:00Z", minutes: 110, studio: showtimes[1].studio, tagline: "Missed it? One more screening for late risers.", audio: ["KO", "EN"] },
+  { id: "seoul-after-rain-encore", name: "Seoul After Rain · encore", resourceId: "kdrama", startDate: "2026-11-07T09:00:00Z", minutes: 110, studio: "Hanbit Story House", tagline: "Missed it? One more screening for late risers.", audio: ["KO", "EN"] },
 ];
 
 const bookable = new Map(showtimes.map((s) => [s.id, s]));
