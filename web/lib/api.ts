@@ -75,3 +75,18 @@ export async function liveStats(): Promise<LiveStat[]> {
     return [];
   }
 }
+
+export type Seats = { capacity: number; available: number };
+
+// Seats left for one premiere (paid seats and live holds count as taken).
+export async function seatsFor(showtimeId: string): Promise<Seats | null> {
+  if (!base) return null;
+  try {
+    const r = await fetch(`${base}/v1/showtimes/${encodeURIComponent(showtimeId)}`, { signal: AbortSignal.timeout(2500), cache: "no-store" });
+    if (!r.ok) return null;
+    const b = (await r.json()) as Seats;
+    return { capacity: b.capacity, available: Math.max(0, b.available) };
+  } catch {
+    return null;
+  }
+}
