@@ -42,8 +42,8 @@ export default function TabBar({ signedIn }: { signedIn: boolean }) {
   const tabs = [
     { key: "home", label: "Home", href: home, on: path === "/" || path === "/home" },
     { key: "premieres", label: "Premieres", href: "/releases", on: path.startsWith("/releases") },
-    { key: "clips", label: "Clips", href: null, on: false },
-    { key: "parties", label: "Parties", href: signedIn ? "/home#live" : "/#premieres", on: false },
+    { key: "clips", label: "Clips", href: signedIn ? "/home#hm-clips" : null, on: false },
+    { key: "parties", label: "Parties", href: signedIn ? "/home#hm-parties" : "/#premieres", on: path.startsWith("/p/") || path.startsWith("/parties") },
     { key: "me", label: "Me", href: signedIn ? "/settings/account" : "/signin", on: path.startsWith("/settings") || path.startsWith("/account") || path === "/signin" },
   ];
   return (

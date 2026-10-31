@@ -1270,3 +1270,104 @@ body:has(.co) { background: #0a0a0c; }
   .co-sum { width: 100%; position: static; padding: 20px; }
   .co-h1 { font-size: 26px; line-height: 32px; }
 }
+
+/* Watch parties (Figma 31:934) */
+.wp { position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 70px 16px 48px; color: #f4f4f6; font-family: Manrope, sans-serif; }
+.wp-glow { position: absolute; left: 48%; top: -200px; width: 700px; height: 700px; pointer-events: none; }
+.wp-dim { position: absolute; inset: 0; background: rgba(0,0,0,.7); pointer-events: none; }
+.wp-modal { position: relative; width: 600px; max-width: 100%; display: flex; flex-direction: column; gap: 18px; padding: 32px; border-radius: 24px; border: 1px solid #26262e; background: #131317; }
+.wp-head { display: flex; align-items: center; justify-content: space-between; }
+.wp-head h1 { margin: 0; font: 700 24px/32px Manrope, sans-serif; letter-spacing: -.3px; }
+.wp-x { color: #a6a6b0; display: grid; }
+.wp-film { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: #1b1b21; flex-wrap: wrap; }
+.wp-poster { flex: none; width: 48px; height: 70px; border-radius: 10px; }
+.wp-switch { margin-inline-start: auto; display: flex; gap: 6px; }
+.wp-switch select { height: 32px; border-radius: 8px; border: 1px solid #26262e; background: #131317; color: #f4f4f6; font: 500 13px Manrope, sans-serif; max-width: 160px; }
+.wp-switch button { height: 32px; padding: 0 10px; border-radius: 8px; border: 0; background: #26262e; color: #f4f4f6; font: 600 13px Manrope, sans-serif; cursor: pointer; }
+.wp-form { display: flex; flex-direction: column; gap: 18px; }
+.wp-field { display: flex; flex-direction: column; gap: 8px; }
+.wp-field > span { font: 600 13px/20px Manrope, sans-serif; letter-spacing: .1px; color: #a6a6b0; }
+.wp-field > input { height: 50px; padding: 0 16px; border-radius: 10px; border: 1px solid #26262e; background: #1b1b21; color: #f4f4f6; font: 500 15px Manrope, sans-serif; }
+.wp-field > input:focus { outline: none; border-color: #f4f4f6; }
+.wp-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.wp-chip { height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 999px; border: 1px solid #26262e; background: #1b1b21; color: #a6a6b0; font: 600 13px/20px Manrope, sans-serif; cursor: pointer; }
+.wp-chip.on { background: #f4f4f6; border-color: #f4f4f6; color: #0a0a0c; }
+.wp-chip:disabled { cursor: default; opacity: .6; }
+.wp-chip.static { cursor: default; }
+.wp-chip em { font: 700 10px/14px Manrope, sans-serif; font-style: normal; padding: 0 5px; border-radius: 4px; background: #26262e; color: #a6a6b0; }
+.wp-link { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 10px; background: #1b1b21; color: #a6a6b0; }
+.wp-link svg { flex: none; }
+.wp-link input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: #f4f4f6; font: 500 15px Manrope, sans-serif; outline: none; }
+.wp-link input::placeholder { color: #6e6e7a; }
+.wp-link button { border: 0; background: none; color: #f4f4f6; font: 600 13px/20px Manrope, sans-serif; cursor: pointer; padding: 0; }
+.wp-link button:disabled { color: #6e6e7a; cursor: default; }
+.wp-emails { display: flex; flex-wrap: wrap; gap: 6px; }
+.wp-email { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #26262e; background: #1b1b21; color: #d5d5dc; font: 500 12px Manrope, sans-serif; cursor: pointer; display: inline-flex; align-items: center; }
+.wp-email.static { cursor: default; }
+.wp-help { color: #6e6e7a; font: 500 12px/18px Manrope, sans-serif; }
+.wp-err { margin: 0; color: #ff8a93; font: 500 13px/18px Manrope, sans-serif; }
+.wp-cta { width: 100%; justify-content: center; }
+.party-nav { position: relative; align-self: stretch; max-width: 1344px; margin: -46px auto 24px; width: 100%; }
+.party-nav a { text-decoration: none; }
+.party-new { margin: 0; padding: 12px 14px; border-radius: 10px; background: rgba(34,197,94,.1); color: #86efac; font: 600 13px/18px Manrope, sans-serif; }
+.party-top { display: flex; gap: 18px; align-items: center; }
+.party-poster { flex: none; width: 84px; height: 122px; border-radius: 12px; }
+.party-top h1 { margin: 10px 0 6px; font: 700 28px/34px Manrope, sans-serif; letter-spacing: -.3px; }
+.party-sub { margin: 0; color: #a6a6b0; font: 500 14px/20px Manrope, sans-serif; }
+.party-sub a { color: #f4f4f6; }
+.party-people { display: flex; align-items: center; gap: 12px; }
+.party-stack { display: flex; }
+.party-av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; margin-inline-end: -6px; color: #fff; font: 700 12px Manrope, sans-serif; border: 2px solid #131317; }
+.party-av.more { background: #3a3a44; }
+.party-people small { color: #a6a6b0; font: 500 13px/18px Manrope, sans-serif; margin-inline-start: 8px; }
+.party-acts { display: flex; flex-direction: column; gap: 18px; }
+.party-ok { margin: 0; color: #86efac; font: 600 14px/20px Manrope, sans-serif; }
+.party-foot { display: flex; justify-content: center; }
+@media (max-width: 640px) {
+  .wp { padding: 16px 0 32px; }
+  .wp-modal { border-radius: 0; border-width: 1px 0; padding: 24px 16px; }
+  .party-nav { margin: 0 0 16px; padding: 0 16px; }
+  .party-top h1 { font-size: 22px; line-height: 28px; }
+  .wp-switch { margin-inline-start: 0; width: 100%; }
+  .wp-switch select { flex: 1; max-width: none; }
+}
+
+/* Home rows (Figma 17:234 watch parties, 17:295 clips) */
+.hm-row { display: flex; flex-direction: column; gap: 16px; }
+.hm-row-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.hm-row-head h2 { margin: 0; font: 700 24px/32px Manrope, sans-serif; letter-spacing: -.3px; color: #f4f4f6; }
+.hm-row-head p { margin: 2px 0 0; font: 500 13px/18px Manrope, sans-serif; color: #6e6e7a; }
+.hm-row-head > a { flex: none; color: #a6a6b0; font: 600 14px/20px Manrope, sans-serif; text-decoration: none; }
+.hm-row-head > a:hover { color: #f4f4f6; }
+.hm-parties { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.hm-party { display: flex; align-items: center; gap: 16px; padding: 17px; border-radius: 16px; border: 1px solid #26262e; background: #131317; color: #f4f4f6; text-decoration: none; transition: border-color .15s; }
+.hm-party:hover { border-color: #3a3a44; }
+.hm-party.empty { justify-content: space-between; flex-wrap: wrap; }
+.hm-party.empty > div { display: flex; flex-direction: column; gap: 4px; max-width: 640px; }
+.hm-party.empty small { color: #a6a6b0; font: 500 13px/18px Manrope, sans-serif; }
+.hm-party-poster { flex: none; width: 72px; height: 104px; border-radius: 10px; }
+.hm-party-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.hm-party-t strong { font: 700 18px/26px Manrope, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-party-t small { color: #a6a6b0; font: 500 13px/18px Manrope, sans-serif; }
+.hm-party-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.hm-party-chips .lp-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-party-btn { flex: none; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 8px; background: rgba(255,255,255,.12); font: 600 13px/20px Manrope, sans-serif; }
+.hm-clips { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 28.8px; }
+.hm-clip { position: relative; aspect-ratio: 200 / 356; border: 0; padding: 0; border-radius: 14px; overflow: hidden; cursor: pointer; text-align: start; color: #f4f4f6; background: #131317; font-family: Manrope, sans-serif; }
+.hm-clip > span { position: absolute; }
+.hm-clip-bg { inset: 0; }
+.hm-clip-glow { left: 20%; top: 6%; width: 100%; aspect-ratio: 1; }
+.hm-clip-shade { left: 0; right: 0; bottom: 0; height: 50%; background: linear-gradient(180deg, transparent, rgba(0,0,0,.85)); }
+.hm-clip-play { left: 12px; top: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); }
+.hm-clip-c { left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+.hm-clip-c strong { font: 600 14px/20px Manrope, sans-serif; }
+.hm-clip-c small { font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.hm-clip:hover .hm-clip-play { background: #e3182d; }
+@media (max-width: 1100px) { .hm-parties { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hm-clips { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+@media (max-width: 640px) {
+  .hm-parties { grid-template-columns: 1fr; }
+  .hm-clips { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 -16px; padding: 0 16px; }
+  .hm-clip { flex: none; width: 160px; scroll-snap-align: start; }
+  .hm-row-head h2 { font-size: 20px; line-height: 28px; }
+}
+.wp .lp-btn { text-decoration: none; }

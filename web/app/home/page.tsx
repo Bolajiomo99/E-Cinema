@@ -11,8 +11,12 @@ import Logo from "@/components/landing/Logo";
 import AccountMenu from "@/components/AccountMenu";
 import { DashShell, SidebarToggle } from "@/components/dash/DashShell";
 import PremiereStrip from "@/components/landing/PremiereStrip";
-import { myTickets } from "@/lib/api";
-import { currentAccount, SESSION_COOKIE } from "@/lib/auth";
+import { liveStats, myTickets } from "@/lib/api";
+import LiveAudience from "@/components/dash/LiveAudience";
+import PartiesRow from "@/components/home/PartiesRow";
+import ClipsRow from "@/components/home/ClipsRow";
+import type { Party } from "@/lib/parties";
+import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
 import LocalePicker from "@/components/LocalePicker";
 import { readLocale } from "@/lib/locale";
@@ -42,8 +46,16 @@ export default async function Home() {
   const { t } = loc;
   if (!me) redirect("/signin?next=/home");
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
-  const tickets = await myTickets(session).catch(() => []);
+  const [tickets, stats, partyRes] = await Promise.all([
+    myTickets(session).catch(() => []),
+    liveStats(),
+    accountApi("GET", "/v1/me/parties", undefined, session).catch(() => null),
+  ]);
+  const parties = partyRes?.status === 200 && Array.isArray(partyRes.body) ? (partyRes.body as Party[]) : [];
   const { list, hero, live } = pick();
+  const heroStat = stats.find((x) => x.showtimeId === hero.id);
+  // The room opens 30 minutes before the premiere for ticket holders.
+  const lobbyOpen = !live && Date.parse(hero.startsAt) - Date.now() < 30 * 60_000;
   const heroTicket = tickets.find((t) => t.showtimeId === hero.id && t.status === "paid");
   const tiles = list.map((s) => ({ ...s, endsAtMs: endsAt(s) }));
   const calendar = [
@@ -73,7 +85,8 @@ export default async function Home() {
                 <Link href="/releases">{t.comingSoon}</Link>
                 <a href="#calendar">{t.calendar}</a>
                 <a href="#live">{t.live}</a>
-                {["Community", "Clips", "Shop", "Library"].map((l) => (
+                <a href="#hm-clips">Clips</a>
+                {["Community", "Shop", "Library"].map((l) => (
                   <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
                 ))}
               </div>
@@ -95,19 +108,26 @@ export default async function Home() {
           </nav>
           <div className="lp-hero-copy hm-hero-copy">
             <div className="lp-badges">
-              {live ? <span className="lp-badge live"><i />{t.liveNow}</span> : <span className="lp-badge live"><i />{t.worldPremiere}</span>}
-              <span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span>
+              {live ? (
+                <><span className="lp-badge live pulse"><i />{t.liveNow}</span><LiveAudience showtimeId={hero.id} initial={heroStat} /></>
+              ) : (
+                <><span className="lp-badge live"><i />{t.worldPremiere}</span><span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span></>
+              )}
             </div>
             <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
             <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. Screens once, dubbed live in ${hero.dubs ?? 3} languages.`}</p>
             {!live && <Countdown to={hero.startsAt} />}
             <div className="lp-ctas">
               {heroTicket ? (
-                <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? t.joinTheRoom : "Open my room"}</Link>
+                <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? t.joinTheRoom : lobbyOpen ? "Join the waiting room" : "Open my room"}</Link>
               ) : (
                 <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · ${hero.price.value}</Link>
               )}
-              <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn lg secondary">{t.addToCalendar}</a>
+              {live || lobbyOpen ? (
+                <Link href={`/parties/new?film=${hero.id}`} className="lp-btn lg secondary">{t.startWatchParty}</Link>
+              ) : (
+                <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn lg secondary">{t.addToCalendar}</a>
+              )}
             </div>
           </div>
         </header>
@@ -132,6 +152,9 @@ export default async function Home() {
         <section className="lp-section hm-strip" id="live">
           <PremiereStrip tiles={tiles} eyebrow="STARTING SOON" title="Each title screens once" />
         </section>
+
+        <PartiesRow parties={parties} heroId={hero.id} />
+        <ClipsRow films={list} />
 
         <WeekCalendar items={calendar} />
 
