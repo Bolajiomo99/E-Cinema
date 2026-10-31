@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import FaceCheck from "@/components/FaceCheck";
 import { GoogleButton, PasskeyButton, PasswordField } from "@/components/AuthForms";
-import { countryName, currencyFor, money, PLANS, payMethods, priceOf, vatRate, type PlanId } from "@/lib/plans";
+import { countryName, currencyFor, money, PLANS, payMethods, priceOf, vatRate, vipPrice, type Cycle, type PlanId } from "@/lib/plans";
 
 // Sign-up from Figma: 1 Account (16:127), 2 Verify (16:259), 3 Plan (29:417), 4 Pay (29:521).
 export type Step = 1 | 2 | 3 | 4;
-type Profile = { country?: string; contactPhone?: string; plan?: PlanId; planStatus?: string };
+type Profile = { country?: string; contactPhone?: string; plan?: PlanId; planStatus?: string; pendingPlan?: PlanId };
 type Ready = { paypal: boolean; paystack: boolean; flutterwave: boolean; crypto: boolean };
 
 export const LANGUAGES: [string, string][] = [
@@ -58,15 +58,35 @@ export function Stepper({ at }: { at: Step }) {
   );
 }
 
-export default function JoinFlow({ step, country, profile, identityStatus, google, ready }: {
-  step: Step; country?: string; profile?: Profile; identityStatus?: string; google: boolean; ready: Ready;
+const WANTED = "ec.wantedPlan";
+const isPlan = (v: unknown): v is PlanId => typeof v === "string" && PLANS.some((p) => p.id === v);
+
+export default function JoinFlow({ step, country, profile, identityStatus, google, ready, wanted, notice, cycle = "month" }: {
+  step: Step; country?: string; profile?: Profile; identityStatus?: string; google: boolean; ready: Ready; wanted?: string; notice?: string; cycle?: Cycle;
 }) {
   const router = useRouter();
-  const go = (s: Step) => router.push(`/join?step=${s}`);
+  // A plan picked on the landing page rides along through Account and Verify (and survives a
+  // Google round trip in this browser), so Plan opens with it already chosen.
+  const [want, setWant] = useState<PlanId | undefined>(isPlan(wanted) ? wanted : undefined);
+  useEffect(() => {
+    try {
+      if (isPlan(wanted)) localStorage.setItem(WANTED, wanted);
+      else { const saved = localStorage.getItem(WANTED); if (isPlan(saved)) setWant(saved); }
+    } catch {}
+  }, [wanted]);
+  const go = (s: Step) => router.push(`/join?step=${s}${want ? `&plan=${want}` : ""}`);
   if (step === 1) return <AccountStep country={country} google={google} onDone={() => go(2)} />;
   if (step === 2) return <VerifyStep phone={profile?.contactPhone} identityStatus={identityStatus} onDone={() => go(3)} />;
-  if (step === 3) return <PlanStep country={country} current={profile?.plan} onFree={() => { router.push("/home"); router.refresh(); }} onPaid={() => go(4)} />;
-  return <PayStep country={country} plan={profile?.plan ?? "pro"} ready={ready} />;
+  if (step === 3) return (
+    <PlanStep
+      country={country}
+      current={want ?? profile?.pendingPlan ?? profile?.plan}
+      onBack={() => go(2)}
+      onFree={() => { try { localStorage.removeItem(WANTED); } catch {} router.push("/home"); router.refresh(); }}
+      onPaid={(p) => { try { localStorage.removeItem(WANTED); } catch {} router.push(`/join?step=4&plan=${p}`); }}
+    />
+  );
+  return <PayStep country={country} plan={profile?.pendingPlan || profile?.plan || "pro"} cycle={cycle} ready={ready} notice={notice} onBack={() => router.push(`/join?step=3&plan=${profile?.pendingPlan || profile?.plan || "pro"}`)} />;
 }
 
 function AccountStep({ country, google, onDone }: { country?: string; google: boolean; onDone: () => void }) {
@@ -224,9 +244,10 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
   );
 }
 
-function PlanStep({ country, current, onFree, onPaid }: { country?: string; current?: PlanId; onFree: () => void; onPaid: () => void }) {
+function PlanStep({ country, current, onBack, onFree, onPaid }: { country?: string; current?: PlanId; onBack: () => void; onFree: () => void; onPaid: (p: PlanId) => void }) {
   const currency = currencyFor(country);
-  const [plan, setPlan] = useState<PlanId>(current && current !== "free" ? current : "pro");
+  const [plan, setPlan] = useState<PlanId>(current ?? "pro");
+  useEffect(() => { if (current) setPlan(current); }, [current]);
   const [promo, setPromo] = useState("");
   const [promoNote, setPromoNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -239,6 +260,7 @@ function PlanStep({ country, current, onFree, onPaid }: { country?: string; curr
   };
   return (
     <div className="su-form su-narrow">
+      <button type="button" className="su-back" onClick={onBack}>← Back to verify</button>
       <Stepper at={3} />
       <div className="su-title">
         <h1>Pick a plan</h1>
@@ -269,7 +291,7 @@ function PlanStep({ country, current, onFree, onPaid }: { country?: string; curr
         disabled={busy}
         onClick={async () => {
           setBusy(true); setError("");
-          try { await call("/api/me/plan", { plan }, "PUT"); plan === "free" ? onFree() : onPaid(); }
+          try { await call("/api/me/plan", { plan }, "PUT"); if (plan === "free") onFree(); else onPaid(plan); }
           catch (e) { setError((e as Error).message); setBusy(false); }
         }}
       >
@@ -279,42 +301,71 @@ function PlanStep({ country, current, onFree, onPaid }: { country?: string; curr
   );
 }
 
-function PayStep({ country, plan, ready }: { country?: string; plan: PlanId; ready: Ready }) {
-  const currency = currencyFor(country);
+function PayStep({ country, plan, cycle, ready, notice, onBack }: { country?: string; plan: PlanId; cycle: Cycle; ready: Ready; notice?: string; onBack: () => void }) {
+  const local = currencyFor(country);
   const methods = useMemo(() => payMethods(country, ready), [country, ready]);
   const [method, setMethod] = useState(methods.find((m) => m.ready)?.id ?? methods[0].id);
+  const [seats, setSeats] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(notice === "failed" ? "PayPal did not confirm that subscription. Nothing was charged; please try again." : "");
   const p = PLANS.find((x) => x.id === plan)!;
-  const price = priceOf(plan, currency);
-  const vat = currency === "NGN" ? Math.round(price * vatRate(country)) : Math.round(price * vatRate(country) * 100) / 100;
-  const renew = new Date(Date.now() + 30 * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const chosen = methods.find((m) => m.id === method)!;
+  // PayPal does not settle in naira, so a PayPal payment from Nigeria is billed the USD price.
+  const viaPayPal = chosen.id === "paypal" || (chosen.id === "card" && country !== "NG");
+  const currency = viaPayPal && local === "NGN" ? "USD" : local;
+  const qty = plan === "vip" ? seats : 1;
+  const unit = (c: typeof currency) => (plan === "vip" ? vipPrice(seats, c, cycle) : priceOf(plan, c, cycle));
+  const price = unit(currency) * qty;
+  const per = plan === "vip" ? `seat/${cycle === "year" ? "yr" : "mo"}` : cycle === "year" ? "yr" : "mo";
+  const rate = vatRate(country);
+  const vat = currency === "NGN" ? Math.round(price * rate) : Math.round(price * rate * 100) / 100;
+  const renew = new Date(Date.now() + (cycle === "year" ? 365 : 30) * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const pay = async () => {
+    setBusy(true); setError("");
+    try {
+      const { approve } = await call("/api/paypal/subscriptions", { seats: qty, cycle });
+      window.location.assign(approve);
+    } catch (e) { setError((e as Error).message); setBusy(false); }
+  };
   return (
-    <div className="su-pay">
-      <div className="su-form">
-        <Stepper at={4} />
-        <div className="su-title"><h1>How do you want to pay?</h1></div>
-        <p className="su-info su-globe">Showing methods for {countryName(country) || "your country"}. Travelling? Prices stay in your home currency until you change country in Settings.</p>
-        <div className="su-plans" role="radiogroup" aria-label="Payment method">
-          {methods.map((m) => (
-            <button type="button" role="radio" aria-checked={method === m.id} key={m.id} className={`su-plan${method === m.id ? " on" : ""}`} onClick={() => setMethod(m.id)}>
-              <i className="su-radio" />
-              <span className="su-plan-copy"><strong>{m.name}</strong><small>{m.sub}</small></span>
-              {!m.ready && <span className="soon-tag">Soon</span>}
-            </button>
-          ))}
-        </div>
+    <div className="su-form su-narrow">
+      <button type="button" className="su-back" onClick={onBack}>← Back to plans</button>
+      <Stepper at={4} />
+      <div className="su-title"><h1>How do you want to pay?</h1></div>
+      {notice === "cancelled" && <p className="su-info">You left PayPal before approving. Nothing was charged. Pick a method to try again, or go back and change your plan.</p>}
+      <p className="su-info su-globe">Showing methods for {countryName(country) || "your country"}. Travelling? Prices stay in your home currency until you change country in Settings.</p>
+      <div className="su-plans" role="radiogroup" aria-label="Payment method">
+        {methods.map((m) => (
+          <button type="button" role="radio" aria-checked={method === m.id} key={m.id} className={`su-plan${method === m.id ? " on" : ""}`} onClick={() => setMethod(m.id)}>
+            <i className="su-radio" />
+            <span className="su-plan-copy"><strong>{m.id === "paypal" && <span className="su-pp" aria-hidden>P</span>}{m.name}</strong><small>{m.sub}</small></span>
+            {!m.ready && <span className="soon-tag">Soon</span>}
+          </button>
+        ))}
       </div>
-      <aside className="su-summary">
+      <section className="su-summary">
         <h2>Your plan</h2>
-        <p className="su-line"><span>{p.name} <em className={`su-badge ${p.id}`}>{p.badge}</em></span><span>{money(price, currency)}/{p.per}</span></p>
-        <p className="su-muted">Renews {renew}. Cancel any time in Settings.</p>
+        <p className="su-line">
+          <span>{p.name} <em className={`su-badge ${p.id}`}>{p.badge}</em></span>
+          <span>{money(unit(local), local)}/{per}{currency !== local && ` · ${money(unit(currency), currency)}`}</span>
+        </p>
+        {plan === "vip" && (
+          <label className="su-line su-seats">
+            <span>Seats in your group</span>
+            <input type="number" min={5} max={50} value={seats} onChange={(e) => setSeats(Math.min(50, Math.max(5, Number(e.target.value) || 5)))} />
+          </label>
+        )}
+        <p className="su-muted">Renews {renew}. Cancel any time in Settings.{currency !== local && " PayPal bills this plan in US dollars."}</p>
         <hr />
-        {vat > 0 && <p className="su-line"><span>VAT ({(vatRate(country) * 100).toLocaleString("en")}%)</span><span>{money(vat, currency)}</span></p>}
+        {vat > 0 && <p className="su-line"><span>VAT ({(rate * 100).toLocaleString("en")}%)</span><span>{money(vat, currency)}</span></p>}
         <p className="su-line su-due"><span>Due today</span><b>{money(price + vat, currency)}</b></p>
-        <button className="su-cta" disabled={!chosen.ready}>{chosen.ready ? `Start ${p.name}` : `${chosen.name} is being switched on`}</button>
-        {!chosen.ready && <p className="su-muted">You can keep using E-Cinema on Free until then. <a href="/home">Go to my home</a></p>}
+        {error && <p className="pp-note pp-err" role="alert">{error}</p>}
+        <button className="su-cta" disabled={!chosen.ready || busy} onClick={pay}>
+          {!chosen.ready ? `${chosen.name} is being switched on` : busy ? "Opening PayPal…" : `Continue to PayPal · ${money(price + vat, currency)}`}
+        </button>
+        {!chosen.ready && <p className="su-muted">PayPal works now. You can also keep using E-Cinema on Free. <a href="/home">Go to my home</a></p>}
         <p className="su-muted">Secured by the payment provider. We never store full card numbers.</p>
-      </aside>
+      </section>
     </div>
   );
 }

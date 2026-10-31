@@ -4,6 +4,7 @@ import JoinFlow, { type Step } from "@/components/signup/JoinFlow";
 import Logo from "@/components/landing/Logo";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { googleEnabled } from "@/lib/google";
+import { subscriptionsEnabled } from "@/lib/paypal-subs";
 import { currencyFor } from "@/lib/plans";
 import { cookies } from "next/headers";
 
@@ -13,25 +14,27 @@ export const dynamic = "force-dynamic";
 const ART: Record<number, [string, string]> = {
   1: ["YOUR SEAT\nIS WAITING", "Join free. Upgrade when you want to talk, request older films or bring the whole group."],
   2: ["ONE PERSON,\nONE SEAT", "No shared logins, no bots buying up premieres. That is how we keep tickets fair."],
+  3: ["LOUDER\nTOGETHER", "Talk in every room, request classics and bring the whole group. Switch or cancel any time."],
+  4: ["PAY YOUR\nWAY", "PayPal, cards and local methods. Cancel any time, and your seat stays yours."],
 };
 
-export default async function JoinPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+export default async function JoinPage({ searchParams }: { searchParams: Promise<{ step?: string; plan?: string; failed?: string; cancelled?: string; cycle?: string }> }) {
   const [me, h, sp] = await Promise.all([currentAccount(), headers(), searchParams]);
   const asked = Number(sp.step);
-  let step: Step = me ? ((asked >= 2 && asked <= 4 ? asked : 2) as Step) : 1;
-  let profile: { country?: string; contactPhone?: string; plan?: "free" | "student" | "pro" | "vip" | "enterprise"; planStatus?: string } | undefined;
+  let step: Step = me ? ((asked >= 2 && asked <= 4 ? asked : sp.plan ? 3 : 2) as Step) : 1;
+  let profile: { country?: string; contactPhone?: string; plan?: "free" | "student" | "pro" | "vip" | "enterprise"; planStatus?: string; pendingPlan?: "student" | "pro" | "vip" | "enterprise" } | undefined;
   if (me) {
     const session = (await cookies()).get(SESSION_COOKIE)?.value;
     const r = await accountApi("GET", "/v1/me/profile", undefined, session);
     if (r.status === 200) profile = r.body as typeof profile;
-    if (step === 4 && (!profile?.plan || profile.plan === "free")) step = 3;
+    if (step === 4 && !profile?.pendingPlan && (!profile?.plan || profile.plan === "free")) step = 3;
   } else if (sp.step) {
-    redirect("/join");
+    redirect(sp.plan ? `/join?plan=${encodeURIComponent(sp.plan)}` : "/join");
   }
   const ip = h.get("cf-ipcountry");
   const country = profile?.country || (ip && ip !== "XX" && ip !== "T1" ? ip : undefined);
   const ready = {
-    paypal: false, // card and PayPal subscriptions switch on with the recurring billing release
+    paypal: subscriptionsEnabled(),
     paystack: Boolean(process.env.PAYSTACK_SECRET_KEY),
     flutterwave: Boolean(process.env.FLUTTERWAVE_SECRET_KEY),
     crypto: Boolean(process.env.COINBASE_COMMERCE_API_KEY),
@@ -70,6 +73,9 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
           identityStatus={me?.faceVerified ? "approved" : undefined}
           google={googleEnabled}
           ready={ready}
+          wanted={sp.plan}
+          notice={sp.failed ? "failed" : sp.cancelled ? "cancelled" : undefined}
+          cycle={sp.cycle === "year" ? "year" : "month"}
         />
       </div>
     </main>
