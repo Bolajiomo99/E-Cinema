@@ -8,6 +8,7 @@ import { TicketsProvider } from "@/components/ai/tickets";
 import WeekCalendar from "@/components/ai/WeekCalendar";
 import Countdown from "@/components/Countdown";
 import Logo from "@/components/landing/Logo";
+import AccountMenu from "@/components/AccountMenu";
 import PremiereStrip from "@/components/landing/PremiereStrip";
 import { myTickets } from "@/lib/api";
 import { currentAccount, SESSION_COOKIE } from "@/lib/auth";
@@ -69,7 +70,7 @@ export default async function Home() {
             </div>
             <div className="lp-nav-right">
               <AskAIButton />
-              <Link href="/account/devices" className="hm-avatar" aria-label="My account">{first.slice(0, 1).toUpperCase()}</Link>
+              <AccountMenu name={me.name} email={me.email} />
             </div>
           </nav>
           <div className="lp-hero-copy hm-hero-copy">

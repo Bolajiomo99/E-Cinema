@@ -5,6 +5,7 @@ import Countdown from "@/components/Countdown";
 import HeroWhen from "@/components/landing/HeroWhen";
 import LanguageDemo from "@/components/landing/LanguageDemo";
 import Logo from "@/components/landing/Logo";
+import AccountMenu from "@/components/AccountMenu";
 import PremiereStrip from "@/components/landing/PremiereStrip";
 import { currentAccount } from "@/lib/auth";
 import { endsAt, showtimes } from "@/lib/catalog";
@@ -104,7 +105,7 @@ export default async function Home() {
             <AskAIButton />
             <span className="lp-chip static">{country && country !== "XX" ? `${country} · ` : ""}English</span>
             {me ? (
-              <Link href="/home" className="lp-btn sm">My home</Link>
+              <><Link href="/home" className="lp-btn sm">My home</Link><AccountMenu name={me.name} email={me.email} /></>
             ) : (
               <>
                 <Link href="/signin" className="lp-btn sm ghost">Sign in</Link>
