@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { findShowtime } from "@/lib/catalog";
 import { paypalError, paypalOrders } from "@/lib/paypal";
 import { cookies } from "next/headers";
-import { apiEnabled, attachOrder, holdSeats, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, SoldOutError } from "@/lib/api";
 import { SESSION_COOKIE } from "@/lib/auth";
 
 // Creates a PayPal order for one ticket. The price always comes from the server catalog.
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ orderId: result.id });
   } catch (err) {
     if (err instanceof SoldOutError) return NextResponse.json({ error: "Sold out" }, { status: 409 });
+    if (err instanceof AdultOnlyError) return NextResponse.json({ error: "This screening is for verified adults. Finish the face and ID check in your account first.", verify: true }, { status: 403 });
     if (err instanceof Error && / 401$/.test(err.message)) return NextResponse.json({ error: "Sign in to buy a seat", signIn: true }, { status: 401 });
     return paypalError(err);
   }

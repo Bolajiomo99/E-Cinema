@@ -8,6 +8,7 @@ const token = process.env.INTERNAL_API_TOKEN;
 export const apiEnabled = Boolean(base && token);
 
 export class SoldOutError extends Error {}
+export class AdultOnlyError extends Error {}
 
 async function call<T>(path: string, body: unknown, session?: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
@@ -17,6 +18,7 @@ async function call<T>(path: string, body: unknown, session?: string): Promise<T
     signal: AbortSignal.timeout(8000),
   });
   if (res.status === 409) throw new SoldOutError("Not enough seats left");
+  if (res.status === 403) throw new AdultOnlyError("This screening is for verified adults");
   if (!res.ok) throw new Error(`API ${path} ${res.status}`);
   return res.status === 204 ? undefined : ((await res.json()) as T);
 }
@@ -36,4 +38,27 @@ export async function attachOrder(holdId: string, orderId: string) {
 
 export async function markPaid(orderId: string, captureId: string) {
   if (apiEnabled) await call(`/v1/payments/captured`, { orderId, captureId });
+}
+
+export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; orderId?: string; expiresAt: string };
+
+async function viewer<T>(method: string, path: string, session: string): Promise<T | undefined> {
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "X-Session-Token": session },
+    signal: AbortSignal.timeout(8000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API ${path} ${res.status}`);
+  return res.status === 204 ? undefined : ((await res.json()) as T);
+}
+
+// The viewer's paid seats and the holds waiting for their PayPal approval.
+export async function myTickets(session?: string): Promise<MyTicket[]> {
+  if (!apiEnabled || !session) return [];
+  return (await viewer<MyTicket[]>("GET", "/v1/me/tickets", session)) ?? [];
+}
+
+export async function releaseHold(session: string, holdId: string) {
+  if (apiEnabled) await viewer("DELETE", `/v1/me/holds/${encodeURIComponent(holdId)}`, session);
 }
