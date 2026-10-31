@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
 	"net/http"
@@ -87,6 +88,7 @@ func run() error {
 		InternalToken:  os.Getenv("INTERNAL_API_TOKEN"),
 		Rooms:          rooms.Store{DB: pool},
 		Hub:            rooms.NewHub(),
+		Parties:        parties.Store{DB: pool},
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
 	// Accounts whose 30-day deletion grace has ended are removed hourly.
