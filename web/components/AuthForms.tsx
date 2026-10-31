@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addPasskey, signInWithPasskey } from "@/lib/passkey-client";
+import { addPasskey } from "@/lib/passkey-client";
 
 
 export function GoogleButton({ enabled }: { enabled: boolean }) {
@@ -45,73 +45,6 @@ async function post(path: string, body: unknown, method = "POST") {
   return data;
 }
 
-
-const SIGNIN_ERRORS: Record<string, string> = {
-  "google-off": "Google sign-in is not switched on yet. Use your email or a passkey.",
-  "google-failed": "Google sign-in did not finish. Please try again.",
-  "google-email": "Your Google account needs a verified email address.",
-};
-
-// Only same-site paths are allowed as a destination, so a link cannot bounce people to another site.
-function safeNext(next?: string) {
-  return next && /^\/(?![/\\])[\w\-/.?=&#%]*$/.test(next) ? next : "/home";
-}
-
-export function SignInForm({ initialError, next, google = false }: { initialError?: string; next?: string; google?: boolean }) {
-  const dest = safeNext(next);
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(initialError ? SIGNIN_ERRORS[initialError] ?? "" : "");
-  return (
-    <form
-      className="auth-card"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        setBusy(true);
-        setError("");
-        try {
-          const r = await post("signin", { email: f.get("email"), password: f.get("password") });
-          router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : dest);
-          router.refresh();
-        } catch (err) {
-          setError((err as Error).message);
-          setBusy(false);
-        }
-      }}
-    >
-      <h2>Welcome back</h2>
-      <p className="muted">Sign in to take your seat.</p>
-      <GoogleButton enabled={google} />
-      <p className="or">or with email</p>
-      <label>Email<input name="email" type="email" autoComplete="email" required /></label>
-      <label>Password<PasswordField name="password" autoComplete="current-password" required /></label>
-      <button className="cta" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-      <button
-        type="button"
-        className="ghost wide"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          setError("");
-          try {
-            const r = await signInWithPasskey();
-            router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : dest);
-            router.refresh();
-          } catch (err) {
-            setError((err as Error).message);
-            setBusy(false);
-          }
-        }}
-      >
-        Sign in with a passkey
-      </button>
-      {error && <p className="pp-note pp-err" role="alert">{error}</p>}
-      <p className="muted small">You can be signed in on 2 devices. Signing in here signs out the oldest one.</p>
-      <p className="muted">New to E-Cinema? <a href="/join">Join free</a></p>
-    </form>
-  );
-}
 
 type Device = { id: string; device: string; lastSeenAt: string; current: boolean };
 

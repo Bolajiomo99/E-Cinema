@@ -1,16 +1,19 @@
-import { SignInForm } from "@/components/AuthForms";
-import { googleEnabled } from "@/lib/google";
-import SiteFooter from "@/components/SiteFooter";
+import { redirect } from "next/navigation";
+import Logo from "@/components/landing/Logo";
+import { SignInCard } from "@/components/auth/CardAuth";
+import { currentAccount } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in · E-Cinema" };
 
+// Figma "Sign in" 16:296.
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const { error, next } = await searchParams;
+  if (!error && (await currentAccount())) redirect("/home");
   return (
-    <section className="auth">
-      <SignInForm initialError={error} next={next} google={googleEnabled} />
-      <SiteFooter />
-    </section>
+    <main className="ca">
+      <header className="ca-top"><Logo /></header>
+      <SignInCard initialError={error} next={next} />
+    </main>
   );
 }

@@ -37,7 +37,7 @@ const icons: Record<string, React.ReactNode> = {
 export default function TabBar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname() ?? "/";
   // Full-screen flows hide the tab bar: watch rooms, and sign-up / sign-in like the Android frames.
-  if (/^\/(room\/|join|signin)/.test(path)) return null;
+  if (/^\/(room\/|join|signin|forgot|account\/lock)/.test(path)) return null;
   const home = signedIn ? "/home" : "/";
   const tabs = [
     { key: "home", label: "Home", href: home, on: path === "/" || path === "/home" },
