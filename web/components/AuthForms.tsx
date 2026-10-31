@@ -144,7 +144,13 @@ const SIGNIN_ERRORS: Record<string, string> = {
   "google-email": "Your Google account needs a verified email address.",
 };
 
-export function SignInForm({ initialError }: { initialError?: string }) {
+// Only same-site paths are allowed as a destination, so a link cannot bounce people to another site.
+function safeNext(next?: string) {
+  return next && /^\/(?![/\\])[\w\-/.?=&#%]*$/.test(next) ? next : "/checkout";
+}
+
+export function SignInForm({ initialError, next }: { initialError?: string; next?: string }) {
+  const dest = safeNext(next);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError ? SIGNIN_ERRORS[initialError] ?? "" : "");
@@ -158,7 +164,7 @@ export function SignInForm({ initialError }: { initialError?: string }) {
         setError("");
         try {
           const r = await post("signin", { email: f.get("email"), password: f.get("password") });
-          router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : "/checkout");
+          router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : dest);
           router.refresh();
         } catch (err) {
           setError((err as Error).message);
@@ -182,7 +188,7 @@ export function SignInForm({ initialError }: { initialError?: string }) {
           setError("");
           try {
             const r = await signInWithPasskey();
-            router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : "/checkout");
+            router.push(r.session?.signedOut ? "/account/devices?signedOut=1" : dest);
             router.refresh();
           } catch (err) {
             setError((err as Error).message);
