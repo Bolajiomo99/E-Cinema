@@ -14,7 +14,7 @@ import (
 // Categories match the filter chips on the page. Sign-ins only show under All.
 var categories = map[string][]string{
 	"premieres": {"premiere", "language"},
-	"social":    {"party", "reply", "share", "gift"},
+	"social":    {"party", "reply", "share", "gift", "friend"},
 	"payments":  {"payment", "refund", "lottery"},
 }
 
