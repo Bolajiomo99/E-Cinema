@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { findShowtime } from "@/lib/catalog";
 import { paypalError, paypalOrders } from "@/lib/paypal";
 import { cookies } from "next/headers";
-import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { quote } from "@/lib/ticket-quote";
 
@@ -49,6 +49,11 @@ export async function POST(req: Request) {
   };
 
   try {
+    // Paying again after a failed try gives back the earlier unpaid hold, so one viewer never blocks two seats.
+    if (session) {
+      const stale = (await myTickets(session).catch(() => [])).filter((t) => t.showtimeId === showtime.id && t.status === "held");
+      await Promise.all(stale.map((t) => releaseHold(session, t.holdId).catch(() => undefined)));
+    }
     const hold = await holdSeats(showtime.id, 1, randomUUID(), session, q.quality);
     const { result } = await paypalOrders().createOrder({ body, paypalRequestId: randomUUID(), prefer: "return=minimal" });
     if (hold && result.id) await attachOrder(hold.id, result.id, Math.round((Number(itemTotal) - Number(q.discount)) * 100));

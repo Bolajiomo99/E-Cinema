@@ -2,7 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import Logo from "@/components/landing/Logo";
 import LocalWhen from "@/components/dash/LocalWhen";
-import Methods, { type Method } from "@/components/checkout/Methods";
+import Methods from "@/components/checkout/Methods";
+import { methodsFor } from "@/lib/pay-methods";
 import HashToFilm from "@/components/checkout/HashToFilm";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
 import { myTickets } from "@/lib/api";
@@ -19,24 +20,6 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Checkout · E-Cinema" };
 
 const money = (cur: string, v: string) => (cur === "USD" ? `$${v}` : `${cur} ${v}`);
-
-function methodsFor(country: string | undefined, paypal: boolean): Method[] {
-  const base: Method[] = [
-    { id: "paypal", name: "PayPal", sub: "PayPal balance, card or Pay Later · billed in USD", ready: paypal, icon: "paypal" },
-    { id: "card", name: "Debit or credit card", sub: country === "NG" ? "Mastercard, Visa, Verve · through PayPal, no account needed" : "Mastercard, Visa · through PayPal, no account needed", ready: paypal, icon: "card" },
-  ];
-  const local: Method[] =
-    country === "NG"
-      ? [
-          { id: "paystack", name: "Paystack", sub: "Card, bank, USSD or transfer", ready: false, icon: "phone" },
-          { id: "flutterwave", name: "Flutterwave", sub: "Card, bank, mobile money", ready: false, icon: "phone" },
-          { id: "bank", name: "Bank transfer", sub: "Pay to a one-time account number", ready: false, icon: "bank" },
-        ]
-      : country === "KE" || country === "GH" || country === "UG" || country === "TZ"
-        ? [{ id: "flutterwave", name: "Flutterwave", sub: "Card, bank, mobile money", ready: false, icon: "phone" }]
-        : [];
-  return [...base, ...local, { id: "crypto", name: "Crypto", sub: "Bitcoin, USDC, Ethereum · confirmed on-chain", ready: false, icon: "crypto" }];
-}
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ film?: string; q?: string }> }) {
   const [{ film, q: quality }, me, loc] = await Promise.all([searchParams, currentAccount(), readLocale()]);

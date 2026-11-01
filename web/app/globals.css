@@ -1737,3 +1737,32 @@ body:has(.co) { background: #0a0a0c; }
 .tk-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
 .tk-confirm small { flex-basis: 100%; color: #f87171; }
 .tk-cancelled { font: 600 13px/20px Manrope, sans-serif; color: #22c55e; }
+
+/* Payment failed (Figma 96:1254) */
+.pf { display: flex; justify-content: center; padding: 136px 16px 64px; min-height: 100vh; background: #0a0a0c; box-sizing: border-box; }
+.pf-card { width: 560px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; padding: 32px; border-radius: 20px; background: #131317; border: 1px solid #26262e; }
+.pf-ic { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 32px; background: rgba(227,24,45,.15); }
+.pf-card h1 { margin: 0; font: 800 32px/40px Manrope, sans-serif; letter-spacing: -.5px; color: #f4f4f6; }
+.pf-sub { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #a6a6b0; }
+.pf-sub a { color: #f4f4f6; }
+.pf-hold { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 12px; background: #1b1b21; font: 600 13px/20px Manrope, sans-serif; letter-spacing: .1px; color: #f4f4f6; }
+.pf-pill { flex: none; padding: 4px 10px; border-radius: 999px; background: rgba(245,184,65,.15); color: #f5b841; font: 700 11px/14px Manrope, sans-serif; letter-spacing: .8px; font-variant-numeric: tabular-nums; }
+.pf-pill.off { background: #26262e; color: #a6a6b0; }
+.pf-label { margin: 0; font: 600 14px/20px Manrope, sans-serif; letter-spacing: .1px; color: #f4f4f6; }
+.pf-opts { display: flex; flex-direction: column; gap: 8px; }
+.pf-opt { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #26262e; background: none; color: #f4f4f6; font: 500 15px/22px Manrope, sans-serif; text-align: left; cursor: pointer; box-sizing: border-box; }
+.pf-opt.on { background: #1b1b21; border-color: #e3182d; }
+.pf-opt:disabled { cursor: not-allowed; color: #a6a6b0; }
+.pf-opt:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pf-btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.pf-btns .state-btn { height: 44px; padding: 0 20px; border-radius: 10px; font-size: 15px; font-weight: 600; letter-spacing: .1px; }
+.pf-btns .state-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pf-btns .pp-note { margin: 8px 0 0; }
+@media (max-width: 640px) {
+  .pf { padding: 96px 16px 120px; }
+  .pf-card { padding: 22px; }
+  .pf-card h1 { font-size: 26px; line-height: 32px; }
+  .pf-hold { flex-wrap: wrap; }
+  .pf-btns > * { flex: 1 1 100%; }
+  .pf-btns .state-btn { width: 100%; justify-content: center; }
+}

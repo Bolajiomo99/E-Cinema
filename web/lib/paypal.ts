@@ -37,9 +37,28 @@ export function paypalPayments(): PaymentsController {
 // Never leak PayPal error bodies to the browser.
 export function paypalError(err: unknown) {
   if (err instanceof ApiError) {
-    console.error("PayPal error", err.statusCode);
+    const issue = declineIssue(err);
+    console.error("PayPal error", err.statusCode, issue ?? "");
+    // A declined card is the payer's to fix, not ours: say so, so the page can offer another way.
+    if (issue) return NextResponse.json({ error: "Payment declined", issue }, { status: 422 });
     return NextResponse.json({ error: "Payment provider error" }, { status: 502 });
   }
   console.error("Checkout error", err instanceof Error ? err.message : err);
   return NextResponse.json({ error: "Checkout unavailable" }, { status: 500 });
+}
+
+// PayPal issue codes that mean the payer's bank or card said no (safe to show, no card data).
+const DECLINES = new Set(["INSTRUMENT_DECLINED", "PAYER_ACTION_REQUIRED", "TRANSACTION_REFUSED", "CARD_EXPIRED", "PAYER_CANNOT_PAY", "INSUFFICIENT_FUNDS", "CARD_CLOSED", "PAYMENT_DENIED"]);
+
+export function declineIssue(err: ApiError): string | undefined {
+  let r = err.result as { details?: { issue?: string }[] } | undefined;
+  if (!r && typeof err.body === "string") {
+    try {
+      r = JSON.parse(err.body);
+    } catch {
+      r = undefined;
+    }
+  }
+  const issue = r?.details?.find((d) => d.issue && DECLINES.has(d.issue))?.issue;
+  return issue;
 }

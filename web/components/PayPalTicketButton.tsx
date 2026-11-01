@@ -15,6 +15,10 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
     statusRef.current = status;
   }, [status]);
 
+  // Figma 96:1254: a failed payment lands on a page that keeps the seat and offers another way.
+  const failed = (why: string) =>
+    window.location.assign(`/checkout/failed?film=${encodeURIComponent(showtimeId!)}${quality && quality !== "hd" ? `&q=${quality}` : ""}&why=${encodeURIComponent(why)}`);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -30,10 +34,11 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
         onApprove: async ({ orderId }: OnApproveDataOneTimePayments) => {
           const res = await fetch(`/api/paypal/orders/${orderId}/capture`, { method: "POST" });
           if (res.ok && showtimeId) return window.location.assign(`/tickets/confirmed?film=${encodeURIComponent(showtimeId)}`);
+          if (!res.ok && showtimeId) return failed((((await res.json().catch(() => ({}))) as { issue?: string }).issue) ?? "error");
           setStatus(res.ok ? "paid" : "error");
         },
         onCancel: () => setStatus("ready"),
-        onError: () => setStatus("error"),
+        onError: () => (showtimeId ? failed("error") : setStatus("error")),
       });
 
       startRef.current = async () => {
