@@ -19,6 +19,7 @@ type Event struct {
 	Message *Message `json:"message,omitempty"`
 	Poll    *Poll    `json:"poll,omitempty"`
 	Online  []string `json:"online,omitempty"` // display names of party members connected now
+	IDs     []int64  `json:"ids,omitempty"`    // hide | blocked: messages to take off the screen
 	Emoji   string   `json:"emoji,omitempty"`
 	Count   int      `json:"count,omitempty"`
 	Error   string   `json:"error,omitempty"`
@@ -30,6 +31,7 @@ type client struct {
 	country   string
 	lang      string
 	partyID   string
+	blocked   map[string]bool // accounts this viewer blocked; guarded by Hub.mu
 	out       chan Event
 }
 
@@ -191,6 +193,9 @@ func (h *Hub) broadcastParty(room, partyID string, e Event, mine *client) {
 		if partyID != "" && c.partyID != partyID {
 			continue
 		}
+		if e.Message != nil && c.blocked[e.Message.author] {
+			continue
+		}
 		ev := e
 		if e.Message != nil {
 			m := *e.Message
@@ -221,6 +226,9 @@ type incoming struct {
 	Choice   int      `json:"choice"`
 	Question string   `json:"question"`
 	Options  []string `json:"options"`
+	Message  int64    `json:"message"` // report | block
+	Reason   string   `json:"reason"`
+	Block    bool     `json:"block"`
 }
 
 // Live serves the room WebSocket. The pass in ?t= was issued only to a ticket holder.
@@ -241,7 +249,12 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
-		c := &client{accountID: pass.AccountID, name: pass.Name, country: pass.Country, lang: pass.Lang, partyID: pass.PartyID, out: make(chan Event, 64)}
+		blocked, err := store.Blocked(ctx, pass.AccountID)
+		if err != nil {
+			slog.Error("room blocks failed", "err", err)
+			blocked = map[string]bool{}
+		}
+		c := &client{accountID: pass.AccountID, name: pass.Name, country: pass.Country, lang: pass.Lang, partyID: pass.PartyID, blocked: blocked, out: make(chan Event, 64)}
 		h.broadcast(room, Event{Type: "presence", Count: h.join(room, c)}, nil)
 		if c.partyID != "" {
 			h.broadcastParty(room, c.partyID, Event{Type: "friends", Online: h.partyNames(room, c.partyID)}, nil)
@@ -326,6 +339,43 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 					continue
 				}
 				h.broadcastParty(room, p.partyID, Event{Type: "poll", Poll: &p}, c)
+			case "report", "block":
+				if in.Type == "report" {
+					hidden, err := store.Report(ctx, room, pass.AccountID, in.Message, in.Reason)
+					if err != nil {
+						if !errors.Is(err, ErrBadReason) && !errors.Is(err, ErrNoMessage) && !errors.Is(err, ErrReportSelf) {
+							slog.Error("room report failed", "err", err)
+							err = errors.New("report not sent, try again")
+						}
+						say(err)
+						continue
+					}
+					if hidden {
+						h.broadcast(room, Event{Type: "hide", IDs: []int64{in.Message}}, nil)
+					}
+				}
+				if in.Type == "block" || in.Block {
+					author, ids, err := store.Block(ctx, room, pass.AccountID, in.Message)
+					if err != nil {
+						if !errors.Is(err, ErrNoMessage) && !errors.Is(err, ErrReportSelf) {
+							slog.Error("room block failed", "err", err)
+							err = errors.New("block not saved, try again")
+						}
+						say(err)
+						continue
+					}
+					h.mu.Lock()
+					c.blocked[author] = true
+					h.mu.Unlock()
+					select {
+					case c.out <- Event{Type: "blocked", IDs: ids}:
+					default:
+					}
+				}
+				select {
+				case c.out <- Event{Type: "reported"}:
+				default:
+				}
 			case "poll":
 				p, err := store.CreatePoll(ctx, room, c.partyID, pass.AccountID, in.Question, in.Options)
 				if err != nil {

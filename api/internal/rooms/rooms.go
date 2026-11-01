@@ -52,6 +52,7 @@ type Message struct {
 	Media     json.RawMessage `json:"media,omitempty"`
 	Spoiler   bool            `json:"spoiler,omitempty"`
 	partyID   string
+	author    string
 }
 
 type Store struct{ DB *pgxpool.Pool }
@@ -85,7 +86,8 @@ func (st Store) RecentParty(ctx context.Context, showtimeID, viewerID, partyID s
 func (st Store) recent(ctx context.Context, showtimeID, viewerID, partyID string, limit int) ([]Message, error) {
 	rows, err := st.DB.Query(ctx, `SELECT `+msgCols+` FROM (
 	    SELECT * FROM room_messages WHERE showtime_id = $1 AND NOT hidden
-	      AND party_id IS NOT DISTINCT FROM NULLIF($4, '')::uuid ORDER BY id DESC LIMIT $3
+	      AND party_id IS NOT DISTINCT FROM NULLIF($4, '')::uuid
+	      AND account_id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = $2::uuid) ORDER BY id DESC LIMIT $3
 	  ) m ORDER BY id`, showtimeID, viewerID, limit, partyID)
 	if err != nil {
 		return nil, err
@@ -151,7 +153,7 @@ func (st Store) PostWith(ctx context.Context, showtimeID, accountID, name, body 
 		if lastMinute >= perMinute || (last != nil && time.Since(*last) < burstGap) {
 			return ErrTooFast
 		}
-		m = Message{Name: name, Body: body, Mine: true, Scope: "world", Lang: x.Lang, Country: x.Country, Kind: x.Kind, Media: x.Media, partyID: x.PartyID}
+		m = Message{Name: name, Body: body, Mine: true, Scope: "world", Lang: x.Lang, Country: x.Country, Kind: x.Kind, Media: x.Media, partyID: x.PartyID, author: accountID}
 		if x.PartyID != "" {
 			m.Scope = "room"
 		}

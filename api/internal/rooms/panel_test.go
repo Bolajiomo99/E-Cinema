@@ -24,6 +24,8 @@ func TestRoomPanel(t *testing.T) {
 	ctx := context.Background()
 	st := rooms.Store{DB: p}
 	clean := func() {
+		p.Exec(ctx, `DELETE FROM room_reports WHERE showtime_id = 'panel-test'`)
+		p.Exec(ctx, `DELETE FROM blocks WHERE blocker_id IN (SELECT id FROM accounts WHERE email LIKE 'panel-%@example.com')`)
 		p.Exec(ctx, `DELETE FROM room_polls WHERE showtime_id = 'panel-test'`)
 		p.Exec(ctx, `DELETE FROM talk_time WHERE showtime_id = 'panel-test'`)
 		p.Exec(ctx, `DELETE FROM room_messages WHERE showtime_id = 'panel-test'`)
@@ -134,5 +136,49 @@ func TestRoomPanel(t *testing.T) {
 	}
 	if left, err := st.UseTalk(ctx, "panel-test", host, "pro", 900); err != nil || left != -1 {
 		t.Fatalf("pro talk = %d, %v", left, err)
+	}
+
+	// Report and block: reports are private, three reporters hide a message, a block hides the author for the blocker.
+	if _, err := st.Report(ctx, "panel-test", host, w.ID, "spoilers"); !errors.Is(err, rooms.ErrReportSelf) {
+		t.Fatalf("self report: %v", err)
+	}
+	if _, err := st.Report(ctx, "panel-test", guest, w.ID, "nonsense"); !errors.Is(err, rooms.ErrBadReason) {
+		t.Fatalf("bad reason: %v", err)
+	}
+	if _, err := st.Report(ctx, "other-showtime", guest, w.ID, "spam"); !errors.Is(err, rooms.ErrNoMessage) {
+		t.Fatalf("message from another premiere: %v", err)
+	}
+	extra := account(t, p, "panel-y@example.com")
+	for i, who := range []string{guest, guest, stranger, extra} {
+		hidden, err := st.Report(ctx, "panel-test", who, w.ID, "harassment")
+		if err != nil || hidden != (i == 3) {
+			t.Fatalf("report %d: hidden=%v %v", i, hidden, err)
+		}
+	}
+	has := func(list []rooms.Message, id int64) bool {
+		for _, m := range list {
+			if m.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+	if list, _ := st.Recent(ctx, "panel-test", extra, 50); has(list, w.ID) {
+		t.Fatalf("hidden message still shown: %+v", list)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	w2, _ := st.PostWith(ctx, "panel-test", host, "Tolu", "still here", rooms.Extra{})
+	author, ids, err := st.Block(ctx, "panel-test", guest, w2.ID)
+	if err != nil || author != host || len(ids) < 2 {
+		t.Fatalf("block = %s %v %v", author, ids, err)
+	}
+	if list, _ := st.Recent(ctx, "panel-test", guest, 50); has(list, w2.ID) || len(list) != 1 {
+		t.Fatalf("blocked author still visible to the blocker: %+v", list)
+	}
+	if list, _ := st.Recent(ctx, "panel-test", stranger, 50); !has(list, w2.ID) {
+		t.Fatalf("others should still see the message: %+v", list)
+	}
+	if b, _ := st.Blocked(ctx, guest); !b[host] {
+		t.Fatal("block not listed")
 	}
 }
