@@ -14,9 +14,9 @@ const fmt = (s: number) => {
   return `${h ? `${h}:${String(m).padStart(2, "0")}` : m}:${String(sec).padStart(2, "0")}`;
 };
 
-export default function LibraryPlayer({ film, stream, viewerCode, original, dubFilm, dubLanguages, prefAudio, prefSubs, syncStart, back = "/library" }: {
+export default function LibraryPlayer({ film, stream, viewerCode, original, dubFilm, dubLanguages, prefAudio, prefSubs, syncStart, back = "/library", offline = false, credit }: {
   film: string; stream: Stream | null; viewerCode: string; original: string; dubFilm: string; dubLanguages: string[];
-  prefAudio: string; prefSubs: string; syncStart?: number; back?: string;
+  prefAudio: string; prefSubs: string; syncStart?: number; back?: string; offline?: boolean; credit?: string;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -110,7 +110,7 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
     <div className="lp" ref={stage}>
       <header className="room-top">
         <Link href={back} className="room-back" aria-label="Back to the library">‹</Link>
-        <div><strong>{film}</strong><span>{synced ? "Rewatch party · everyone in sync" : "From your library"}</span></div>
+        <div><strong>{film}</strong><span>{synced ? "Rewatch party · everyone in sync" : offline ? "Downloaded · plays without a connection" : "From your library"}</span></div>
       </header>
       <div className="room-player on lp-player" onContextMenu={(e) => e.preventDefault()} onClick={synced ? undefined : toggle}>
         <video
@@ -173,15 +173,15 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
           <TrackChip icon="subs" label={tracks.subs ? trackName(tracks.subs) : "Subtitles off"} value={tracks.subs}
             options={[{ value: "", label: "Off" }, ...dubLanguages.map((l) => ({ value: l, label: trackName(l) }))]}
             onPick={tracks.setSubs} empty="Subtitles show here once this film has them." />
-          <button className={`pc-chip ${saver ? "on" : ""}`} onClick={() => { const t = video.current?.currentTime ?? 0; setSaver((s) => !s); requestAnimationFrame(() => { if (video.current) video.current.currentTime = t; }); setPlaying(false); }} aria-pressed={saver}>
+          {!offline && <button className={`pc-chip ${saver ? "on" : ""}`} onClick={() => { const t = video.current?.currentTime ?? 0; setSaver((s) => !s); requestAnimationFrame(() => { if (video.current) video.current.currentTime = t; }); setPlaying(false); }} aria-pressed={saver}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="15" width="3" height="5" rx="1" /><rect x="8.5" y="11" width="3" height="9" rx="1" opacity={saver ? 0.35 : 1} /><rect x="14" y="7" width="3" height="13" rx="1" opacity={saver ? 0.35 : 1} /><rect x="19.5" y="3" width="3" height="17" rx="1" opacity={saver ? 0.35 : 1} /></svg>
             <span>{saver ? "Data saver · 360p" : "HD · 720p"}</span>
-          </button>
+          </button>}
           <button className="pc-icon" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : stage.current?.requestFullscreen())} aria-label="Full screen">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
           </button>
         </div>
-        <p className="room-credit">Stand-in film: {stream.title} {stream.credit} · {stream.license}</p>
+        <p className="room-credit">{credit ?? `Stand-in film: ${stream.title} ${stream.credit} · ${stream.license}`}</p>
       </footer>
     </div>
   );
