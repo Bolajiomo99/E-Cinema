@@ -26,7 +26,7 @@ const clock = (sec: number) => `${Math.floor(sec / 3600)}:${pad((sec % 3600) / 6
 
 // Keeps this browser's idea of "now" in step with the server, NTP style: the sample with the
 // shortest round trip is the most trustworthy, so the offset comes from that one.
-function useServerClock(url: string) {
+export function useServerClock(url: string) {
   const [phase, setPhase] = useState<Phase>("connecting");
   const [syncMs, setSyncMs] = useState<number | null>(null);
   const offset = useRef(0);
@@ -84,7 +84,7 @@ function useServerClock(url: string) {
 
 // The room's live connection: chat, reactions and the head count. It asks the web server
 // for a fresh pass on every (re)connect, since passes only last a few minutes.
-function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage[], initialWatching: number, initialRoom: RoomMessage[], initialPolls: Poll[]) {
+export function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage[], initialWatching: number, initialRoom: RoomMessage[], initialPolls: Poll[]) {
   const [messages, setMessages] = useState<RoomMessage[]>(initial);
   const [roomMessages, setRoomMessages] = useState<RoomMessage[]>(initialRoom);
   const [polls, setPolls] = useState<Poll[]>(initialPolls);
