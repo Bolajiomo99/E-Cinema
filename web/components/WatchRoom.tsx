@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Lobby from "@/components/room/Lobby";
+import SidePanel, { type ChatMessage, type Party, type Poll } from "@/components/room/SidePanel";
 import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 
-export type RoomMessage = { id: number; name: string; body: string; mine?: boolean; createdAt: string };
+export type RoomMessage = ChatMessage;
 
 type Showtime = { id: string; film: string; studio: string; startsAt: string; durationMin: number };
 type Phase = "connecting" | "waiting" | "playing" | "ended";
 type Floater = { id: number; emoji: string; left: number };
 
-const REACTIONS = ["🔥", "😂", "😮", "❤️", "👏", "😭"];
 const DRIFT_LIMIT = 0.5; // seconds; beyond this the player jumps back into step with everyone
 
 const pad = (n: number) => String(Math.floor(n)).padStart(2, "0");
@@ -78,8 +78,11 @@ function useServerClock(url: string) {
 
 // The room's live connection: chat, reactions and the head count. It asks the web server
 // for a fresh pass on every (re)connect, since passes only last a few minutes.
-function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage[], initialWatching: number) {
+function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage[], initialWatching: number, initialRoom: RoomMessage[], initialPolls: Poll[]) {
   const [messages, setMessages] = useState<RoomMessage[]>(initial);
+  const [roomMessages, setRoomMessages] = useState<RoomMessage[]>(initialRoom);
+  const [polls, setPolls] = useState<Poll[]>(initialPolls);
+  const [onlineNames, setOnlineNames] = useState<string[] | null>(null);
   const [watching, setWatching] = useState(initialWatching);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [online, setOnline] = useState(false);
@@ -114,10 +117,22 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
         setOnline(true);
       };
       ws.onmessage = (e) => {
-        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string };
+        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string; poll?: Poll; online?: string[] };
         if (ev.type === "msg" && ev.message) {
           const m = ev.message;
-          setMessages((list) => (list.some((x) => x.id === m.id) ? list : [...list.slice(-199), m]));
+          const add = (list: RoomMessage[]) => (list.some((x) => x.id === m.id) ? list : [...list.slice(-199), m]);
+          if (m.scope === "room") setRoomMessages(add);
+          else setMessages(add);
+        } else if (ev.type === "poll" && ev.poll) {
+          const p = ev.poll;
+          // Other people's votes arrive without "mine", so keep the viewer's own answer.
+          setPolls((list) => {
+            const old = list.find((x) => x.id === p.id);
+            const next = { ...p, mine: p.mine ?? old?.mine };
+            return old ? list.map((x) => (x.id === p.id ? next : x)) : [next, ...list];
+          });
+        } else if (ev.type === "friends") {
+          setOnlineNames(ev.online ?? []);
         } else if (ev.type === "presence" && typeof ev.count === "number") {
           setWatching(ev.count);
         } else if (ev.type === "react" && ev.emoji) {
@@ -151,7 +166,7 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
     return true;
   }, []);
 
-  return { messages, watching, floaters, online, notice, signedOut, send };
+  return { messages, roomMessages, polls, onlineNames, watching, floaters, online, notice, signedOut, send };
 }
 
 export default function WatchRoom({
@@ -163,6 +178,11 @@ export default function WatchRoom({
   wsBase,
   audio = "Original",
   subtitles = "English",
+  party = null,
+  initialRoomMessages = [],
+  initialPolls = [],
+  initialTalkLeft = -1,
+  lang = "en",
 }: {
   showtime: Showtime;
   viewerCode: string;
@@ -172,9 +192,15 @@ export default function WatchRoom({
   wsBase: string;
   audio?: string;
   subtitles?: string;
+  party?: Party | null;
+  initialRoomMessages?: RoomMessage[];
+  initialPolls?: Poll[];
+  initialTalkLeft?: number;
+  lang?: string;
 }) {
   const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
-  const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching);
+  const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching, initialRoomMessages, initialPolls);
+  const [talkLeft, setTalkLeft] = useState(initialTalkLeft);
   const startMs = Date.parse(showtime.startsAt);
   const totalSec = showtime.durationMin * 60;
 
@@ -184,11 +210,9 @@ export default function WatchRoom({
   const [joined, setJoined] = useState(false);
   const [saver, setSaver] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [draft, setDraft] = useState("");
   const [mark, setMark] = useState({ x: 12, y: 18 });
   const [audioOnly, setAudioOnly] = useState(false);
   const [wasLive, setWasLive] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
 
   const elapsedSec = nowMs === null ? 0 : Math.max(0, Math.min(totalSec, (nowMs - startMs) / 1000));
@@ -223,11 +247,6 @@ export default function WatchRoom({
     if (video.current) video.current.volume = volume;
   }, [volume]);
 
-  useEffect(() => {
-    const el = listRef.current;
-    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 140) el.scrollTop = el.scrollHeight;
-  }, [room.messages]);
-
   // Remember that the film was running, so a later reconnect reads as a dropped connection
   // rather than the pre-show lobby.
   useEffect(() => {
@@ -242,12 +261,6 @@ export default function WatchRoom({
       v.currentTime = ((now() - startMs) / 1000) % stream.durationSec;
       v.play().catch(() => setJoined(false));
     }
-  };
-
-  const sendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    const body = draft.trim();
-    if (body && room.send({ type: "msg", body })) setDraft("");
   };
 
   // How much of the film the browser already holds, for the lobby's "pre-loaded" check.
@@ -366,35 +379,11 @@ export default function WatchRoom({
         </footer>
       </div>
 
-      <aside className="room-side">
-        <header>
-          <strong>Room · {showtime.film}</strong>
-          <span className="muted small">{room.watching.toLocaleString()} here {room.online ? "" : "· reconnecting"}</span>
-        </header>
-        <div className="room-chat" ref={listRef}>
-          {room.messages.length === 0 && <p className="muted small">No messages yet. Say hello to the room.</p>}
-          {room.messages.map((m) => (
-            <div key={m.id} className={`room-msg ${m.mine ? "mine" : ""}`}>
-              <span className="avatar" aria-hidden>{m.name.slice(0, 2).toUpperCase()}</span>
-              <div>
-                <b>{m.mine ? "You" : m.name}</b>
-                <time suppressHydrationWarning>{new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
-                <p>{m.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="room-reacts">
-          {REACTIONS.map((r) => (
-            <button key={r} onClick={() => room.send({ type: "react", emoji: r })} aria-label={`React ${r}`}>{r}</button>
-          ))}
-        </div>
-        {room.notice && <p className="room-notice">{room.notice}</p>}
-        <form className="room-input" onSubmit={sendMessage}>
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={500} placeholder="Message the room" aria-label="Message the room" />
-          <button className="cta" disabled={!room.online || !draft.trim()}>Send</button>
-        </form>
-      </aside>
+      <SidePanel
+        showtimeId={showtime.id} film={showtime.film} watching={room.watching} online={room.online} notice={room.notice}
+        party={party} onlineNames={room.onlineNames} roomMessages={room.roomMessages} worldMessages={room.messages} polls={room.polls}
+        lang={lang} talkLeft={talkLeft} onTalkLeft={setTalkLeft} send={room.send}
+      />
     </div>
   );
 }

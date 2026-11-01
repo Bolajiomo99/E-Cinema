@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import WatchRoom, { type RoomMessage } from "@/components/WatchRoom";
+import type { Party, Poll } from "@/components/room/SidePanel";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { filmStream, mediaEnabled } from "@/lib/media";
 import { findShowtime } from "@/lib/catalog";
@@ -17,6 +18,11 @@ type Room = {
   messages?: RoomMessage[];
   viewerCode?: string;
   watching?: number;
+  party?: Party;
+  roomMessages?: RoomMessage[];
+  polls?: Poll[];
+  talkLeft?: number;
+  lang?: string;
 };
 
 export default async function RoomPage({ params }: { params: Promise<{ showtime: string }> }) {
@@ -61,6 +67,11 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
       wsBase={wsBase}
       audio={audio}
       subtitles={langName(loc.lang)}
+      party={room.party ?? null}
+      initialRoomMessages={room.roomMessages ?? []}
+      initialPolls={room.polls ?? []}
+      initialTalkLeft={room.talkLeft ?? -1}
+      lang={room.lang || loc.lang}
     />
   );
 }
