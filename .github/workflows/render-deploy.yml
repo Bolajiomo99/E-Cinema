@@ -253,6 +253,14 @@ jobs:
           sj -X POST -d '{"link":"https://lagosthreads.ng","photos":[]}' "$web/api/brand/check" | grep -q "licensed partner"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/rewards/desk")" = 404 ]
           echo "brand ok"
+          # Licensing: plans and agreement load, the apply flow opens for a member, a member
+          # without a licence is sent to apply, and the licensing desk stays staff only.
+          curl -fsS "$web/licensing" | grep -q "Choose Growth"
+          curl -fsS "$web/licensing/agreement" | grep -q "Merch licence agreement"
+          curl -fsS -b "$jar" "$web/licensing/apply?plan=growth" | grep -q "Continue to plan"
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/partner" | grep -q "/licensing/apply"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/licensing/desk")" = 404 ]
+          echo "licensing ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
