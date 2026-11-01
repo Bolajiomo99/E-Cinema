@@ -231,7 +231,7 @@ export default function SidePanel(props: {
             <Link href="/plans">Go Pro</Link>
           </div>
           <div className="rp-talk-bar"><span style={{ width: `${(props.talkLeft / FREE_TALK) * 100}%` }} /></div>
-          <p>{muted ? "Upgrade to Pro to keep talking, send voice notes, images and documents in this room." : "Free members get 5 minutes of talk per premiere, then are muted. Reactions stay free."}</p>
+          <p>{muted ? "Upgrade to Pro to keep talking, send voice notes, images and documents in this room." : "Free members can talk for 5 minutes per premiere, then stay muted until they upgrade. Reactions stay free."}</p>
         </div>
       )}
 

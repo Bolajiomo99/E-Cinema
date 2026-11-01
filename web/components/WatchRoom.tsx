@@ -9,6 +9,7 @@ import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 import ReviewCard from "@/components/review/ReviewCard";
 import CatchUp from "@/components/room/CatchUp";
+import ShopDrawer from "@/components/room/ShopDrawer";
 import { useWatchBeat } from "@/components/insights/useWatchBeat";
 
 export type RoomMessage = ChatMessage;
@@ -230,6 +231,7 @@ export default function WatchRoom({
   // Time-based values only exist after mount, so the server and browser render the same HTML.
   const [nowMs, setNowMs] = useState<number | null>(null);
   const [joined, setJoined] = useState(false);
+  const [shopping, setShopping] = useState(false);
   const [saver, setSaver] = useState(false);
   const [volume, setVolume] = useState(1);
   const [mark, setMark] = useState({ x: 12, y: 18 });
@@ -438,6 +440,10 @@ export default function WatchRoom({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="15" width="3" height="5" rx="1" /><rect x="8.5" y="11" width="3" height="9" rx="1" opacity={saver ? 0.35 : 1} /><rect x="14" y="7" width="3" height="13" rx="1" opacity={saver ? 0.35 : 1} /><rect x="19.5" y="3" width="3" height="17" rx="1" opacity={saver ? 0.35 : 1} /></svg>
               <span>{saver ? "Data saver · 360p" : "HD · 720p"}</span>
             </button>
+            <button type="button" className="pc-chip" onClick={() => setShopping(true)} aria-haspopup="dialog">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d="M5 8h14l-1.2 12H6.2z" /><path d="M9 8V6.5a3 3 0 0 1 6 0V8" /></svg>
+              <span>Shop the film</span>
+            </button>
             <button className="pc-icon" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : stage.current?.requestFullscreen())} aria-label="Full screen">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
             </button>
@@ -446,6 +452,7 @@ export default function WatchRoom({
         </footer>
       </div>
 
+      {shopping && <ShopDrawer showtimeId={showtime.id} film={showtime.film} friend={party?.members.find((m) => !m.me)?.name.split(" ")[0]} onClose={() => setShopping(false)} />}
       <SidePanel
         showtimeId={showtime.id} film={showtime.film} watching={room.watching} online={room.online} notice={room.notice}
         party={party} onlineNames={room.onlineNames} roomMessages={room.roomMessages} worldMessages={room.messages} polls={room.polls}

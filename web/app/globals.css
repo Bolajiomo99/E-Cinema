@@ -2911,3 +2911,37 @@ p.cm-text { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #f4f4f6; 
   .pf-tile-title { font-size: 24px; line-height: 24px; left: 12px; bottom: 34px; }
   .pf-badges { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 }
+
+/* Shop the film drawer (Figma 283:1332) */
+.sd-dim { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.45); display: flex; justify-content: flex-end; }
+.sd { width: 440px; max-width: 100%; height: 100%; box-sizing: border-box; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 24px; background: #131317; border-left: 1px solid #26262e; color: #f4f4f6; font-family: Manrope, system-ui, sans-serif; outline: none; animation: sd-in .2s ease-out; }
+@keyframes sd-in { from { transform: translateX(24px); opacity: 0; } }
+.sd-head { display: flex; align-items: center; justify-content: space-between; }
+.sd h2 { margin: 0; font: 800 22px/normal Manrope, sans-serif; }
+.sd-x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #1b1b21; color: #a6a6b0; font-size: 20px; cursor: pointer; }
+.sd-sub { margin: 0; font: 500 14px/normal Manrope, sans-serif; color: #a6a6b0; }
+.sd-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.sd-tabs button { flex: none; padding: 6px 12px; border-radius: 999px; border: 0; background: #1b1b21; color: #f4f4f6; font: 600 12px/normal Manrope, sans-serif; cursor: pointer; }
+.sd-tabs button.on { background: #e3182d; }
+.sd-list { display: flex; flex-direction: column; gap: 16px; }
+.sd-item { display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: #1b1b21; align-items: flex-start; }
+.sd-img { flex: none; width: 72px; height: 72px; border-radius: 8px; background: #24242c; object-fit: cover; display: block; }
+.sd-lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sd-lines strong { font: 700 14px/normal Manrope, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-lines small { font: 500 12px/normal Manrope, sans-serif; color: #a6a6b0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-buy { display: flex; gap: 8px; align-items: center; }
+.sd-buy b { font: 800 14px/normal Manrope, sans-serif; }
+.sd-buy em { font: 500 11px/normal Manrope, sans-serif; font-style: normal; color: #6e6e7a; }
+.sd-buy a { padding: 4px 10px; border-radius: 6px; border: 1px solid #3a3a44; color: #f4f4f6; font: 700 12px/normal Manrope, sans-serif; text-decoration: none; }
+.sd-buy a:hover { border-color: #f4f4f6; }
+.sd-item.skel .sd-lines i { display: block; height: 10px; border-radius: 4px; background: #24242c; width: 70%; }
+.sd-item.skel .sd-lines i:nth-child(2) { width: 50%; }
+.sd-item.skel .sd-lines i:nth-child(3) { width: 30%; }
+.sd-note { margin: 0; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.sd-tip { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: #1b1b21; border: 1px solid #3a3a44; }
+.sd-tip b { font: 700 12px/normal Manrope, sans-serif; color: #e3182d; }
+.sd-tip p { margin: 0; font: 500 13px/normal Manrope, sans-serif; }
+.sd-tip a { font: 600 13px/normal Manrope, sans-serif; color: #f4f4f6; }
+.sd-fine { margin: 0; font: 500 11px/normal Manrope, sans-serif; color: #6e6e7a; }
+.sd-tabs button:focus-visible, .sd-buy a:focus-visible, .sd-x:focus-visible { outline: 2px solid #f4f4f6; outline-offset: 2px; }
+@media (max-width: 760px) { .sd-dim { align-items: flex-end; } .sd { width: 100%; height: 88dvh; border-radius: 16px 16px 0 0; border-left: 0; padding: 20px 16px; } }

@@ -70,3 +70,18 @@ export const endsAt = (s: Showtime) => Date.parse(s.startsAt) + (s.runtimeMin ??
 export function findShowtime(id: string): Showtime | undefined {
   return showtimes.find((s) => s.id === id);
 }
+
+// "Shop the film" tabs (Figma 283:1332): what each tab searches for, by the film's world.
+export type ShopTab = "scene" | "outfits" | "gifts" | "snacks";
+const SHOP_BY_CATEGORY: Record<string, Omit<Record<ShopTab, string>, "scene">> = {
+  Nollywood: { outfits: "ankara print outfit", gifts: "african print gift", snacks: "chin chin plantain chips snack box" },
+  Bollywood: { outfits: "kurta outfit", gifts: "indian brass gift", snacks: "indian namkeen snack box" },
+  Hollywood: { outfits: "movie graphic tee", gifts: "movie lover gift", snacks: "gourmet popcorn gift box" },
+  "K-Drama": { outfits: "korean street fashion outfit", gifts: "korean skincare gift set", snacks: "korean snack box" },
+  Anime: { outfits: "anime hoodie", gifts: "anime figure", snacks: "japanese snack box" },
+  Cartoon: { outfits: "kids pajamas set", gifts: "kids space toy", snacks: "kids snack box" },
+};
+export function shopQuery(s: Showtime, tab: ShopTab): string {
+  if (tab === "scene") return s.shopQuery;
+  return (SHOP_BY_CATEGORY[s.category ?? ""] ?? { outfits: `${s.genres?.[0] ?? "movie"} inspired outfit`, gifts: "movie night gift", snacks: "movie night snack box" })[tab];
+}

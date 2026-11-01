@@ -15,12 +15,12 @@ function textOf(content: Anthropic.Beta.BetaMessageParam["content"]): string {
   return content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
 }
 
-export default function Concierge() {
+export default function Concierge({ ask = "" }: { ask?: string }) {
   const [history, setHistory] = useState<Anthropic.Beta.BetaMessageParam[]>([]);
   const [turns, setTurns] = useState<Turn[]>([
     { role: "concierge", text: "Hi, I'm your E-Cinema concierge. Tell me what you feel like watching and how many seats you need." },
   ]);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(ask.slice(0, 400));
   const [busy, setBusy] = useState(false);
 
   async function send(e: React.FormEvent) {
