@@ -5,7 +5,7 @@ export const FOOTER: [string, [string, string][]][] = [
   ["Watch", [["Premieres", "/#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
   ["Account", [["Plans", "/plans"], ["Student offer", "/student"], ["Gift a seat", "/gift"]]],
   ["Company", [["About", "/terms"], ["Studios and distributors", "mailto:admin@e-cinema.net?subject=Studios"], ["Careers", "mailto:admin@e-cinema.net?subject=Careers"]]],
-  ["Help", [["Help centre", "/concierge"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
+  ["Help", [["Help centre", "/concierge"], ["Verify a product", "/verify"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
 ];
 
 export default function LandingFooter({ heads }: { heads?: Record<string, string> }) {
