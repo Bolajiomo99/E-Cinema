@@ -7,6 +7,7 @@ import "./fonts.css";
 import "./globals.css";
 import { cookies } from "next/headers";
 import CookieBanner from "@/components/legal/CookieBanner";
+import KidsGuard from "@/components/family/KidsGuard";
 import TabBar from "@/components/mobile/TabBar";
 import { SESSION_COOKIE } from "@/lib/auth";
 import { dirOf, isLang } from "@/lib/i18n";
@@ -30,6 +31,7 @@ export default async function RootLayout({
       <body>
         {children}
         <CookieBanner />
+        <KidsGuard />
         <TabBar signedIn={Boolean(jar.get(SESSION_COOKIE))} />
       </body>
     </html>
