@@ -21,7 +21,7 @@ export default function PlanPickLink({ plan, signedIn, className, children }: { 
         if (plan === "free") return router.push("/plans");
         setBusy(true);
         const r = await fetch("/api/me/plan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan }) }).catch(() => null);
-        router.push(r?.ok ? `/join?step=4&plan=${plan}` : href);
+        router.push(r?.ok ? `/join?step=4&plan=${plan}` : plan === "student" && r?.status === 403 ? "/student" : href);
       }}
     >
       {children}

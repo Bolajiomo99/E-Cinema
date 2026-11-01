@@ -3,7 +3,7 @@ import Logo from "@/components/landing/Logo";
 // The public footer from the Figma landing frames (Watch, Account, Company, Help).
 export const FOOTER: [string, [string, string][]][] = [
   ["Watch", [["Premieres", "/#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
-  ["Account", [["Plans", "/plans"], ["Student offer", "/plans"], ["Gift a seat", "/gift"]]],
+  ["Account", [["Plans", "/plans"], ["Student offer", "/student"], ["Gift a seat", "/gift"]]],
   ["Company", [["About", "/terms"], ["Studios and distributors", "mailto:admin@e-cinema.net?subject=Studios"], ["Careers", "mailto:admin@e-cinema.net?subject=Careers"]]],
   ["Help", [["Help centre", "/concierge"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
 ];

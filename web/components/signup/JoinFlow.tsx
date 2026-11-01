@@ -292,7 +292,11 @@ function PlanStep({ country, current, onBack, onFree, onPaid }: { country?: stri
         onClick={async () => {
           setBusy(true); setError("");
           try { await call("/api/me/plan", { plan }, "PUT"); if (plan === "free") onFree(); else onPaid(plan); }
-          catch (e) { setError((e as Error).message); setBusy(false); }
+          catch (e) {
+            // Student Pro needs a verified student: verify on the student offer page, then come back.
+            if (plan === "student" && /verified student/i.test((e as Error).message)) return window.location.assign("/student");
+            setError((e as Error).message); setBusy(false);
+          }
         }}
       >
         {plan === "free" ? "Continue with Free" : `Continue with ${PLANS.find((p) => p.id === plan)!.name} · ${money(price, currency)}/${PLANS.find((p) => p.id === plan)!.per}`}

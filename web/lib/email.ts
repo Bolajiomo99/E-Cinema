@@ -222,3 +222,17 @@ export async function sendGiftToForward(to: string, name: string, phone: string,
     "E-Cinema <gifts@e-cinema.net>",
   );
 }
+
+// Student offer (Figma 94:1327): the code goes to the school email, not the account email.
+export async function sendStudentCode(to: string, code: string, school: string) {
+  await send(
+    to,
+    `${code} is your E-Cinema student code`,
+    layout("Your code is inside. It ends in 10 minutes", "Confirm you study here",
+      p(`Someone asked to verify ${esc(to)} as a student at ${esc(school)} for Student Pro on E-Cinema.`) +
+      codeBox(code) +
+      note("Did not ask for this? Ignore this email. Nothing happens without the code, and it ends in 10 minutes."),
+      "STUDENT"),
+    `Your E-Cinema student code is ${code}. It works once and ends in 10 minutes.`,
+  );
+}

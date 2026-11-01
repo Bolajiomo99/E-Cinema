@@ -34,6 +34,8 @@ export default function PlanCards({ country, countryLabel, currency, signedIn, c
     const r = await fetch("/api/me/plan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: id }) });
     if (!r.ok) {
       setBusy(null);
+      // Student Pro needs a verified student first (Figma 94:1327).
+      if (id === "student" && r.status === 403) return router.push("/student");
       return setError(((await r.json().catch(() => ({}))) as { error?: string }).error ?? "Could not change your plan. Please try again.");
     }
     if (id === "free") { router.push("/settings/plan"); router.refresh(); }
