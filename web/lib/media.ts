@@ -107,6 +107,17 @@ export async function putRoomObject(key: string, body: Buffer, contentType: stri
   await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType, CacheControl: "private, max-age=86400" }));
 }
 
+// The bytes of a stored upload, for server-side checks such as the AI look at report photos.
+export async function objectBytes(key: string): Promise<{ body: Buffer; type: string } | null> {
+  try {
+    const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+    return { body: Buffer.from(await obj.Body!.transformToByteArray()), type: obj.ContentType ?? "image/jpeg" };
+  } catch (err) {
+    if ((err as { name?: string }).name === "NoSuchKey") return null;
+    throw err;
+  }
+}
+
 export async function roomObjectLink(key: string) {
   return getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: LINK_SECONDS });
 }
