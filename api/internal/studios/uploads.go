@@ -21,6 +21,14 @@ const MaxUploadFiles = 40
 // MaxFileBytes is 2 TB, the biggest master the upload page accepts.
 const MaxFileBytes int64 = 2 << 40
 
+const uploadCols = `id, title, logline, genres, age_rating, cast_crew, languages, poster_key, status, created_at, updated_at`
+
+func scanUpload(r interface{ Scan(...any) error }) (Upload, error) {
+	var u Upload
+	err := r.Scan(&u.ID, &u.Title, &u.Logline, &u.Genres, &u.AgeRating, &u.CastCrew, &u.Languages, &u.PosterKey, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	return u, err
+}
+
 var ErrTooManyFiles = errors.New("a film can have up to 40 files")
 
 // File types a studio can send, by extension, and what each one is.
@@ -60,6 +68,12 @@ type UploadFile struct {
 type Upload struct {
 	ID        string       `json:"id"`
 	Title     string       `json:"title"`
+	Logline   string       `json:"logline"`
+	Genres    string       `json:"genres"`
+	AgeRating string       `json:"ageRating"`
+	CastCrew  string       `json:"castCrew"`
+	Languages string       `json:"languages"`
+	PosterKey string       `json:"posterKey"`
 	Status    string       `json:"status"`
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
@@ -88,14 +102,11 @@ func (st Store) Uploads(ctx context.Context, acct, email string) ([]Upload, erro
 	if err != nil {
 		return nil, err
 	}
-	rows, err := st.DB.Query(ctx, `SELECT id, title, status, created_at, updated_at FROM studio_uploads WHERE studio = $1 ORDER BY updated_at DESC LIMIT 50`, s.Name)
+	rows, err := st.DB.Query(ctx, `SELECT `+uploadCols+` FROM studio_uploads WHERE studio = $1 ORDER BY updated_at DESC LIMIT 50`, s.Name)
 	if err != nil {
 		return nil, err
 	}
-	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Upload, error) {
-		var u Upload
-		return u, r.Scan(&u.ID, &u.Title, &u.Status, &u.CreatedAt, &u.UpdatedAt)
-	})
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Upload, error) { return scanUpload(r) })
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +143,10 @@ func (st Store) Upload(ctx context.Context, acct, email, id string) (Upload, err
 }
 
 func (st Store) upload(ctx context.Context, studio, id string) (Upload, error) {
-	var u Upload
 	if !uuidRe.MatchString(id) {
-		return u, ErrNotFound
+		return Upload{}, ErrNotFound
 	}
-	err := st.DB.QueryRow(ctx, `SELECT id, title, status, created_at, updated_at FROM studio_uploads WHERE id = $1 AND studio = $2`, id, studio).
-		Scan(&u.ID, &u.Title, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	u, err := scanUpload(st.DB.QueryRow(ctx, `SELECT `+uploadCols+` FROM studio_uploads WHERE id = $1 AND studio = $2`, id, studio))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return u, ErrNotFound
 	}
@@ -346,5 +355,66 @@ func (st Store) RemoveFile(ctx context.Context, acct, email, upload, id string) 
 	}
 	_, err = st.DB.Exec(ctx, `DELETE FROM studio_upload_files WHERE id = $1`, id)
 	st.touch(ctx, upload)
+	return err
+}
+
+// Details is what viewers will read about the film (Figma 99:247).
+type Details struct {
+	Title, Logline, Genres, AgeRating, CastCrew, Languages string
+}
+
+func (st Store) SaveDetails(ctx context.Context, acct, email, id string, d Details) (Upload, error) {
+	s, err := st.verified(ctx, acct, email, true)
+	if err != nil {
+		return Upload{}, err
+	}
+	d.Title = clip(d.Title, 120)
+	if d.Title == "" || !uuidRe.MatchString(id) {
+		return Upload{}, ErrBadInput
+	}
+	tag, err := st.DB.Exec(ctx, `UPDATE studio_uploads SET title = $3, logline = $4, genres = $5, age_rating = $6, cast_crew = $7, languages = $8, updated_at = now()
+	  WHERE id = $1 AND studio = $2 AND status = 'draft'`,
+		id, s.Name, d.Title, clip(d.Logline, 300), clip(d.Genres, 80), clip(d.AgeRating, 60), clip(d.CastCrew, 400), clip(d.Languages, 80))
+	if err != nil {
+		return Upload{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return Upload{}, ErrNotFound
+	}
+	return st.upload(ctx, s.Name, id)
+}
+
+// SetPoster records the poster image the web app stored for the draft.
+func (st Store) SetPoster(ctx context.Context, acct, email, id, key string) (Upload, error) {
+	s, err := st.verified(ctx, acct, email, true)
+	if err != nil {
+		return Upload{}, err
+	}
+	if !strings.HasPrefix(key, "studio-uploads/"+id+"/poster-") || len(key) > 200 || !uuidRe.MatchString(id) {
+		return Upload{}, ErrBadInput
+	}
+	tag, err := st.DB.Exec(ctx, `UPDATE studio_uploads SET poster_key = $3, updated_at = now() WHERE id = $1 AND studio = $2`, id, s.Name, key)
+	if err != nil {
+		return Upload{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return Upload{}, ErrNotFound
+	}
+	return st.upload(ctx, s.Name, id)
+}
+
+// DeleteUpload removes a draft that never premiered; the web app deletes its stored files first.
+func (st Store) DeleteUpload(ctx context.Context, acct, email, id string) error {
+	s, err := st.verified(ctx, acct, email, true)
+	if err != nil {
+		return err
+	}
+	if !uuidRe.MatchString(id) {
+		return ErrNotFound
+	}
+	tag, err := st.DB.Exec(ctx, `DELETE FROM studio_uploads WHERE id = $1 AND studio = $2 AND status = 'draft'`, id, s.Name)
+	if err == nil && tag.RowsAffected() == 0 {
+		err = ErrNotFound
+	}
 	return err
 }

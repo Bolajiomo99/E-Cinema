@@ -107,9 +107,31 @@ func TestUploads(t *testing.T) {
 	if err != nil || len(list) != 1 || len(list[0].Files) != 1 {
 		t.Fatalf("list: %+v %v", list, err)
 	}
+	d, err := st.SaveDetails(ctx, owner, "up-owner@example.com", u.ID, studios.Details{Title: "Red Earth", Logline: "A banker's daughter follows a missing ledger.", Genres: "Drama, thriller", AgeRating: "16+", CastCrew: "Ifeoma Nwosu", Languages: "Yoruba and English"})
+	if err != nil || d.Logline == "" || d.AgeRating != "16+" || d.Languages != "Yoruba and English" {
+		t.Fatalf("details: %+v %v", d, err)
+	}
+	if _, err := st.SaveDetails(ctx, viewer, "up-viewer@example.com", u.ID, studios.Details{Title: "x"}); !errors.Is(err, studios.ErrForbidden) {
+		t.Fatalf("viewer details: %v", err)
+	}
+	if _, err := st.SetPoster(ctx, owner, "up-owner@example.com", u.ID, "studio-uploads/other/poster-1.jpg"); !errors.Is(err, studios.ErrBadInput) {
+		t.Fatalf("poster key from elsewhere: %v", err)
+	}
+	if d, err = st.SetPoster(ctx, owner, "up-owner@example.com", u.ID, "studio-uploads/"+u.ID+"/poster-1.jpg"); err != nil || d.PosterKey == "" {
+		t.Fatalf("poster: %+v %v", d, err)
+	}
 	// Someone from another studio cannot see the draft.
 	stranger := account(t, p, "up-stranger@example.com", "X Y", "NG")
 	if _, err := st.Upload(ctx, stranger, "up-stranger@example.com", u.ID); !errors.Is(err, studios.ErrNotFound) {
 		t.Fatalf("stranger: %v", err)
+	}
+	if err := st.DeleteUpload(ctx, viewer, "up-viewer@example.com", u.ID); !errors.Is(err, studios.ErrForbidden) {
+		t.Fatalf("viewer delete: %v", err)
+	}
+	if err := st.DeleteUpload(ctx, owner, "up-owner@example.com", u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Upload(ctx, owner, "up-owner@example.com", u.ID); !errors.Is(err, studios.ErrNotFound) {
+		t.Fatalf("deleted draft still there: %v", err)
 	}
 }

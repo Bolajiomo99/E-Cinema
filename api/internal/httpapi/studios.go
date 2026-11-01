@@ -137,6 +137,24 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"upload": u}, err)
 		}
 	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/details", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var d studios.Details
+		if decodeN(w, r, 4<<10, &d) {
+			u, err := s.Studios.SaveDetails(r.Context(), a.ID, a.Email, r.PathValue("id"), d)
+			reply(w, map[string]any{"upload": u}, err)
+		}
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/poster", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Key string }
+		if decodeN(w, r, 1<<10, &b) {
+			u, err := s.Studios.SetPoster(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Key)
+			reply(w, map[string]any{"upload": u}, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/uploads/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		err := s.Studios.DeleteUpload(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]bool{"ok": err == nil}, err)
+	}))
 	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/files", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var b struct {
 			Name string
