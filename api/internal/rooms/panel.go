@@ -315,4 +315,3 @@ func (st Store) UseTalk(ctx context.Context, showtimeID, accountID, plan string,
 	}
 	return FreeTalkSeconds - used, err
 }
-
