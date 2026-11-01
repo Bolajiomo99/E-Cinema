@@ -102,6 +102,13 @@ func (s Store) ChoosePlan(ctx context.Context, accountID, plan string) (Profile,
 	if !Plans[plan] {
 		return Profile{}, fmt.Errorf("%w: unknown plan", ErrBadInput)
 	}
+	if plan == "student" {
+		if ok, err := s.isStudent(ctx, accountID); err != nil {
+			return Profile{}, err
+		} else if !ok {
+			return Profile{}, ErrNotStudent
+		}
+	}
 	var q string
 	switch {
 	case plan == "free":

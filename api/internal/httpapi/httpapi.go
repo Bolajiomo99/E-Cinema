@@ -190,6 +190,7 @@ func (s *Server) Routes() http.Handler {
 	s.adultRoutes(mux)
 	s.lotteryRoutes(mux)
 	s.giftRoutes(mux)
+	s.studentRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -250,6 +251,10 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrPINPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrNotStudent):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrStudentTaken), errors.Is(err, accounts.ErrNoStudentCode):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, gifts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, gifts.ErrBadInput):
