@@ -3632,3 +3632,57 @@ a.bp-pill { text-decoration: none; }
   .pl { padding: 16px; }
 }
 .pt a.vf-btn, .pt a.bp-pill, .pt-pop a.vf-btn { text-decoration: none; }
+
+/* Legal pages (Figma 89:1091, 92:841 to 92:1350) */
+.lg { position: relative; }
+.lg .lg-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; max-width: 1120px; margin: 0 auto; padding: 116px 24px 64px; }
+.lg-toc { position: sticky; top: 88px; align-self: start; display: flex; flex-direction: column; gap: 4px; }
+.lg-toc b { color: #8c8c96; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.lg-toc a { color: #c9c9d1; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 14px; border-left: 2px solid transparent; }
+.lg-toc a:hover { background: #1a1a20; color: #fff; }
+.lg-toc a.on { color: #fff; background: #1d1d24; border-left-color: #e50914; font-weight: 600; }
+.lg-doc { min-width: 0; color: #d5d5dc; line-height: 1.6; }
+.lg-doc h1 { color: #f5f5f1; font-size: 36px; font-weight: 800; margin: 0; }
+.lg-lead { color: #8c8c96; font-size: 14px; margin: 6px 0 28px; }
+.lg-sec { background: #141418; border: 1px solid #24242c; border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; }
+.lg-sec h2 { color: #f5f5f1; font-size: 17px; margin: 0 0 6px; }
+.lg-sec p { margin: 0; font-size: 15px; }
+.lg-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.lg-table th { text-align: left; color: #8c8c96; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #2a2a33; }
+.lg-table td { padding: 12px; border-bottom: 1px solid #1f1f26; vertical-align: top; }
+.lg-btns { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+.lg-btns .vf-btn, .lg a.vf-btn { text-decoration: none; }
+.legal.full { padding: 32px 0 0; max-width: none; margin: 0; border-top: 1px solid #24242c; }
+.lg-full-h { font-size: 24px !important; }
+.ck-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #141418; border: 1px solid #24242c; border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; }
+.ck-row b { color: #f5f5f1; display: block; }
+.ck-row span { color: #9a9aa4; font-size: 14px; }
+.ck-row em { color: #8c8c96; font-style: normal; font-size: 13px; white-space: nowrap; }
+.ck-sw { position: relative; width: 44px; height: 24px; flex: none; }
+.ck-sw input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; position: absolute; z-index: 1; }
+.ck-sw i { position: absolute; inset: 0; background: #3a3a44; border-radius: 12px; transition: background .15s; }
+.ck-sw i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.ck-sw input:checked + i { background: #e50914; }
+.ck-sw input:checked + i::after { transform: translateX(20px); }
+.ck-sw input:focus-visible + i { outline: 2px solid #fff; outline-offset: 2px; }
+.ck-saved { color: #46d369; font-size: 14px; align-self: center; }
+.ck-banner { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 80; max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: #17171c; border: 1px solid #2c2c35; border-radius: 14px; padding: 16px 20px; box-shadow: 0 12px 40px rgba(0,0,0,.5); color: #d5d5dc; }
+.ck-banner p { flex: 1 1 280px; margin: 0; font-size: 14px; }
+.ck-banner p b { color: #fff; display: block; margin-bottom: 2px; }
+.ck-banner div { display: flex; gap: 8px; flex-wrap: wrap; }
+.ck-banner a.vf-btn { text-decoration: none; }
+@media (max-width: 900px) { .ck-banner { bottom: calc(88px + env(safe-area-inset-bottom)); } }
+@media (max-width: 860px) {
+  .lg .lg-body { grid-template-columns: 1fr; gap: 20px; padding: 88px 16px 48px; }
+  .lg-toc { position: static; flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .lg-toc b { display: none; }
+  .lg-toc a { white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; background: #16161b; }
+  .lg-toc a.on { border-bottom-color: #e50914; }
+  .lg-doc h1 { font-size: 28px; }
+}
+@media (max-width: 640px) {
+  .lg-table thead { display: none; }
+  .lg-table tr { display: block; border-bottom: 1px solid #24242c; padding: 8px 0; }
+  .lg-table td { display: block; border: 0; padding: 4px 0; }
+  .ck-row em { display: none; }
+}
