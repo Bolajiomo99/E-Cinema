@@ -18,7 +18,9 @@ function premiere(iso: string, now: number) {
   return d > n ? `${DAYS[d.getUTCDay()]} ${date}` : date;
 }
 
-export default function StudioFilms({ films, now }: { films: FilmRow[]; now: number }) {
+export type DraftRow = { id: string; title: string; files: number; saved: string };
+
+export default function StudioFilms({ films, drafts, now }: { films: FilmRow[]; drafts: DraftRow[]; now: number }) {
   const [tab, setTab] = useState<"all" | Film["state"]>("all");
   const count = (s: Film["state"]) => films.filter((f) => f.state === s).length;
   const titles = new Set(films.map((f) => f.film)).size;
@@ -58,6 +60,19 @@ export default function StudioFilms({ films, now }: { films: FilmRow[]; now: num
           ))}
         </div>
       ) : <p className="pt-empty">{films.length ? "No films in this view." : "Your films show here once their first premiere is booked."}</p>}
+      {drafts.length > 0 && (
+        <section className="bp-panel">
+          <h2>In preparation</h2>
+          <ul className="stup-drafts">
+            {drafts.map((d) => (
+              <li key={d.id}>
+                <div><b>{d.title}</b><small>Draft · {d.files} {d.files === 1 ? "file" : "files"} · saved {d.saved}</small></div>
+                <Link className="vf-btn sm" href={`/studio/films/${d.id}`}>Open</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

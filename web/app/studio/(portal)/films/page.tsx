@@ -2,7 +2,7 @@ import StudioFilms, { type FilmRow } from "@/components/studio/StudioFilms";
 import { findShowtime } from "@/lib/catalog";
 import { session } from "@/lib/licensing";
 import { studioPage } from "@/lib/studio";
-import type { Film } from "@/lib/studio-types";
+import { ago, type Film, type Upload } from "@/lib/studio-types";
 
 // Figma "Studio / Films" (34:458).
 export const metadata = { title: "Films · Studio · E-Cinema", robots: { index: false } };
@@ -16,8 +16,10 @@ function kind(f: Film) {
 }
 
 export default async function StudioFilmsPage() {
-  const r = await studioPage<{ films: Film[] }>(await session(), "films");
+  const s = await session();
+  const [r, up] = await Promise.all([studioPage<{ films: Film[] }>(s, "films"), studioPage<{ uploads: Upload[] }>(s, "uploads")]);
   const films: FilmRow[] = (r?.films ?? []).map((f) => ({ ...f, kind: kind(f), dubs: findShowtime(f.showtimeId)?.dubs ?? 0 }));
   const now = new Date().getTime();
-  return <StudioFilms films={films} now={now} />;
+  const drafts = (up?.uploads ?? []).filter((u) => u.status === "draft").map((u) => ({ id: u.id, title: u.title, files: u.files.length, saved: ago(u.updatedAt, now) }));
+  return <StudioFilms films={films} drafts={drafts} now={now} />;
 }
