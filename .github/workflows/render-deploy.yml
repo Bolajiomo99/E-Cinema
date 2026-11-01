@@ -76,6 +76,7 @@ jobs:
           done
           # Accounts: sign up a throwaway viewer, read it back with the cookie, then sign out.
           web="${{ steps.render.outputs.web_url }}"
+          api="${{ steps.render.outputs.api_url }}"
           for i in $(seq 1 30); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$web/signin")
             echo "signin $code"
