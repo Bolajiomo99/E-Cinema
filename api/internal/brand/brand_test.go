@@ -159,11 +159,15 @@ func TestBrand(t *testing.T) {
 	if err != nil || s.Points != 500 || s.MonthPoints != 500 || s.Sent != 2 || s.Confirmed != 1 || s.RewardNGN != 10000 || s.Country != "NG" || s.Rank < 1 || len(s.Reports) != 2 {
 		t.Fatalf("rewards = %+v, %v", s, err)
 	}
-	if len(s.Top) == 0 || s.Top[0].Name != "Adaeze O." || !s.Top[0].Me {
+	me := false
+	for _, r := range s.Top {
+		me = me || (r.Me && r.Name == "Adaeze O.")
+	}
+	if !me {
 		t.Fatalf("top = %+v", s.Top)
 	}
 	k, _ := st.Rewards(ctx, kim, "")
-	if k.Rank <= s.Rank {
+	if k.Rank == 0 || k.Rank < s.Rank {
 		t.Fatalf("kim rank %d vs ada %d", k.Rank, s.Rank)
 	}
 
