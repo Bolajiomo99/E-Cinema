@@ -226,6 +226,23 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/shop?showtime=nope")" = 400 ]
           curl -fsS "$web/concierge?ask=hello" | grep -q "concierge"
           echo "shop ok"
+          # E-Cinema store: catalog and product pages, cart, a Lagos address, a sandbox PayPal order,
+          # then a pay-on-delivery order that is cancelled again; the order desk stays staff only.
+          curl -fsS "$web/shop" | grep -q "Shop E-Cinema"
+          curl -fsS "$web/shop/vr-headset" | grep -q "E-CINEMA VR HEADSET"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/shop/no-such-product")" = 404 ]
+          sj() { curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" "$@"; }
+          sj -X PUT -d '{"productId":"popcorn-box","variant":"Butter · Zobo","qty":1,"add":true}' "$web/api/store/cart" | grep -q '"count":1'
+          sj -X PUT -d '{"name":"Smoke Test","phone":"+234 801 000 0000","line1":"14 Admiralty Way","area":"Lekki","city":"Lagos","state":"Lagos","country":"NG"}' "$web/api/store/address" > /tmp/cart.json
+          grep -q '"cod":true' /tmp/cart.json
+          total=$(node -e 'console.log(require("/tmp/cart.json").totalNgn)')
+          sj -X POST -d "{\"method\":\"paypal\",\"expectTotalNgn\":$total}" "$web/api/store/checkout" | grep -q '"orderId":"'
+          sj -X POST -d "{\"method\":\"cod\",\"expectTotalNgn\":$total}" "$web/api/store/checkout" > /tmp/order.json
+          oid=$(node -e 'const o=require("/tmp/order.json"); if(o.status!=="placed") process.exit(1); console.log(o.id)')
+          sj -X POST -d '{}' "$web/api/store/orders/$oid/cancel" | grep -q '"status":"cancelled"'
+          curl -fsS -b "$jar" "$web/shop/orders" | grep -q "Your orders"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/shop/ops")" = 404 ]
+          echo "store ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
