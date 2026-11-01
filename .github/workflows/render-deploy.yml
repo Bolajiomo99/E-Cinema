@@ -243,6 +243,16 @@ jobs:
           curl -fsS -b "$jar" "$web/shop/orders" | grep -q "Your orders"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/shop/ops")" = 404 ]
           echo "store ok"
+          # Brand protection: the checker answers (an unissued code is not genuine), the rewards
+          # page and report form load, partner shops are recognised, and the desk stays staff only.
+          curl -fsS "$web/verify" | grep -q "VERIFY A PRODUCT"
+          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"EC-QR-SMOK-E000"}' "$web/api/brand/verify" | grep -q '"reason":"never"'
+          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"hello"}' "$web/api/brand/verify" | grep -q '"reason":"bad"'
+          curl -fsS -b "$jar" "$web/rewards" | grep -q "Community rewards"
+          curl -fsS -b "$jar" "$web/rewards/report" | grep -q "Report a fake seller"
+          sj -X POST -d '{"link":"https://lagosthreads.ng","photos":[]}' "$web/api/brand/check" | grep -q "licensed partner"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/rewards/desk")" = 404 ]
+          echo "brand ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
