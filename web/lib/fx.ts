@@ -8,6 +8,8 @@ const TTL = 6 * 3600_000;
 
 async function rates(): Promise<Record<string, number> | null> {
   if (cache && Date.now() - cache.at < TTL) return cache.rates;
+  // Fixed rates for local end-to-end runs where the feed cannot be reached.
+  if (process.env.FX_FIXED_RATES) return JSON.parse(process.env.FX_FIXED_RATES) as Record<string, number>;
   try {
     const r = await fetch("https://open.er-api.com/v6/latest/USD", { signal: AbortSignal.timeout(5000) });
     if (!r.ok) return cache?.rates ?? null;

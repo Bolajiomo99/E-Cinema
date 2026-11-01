@@ -18,13 +18,25 @@ const UUID = /^[0-9a-f-]{36}$/;
 const pass = (r: { status: number; body: unknown }) => json(r.status === 204 ? 200 : r.status, r.body ?? {});
 
 async function refund(captureId: string, key: string) {
+  return Boolean(await refundId(captureId, key));
+}
+
+async function refundId(captureId: string, key: string): Promise<string> {
   try {
-    await paypalPayments().refundCapturedPayment({ captureId, paypalRequestId: `shop-refund-${key}`, prefer: "return=minimal" });
-    return true;
+    const { result } = await paypalPayments().refundCapturedPayment({ captureId, paypalRequestId: `shop-refund-${key}`, prefer: "return=minimal" });
+    return result.id ?? "refunded";
   } catch (err) {
     console.error("Shop refund failed", err instanceof Error ? err.message : err);
-    return false;
+    return "";
   }
+}
+
+// An approved refund request on a PayPal order gets its capture refunded and the refund id kept.
+async function payRequest(b: { refund: { id: string; status: string; outcome: string }; method: string; captureId?: string }) {
+  if (b.refund.status !== "approved" || b.refund.outcome !== "refund" || b.method !== "paypal" || !b.captureId) return false;
+  const id = await refundId(b.captureId, `request-${b.refund.id}`);
+  if (id) await accountApi("POST", `/v1/shop/refunds/${b.refund.id}/paid`, { refundId: id });
+  return Boolean(id);
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
@@ -35,7 +47,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
     const q = await myQuote(session, (await readLocale()).country);
     return q ? json(200, q) : json(502, { error: "Cart unavailable" });
   }
+  if (p[0] === "orders" && UUID.test(p[1] ?? "") && p[2] === "refund") return pass(await accountApi("GET", `/v1/me/orders/${p[1]}/refund`, undefined, session));
   if (p[0] === "orders") return pass(await accountApi("GET", "/v1/me/orders", undefined, session));
+  if (p[0] === "refunds") {
+    const me = await currentAccount();
+    if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
+    return pass(await accountApi("GET", "/v1/shop/refunds"));
+  }
   if (p[0] === "ops") {
     const me = await currentAccount();
     if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
@@ -76,6 +94,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
       return json(200, { order: b.order, refunded });
     }
     if (p[2] === "return") return pass(await accountApi("POST", `/v1/me/orders/${p[1]}/return`, { reason: body.reason }, session));
+    if (p[2] === "refund") {
+      // Pay-on-delivery refunds go to the wallet in US cents at today's rate.
+      const info = await accountApi("GET", `/v1/me/orders/${p[1]}/refund`, undefined, session);
+      if (info.status !== 200) return pass(info);
+      const total = (info.body as { order: Order }).order.totalNgn;
+      const usd = total > 0 ? await chargeFor(total, "US") : null;
+      const r = await accountApi("POST", `/v1/me/orders/${p[1]}/refund`, {
+        reason: body.reason, note: body.note ?? "", outcome: body.outcome, creditCents: usd?.currency === "USD" ? usd.cents : 0,
+      }, session);
+      if (r.status !== 201) return pass(r);
+      const b = r.body as { refund: { id: string; status: string; outcome: string }; method: string; captureId?: string };
+      return json(200, { refund: b.refund, refunded: await payRequest(b) });
+    }
     if (p[2] === "reorder") return pass(await accountApi("POST", `/v1/me/orders/${p[1]}/reorder?country=${country}`, {}, session));
   }
 
@@ -89,6 +120,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     let refunded = false;
     if (b.order.method === "paypal" && b.captureId && (b.order.status === "cancelled" || b.order.status === "returned")) refunded = await refund(b.captureId, b.order.id);
     return json(200, { order: b.order, refunded });
+  }
+  if (p[0] === "refunds" && UUID.test(p[1] ?? "")) {
+    const me = await currentAccount();
+    if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
+    const r = await accountApi("POST", `/v1/shop/refunds/${p[1]}`, { action: body.action });
+    if (r.status === 204) return json(200, { ok: true });
+    if (r.status !== 200) return pass(r);
+    const b = r.body as { refund: { id: string; status: string; outcome: string }; method: string; captureId?: string };
+    return json(200, { refund: b.refund, refunded: await payRequest(b) });
   }
   return json(404, { error: "Not found" });
 }
