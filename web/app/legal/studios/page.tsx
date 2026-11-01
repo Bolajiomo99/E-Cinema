@@ -19,7 +19,7 @@ export default function StudioTerms() {
       ]} />
       <div className="lg-btns">
         <PrintButton label="Download studio agreement" />
-        <Link className="vf-btn red" href="/for-studios">Open Studio portal</Link>
+        <Link className="vf-btn red" href="/studio">Open Studio portal</Link>
       </div>
     </LegalLayout>
   );

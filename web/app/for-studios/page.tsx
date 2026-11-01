@@ -25,7 +25,7 @@ export default function ForStudiosPage() {
   return (
     <CompanyLayout kicker="FOR STUDIOS AND DISTRIBUTORS" title="OPEN YOUR FILM TO THE WHOLE WORLD ON ONE NIGHT."
       lead="Sell tickets worldwide, in every local currency, with AI dubbing, piracy protection and analytics that show every viewer. You keep 70% of every ticket."
-      actions={[["Apply as a studio", "mailto:admin@e-cinema.net?subject=Studio%20application"], ["Read studio terms", "/legal/studios"]]}>
+      actions={[["Apply as a studio", "/studio"], ["Read studio terms", "/legal/studios"]]}>
       <Section title="How it works">
         <ol className="cp-steps">
           {STEPS.map(([t, d], i) => <li key={t}><span className="cp-num">{i + 1}</span><b>{t}</b><p>{d}</p></li>)}
