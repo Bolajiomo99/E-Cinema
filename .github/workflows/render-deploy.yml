@@ -155,6 +155,10 @@ jobs:
           # Sold-out page: a premiere with seats left sends you to checkout; the lottery API answers.
           curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/lagos-lights-2026-11-04" | grep -q "/checkout"
           echo "sold-out lottery ok"
+          # Gifts: the builder renders and an unknown gift code says so.
+          curl -fsS "$web/gift" | grep -q "Build your gift"
+          curl -fsS "$web/gift/redeem/ECG-0000-0000" | grep -q "could not find that gift"
+          echo "gifts ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
