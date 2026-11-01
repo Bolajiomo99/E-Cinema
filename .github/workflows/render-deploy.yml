@@ -204,6 +204,15 @@ jobs:
           curl -fsS -b "$jar" "$web/api/chat/ice" | grep -q 'stun:'
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/chat/media?key=chat/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000.png")" = 403 ]
           echo "messages ok"
+          # Community: the feed and a starter group load, posting and liking work, a bad cursor is refused.
+          curl -fsS -b "$jar" "$web/community" | grep -q "Communities"
+          curl -fsS -b "$jar" "$web/community/nollywood-fans" | grep -q "About this group"
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"community":"","kind":"text","body":"Smoke test post, please ignore"}' "$web/api/community/posts" > /tmp/post.json
+          pid=$(node -e 'console.log(require("/tmp/post.json").id)')
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"on":true}' "$web/api/community/posts/$pid/like" | grep -q '"likes":1'
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{}' "$web/api/community/posts/$pid/delete" -o /dev/null
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/community/posts?before=abc")" = 400 ]
+          echo "community ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
