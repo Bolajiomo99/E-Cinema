@@ -78,6 +78,16 @@ func (s *Server) Routes() http.Handler {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	// Real counts for the About page (Figma 94:947): no made-up numbers.
+	mux.HandleFunc("GET /v1/about", func(w http.ResponseWriter, r *http.Request) {
+		var members, countries int
+		if err := s.Accounts.DB.QueryRow(r.Context(), `SELECT count(*)::int, count(DISTINCT country)::int FROM accounts WHERE delete_after IS NULL AND email NOT LIKE 'smoke+%' AND email NOT LIKE '%@example.com'`).Scan(&members, &countries); err != nil {
+			fail(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		writeJSON(w, http.StatusOK, map[string]int{"members": members, "countries": countries})
+	})
 	mux.HandleFunc("GET /v1/showtimes", func(w http.ResponseWriter, r *http.Request) {
 		list, err := s.Tickets.List(r.Context())
 		if err != nil {
