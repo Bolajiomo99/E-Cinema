@@ -11,7 +11,7 @@ import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
 import { countryName } from "@/lib/plans";
-import { quote } from "@/lib/ticket-quote";
+import { QUALITIES, quote } from "@/lib/ticket-quote";
 
 // Built from the Figma frame "Web / Checkout" (18:533). Prices come from the same quote the
 // PayPal order uses, so the total here is the total PayPal charges.
@@ -38,8 +38,8 @@ function methodsFor(country: string | undefined, paypal: boolean): Method[] {
   return [...base, ...local, { id: "crypto", name: "Crypto", sub: "Bitcoin, USDC, Ethereum · confirmed on-chain", ready: false, icon: "crypto" }];
 }
 
-export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ film?: string }> }) {
-  const [{ film }, me, loc] = await Promise.all([searchParams, currentAccount(), readLocale()]);
+export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ film?: string; q?: string }> }) {
+  const [{ film, q: quality }, me, loc] = await Promise.all([searchParams, currentAccount(), readLocale()]);
   const s = film ? findShowtime(film) : undefined;
 
   if (!s) {
@@ -73,11 +73,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   }
   const owned = me ? (await myTickets(session).catch(() => [])).find((t) => t.showtimeId === s.id && t.status === "paid") : undefined;
   const country = profile?.country || loc.country;
-  const q = quote(s, profile ? { ...profile, country } : { country: undefined });
+  const q = quote(s, profile ? { ...profile, country } : { country: undefined }, Date.now(), quality);
   const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID));
   const p = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
   const planName = q.member ? q.member.charAt(0).toUpperCase() + q.member.slice(1) : "";
-  const back = `/checkout?film=${s.id}`;
+  const back = `/checkout?film=${s.id}${q.quality === "hd" ? "" : `&q=${q.quality}`}`;
+  const qualName = q.quality === "hd" ? "" : ` · ${QUALITIES.find((x) => x.id === q.quality)!.name}`;
 
   return (
     <main className="co">
@@ -95,7 +96,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         <div className="co-item">
           <span className="co-poster" style={{ background: `linear-gradient(180deg, ${p.from} 0%, ${p.via} 60%, ${p.to} 100%)` }}><i style={{ background: `radial-gradient(circle, ${p.glow}, transparent 70%)` }} /></span>
           <div className="co-t">
-            <strong>{s.film} · Premiere seat</strong>
+            <strong>{s.film} · {q.preorderSave ? "Pre-order seat" : "Premiere seat"}{qualName}</strong>
             <small><LocalWhen iso={s.startsAt} /> · {s.studio}</small>
             <small>Audio: {profile?.audioLanguage && profile.audioLanguage !== "en" ? `${langName(profile.audioLanguage)} (AI)` : s.language ?? "Original"} · Subtitles: {langName(loc.lang)}</small>
           </div>
@@ -122,7 +123,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <Link href={`/room/${s.id}`} className="lp-btn lg co-cta">Go to the room lobby</Link>
           </>
         ) : me ? (
-          <PayPalTicketButton showtimeId={s.id} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
+          <PayPalTicketButton showtimeId={s.id} quality={q.quality} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
         ) : (
           <>
             <Link href={`/signin?next=${encodeURIComponent(back)}`} className="lp-btn lg co-cta">Sign in to buy · {money(q.currency, q.total)}</Link>
@@ -130,6 +131,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </>
         )}
         {s.adult && <p className="co-sec">18+ screening. You need a finished face and ID check to book.</p>}
+        {q.preorderSave > 0 && <p className="co-sec">Free cancellation until 7 days before the screening, refunded in full to how you paid.</p>}
         <p className="co-sec">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" aria-hidden><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /></svg>
           You pay on PayPal&apos;s own page. E‑Cinema never sees or stores your card number.

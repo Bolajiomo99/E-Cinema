@@ -11,7 +11,7 @@ import { quote } from "@/lib/ticket-quote";
 
 // Creates a PayPal order for one ticket. The price always comes from the server catalog.
 export async function POST(req: Request) {
-  const { showtimeId } = (await req.json().catch(() => ({}))) as { showtimeId?: string };
+  const { showtimeId, quality } = (await req.json().catch(() => ({}))) as { showtimeId?: string; quality?: string };
   const showtime = showtimeId ? findShowtime(showtimeId) : undefined;
   if (!showtime) return NextResponse.json({ error: "Unknown showtime" }, { status: 400 });
   // Tickets belong to an account (one person, one seat), so buyers sign in first.
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
   // Member discount and VAT follow the buyer's plan and home country.
   const prof = session ? await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null) : null;
-  const q = quote(showtime, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined);
+  const q = quote(showtime, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined, Date.now(), quality);
   const cur = q.currency;
   if (q.phase === "ended") return NextResponse.json({ error: "This premiere has ended" }, { status: 410 });
   const itemTotal = (Number(q.seat) + Number(q.late)).toFixed(2);
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
           },
         },
         items: [
-          { name: `${showtime.film} · premiere seat`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) },
+          { name: `${showtime.film} · premiere seat${q.quality === "hd" ? "" : q.quality === "4k" ? " · 4K HDR" : " · VR"}${q.preorderSave ? " · pre-order" : ""}`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) },
           ...(Number(q.late) ? [{ name: "Late entry (after the first 15 minutes)", quantity: "1", unitAmount: { currencyCode: cur, value: q.late }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: "0.00" } } : {}) }] : []),
         ],
       },
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   };
 
   try {
-    const hold = await holdSeats(showtime.id, 1, randomUUID(), session);
+    const hold = await holdSeats(showtime.id, 1, randomUUID(), session, q.quality);
     const { result } = await paypalOrders().createOrder({ body, paypalRequestId: randomUUID(), prefer: "return=minimal" });
     if (hold && result.id) await attachOrder(hold.id, result.id, Math.round((Number(itemTotal) - Number(q.discount)) * 100));
     return NextResponse.json({ orderId: result.id });

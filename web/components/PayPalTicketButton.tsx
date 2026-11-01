@@ -7,7 +7,7 @@ import type { OnApproveDataOneTimePayments } from "@paypal/paypal-js/sdk-v6";
 type Status = "loading" | "ready" | "paying" | "paid" | "unavailable" | "error" | "signin";
 
 // Pass showtimeId to create a one-seat order, or orderId to pay an order the concierge prepared.
-export default function PayPalTicketButton({ showtimeId, orderId, label = "Pay with PayPal", className = "pp-button" }: { showtimeId?: string; orderId?: string; label?: string; className?: string }) {
+export default function PayPalTicketButton({ showtimeId, orderId, quality, label = "Pay with PayPal", className = "pp-button" }: { showtimeId?: string; orderId?: string; quality?: string; label?: string; className?: string }) {
   const [status, setStatus] = useState<Status>("loading");
   const startRef = useRef<(() => Promise<void>) | null>(null);
   const statusRef = useRef<Status>("loading");
@@ -42,7 +42,7 @@ export default function PayPalTicketButton({ showtimeId, orderId, label = "Pay w
         const order = orderId ? Promise.resolve({ orderId }) : fetch("/api/paypal/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ showtimeId }),
+          body: JSON.stringify({ showtimeId, quality }),
         }).then(async (r) => {
           if (r.status === 401) {
             setStatus("signin");
@@ -58,7 +58,7 @@ export default function PayPalTicketButton({ showtimeId, orderId, label = "Pay w
     return () => {
       cancelled = true;
     };
-  }, [showtimeId, orderId]);
+  }, [showtimeId, orderId, quality]);
 
   if (status === "paid")
     return (

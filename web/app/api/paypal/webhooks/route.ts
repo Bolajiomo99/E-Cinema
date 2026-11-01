@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook, type PayPalEvent } from "@/lib/paypal-webhook";
-import { markPaid } from "@/lib/api";
+import { markPaid, markRefunded, SoldOutError } from "@/lib/api";
 import { activateFromPayPal, endFromPayPal } from "@/lib/plan-activation";
 import type { Subscription } from "@/lib/paypal-subs";
 
@@ -34,6 +34,23 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: "Bad signature" }, { status: 400 });
 
   const event = JSON.parse(raw) as PayPalEvent;
+  // A refund, from a cancelled seat or issued in the PayPal dashboard, frees the seat.
+  if (event.event_type === "PAYMENT.CAPTURE.REFUNDED") {
+    const refundId = event.resource?.id as string | undefined;
+    const up = (event.resource?.links as { rel?: string; href?: string }[] | undefined)?.find((l) => l.rel === "up")?.href;
+    const captureId = up?.split("/captures/")[1]?.split(/[/?]/)[0];
+    if (refundId && captureId) {
+      try {
+        await markRefunded(captureId, refundId);
+      } catch (err) {
+        // 409: no paid seat for this capture (already refunded, or not a ticket). Nothing to retry.
+        if (!(err instanceof SoldOutError)) {
+          console.error("Refund ledger update failed", err instanceof Error ? err.message : err);
+          return NextResponse.json({ error: "Retry later" }, { status: 503 });
+        }
+      }
+    }
+  }
   if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
     const orderId = (event.resource?.supplementary_data as { related_ids?: { order_id?: string } } | undefined)?.related_ids?.order_id;
     const captureId = event.resource?.id as string | undefined;

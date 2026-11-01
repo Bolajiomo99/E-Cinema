@@ -27,9 +27,9 @@ export type Hold = { id: string; totalCents: number; currency: string; expiresAt
 
 // With the buyer's session the API links the seats to their account, which is what lets
 // them into the watch room later.
-export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string): Promise<Hold | undefined> {
+export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string, quality = "hd"): Promise<Hold | undefined> {
   if (!apiEnabled) return undefined;
-  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef }, session);
+  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality }, session);
 }
 
 // netCents: what the order charges for the seats before VAT, which the studio's share is worked out from.
@@ -41,7 +41,23 @@ export async function markPaid(orderId: string, captureId: string) {
   if (apiEnabled) await call(`/v1/payments/captured`, { orderId, captureId });
 }
 
-export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; orderId?: string; expiresAt: string; createdAt?: string };
+export async function markRefunded(captureId: string, refundId: string) {
+  if (apiEnabled) await call(`/v1/payments/refunded`, { captureId, refundId });
+}
+
+// Checks a paid seat is the viewer's and still cancellable; returns the PayPal capture to refund.
+export async function cancellable(session: string, holdId: string): Promise<{ ok: true; captureId: string } | { ok: false; status: number; error: string }> {
+  const res = await fetch(`${base}/v1/me/holds/${encodeURIComponent(holdId)}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "X-Session-Token": session },
+    signal: AbortSignal.timeout(8000),
+    cache: "no-store",
+  });
+  const body = (await res.json().catch(() => ({}))) as { captureId?: string; error?: string };
+  return res.ok && body.captureId ? { ok: true, captureId: body.captureId } : { ok: false, status: res.status, error: body.error ?? "Could not cancel" };
+}
+
+export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; quality?: "hd" | "4k" | "vr"; orderId?: string; expiresAt: string; createdAt?: string };
 
 async function viewer<T>(method: string, path: string, session: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
