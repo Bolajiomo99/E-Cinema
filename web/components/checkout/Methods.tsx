@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { setMethod } from "./method-store";
 
 export type Method = { id: string; name: string; sub: string; ready: boolean; icon: "paypal" | "card" | "phone" | "bank" | "crypto" };
 
@@ -13,13 +14,13 @@ const ICONS: Record<Method["icon"], React.ReactNode> = {
 };
 
 // Payment method list from Figma 18:533. Card payments run through PayPal's checkout,
-// which takes cards without a PayPal account; local providers switch on when their keys land.
+// which takes cards without a PayPal account; Paystack and Flutterwave open their own pages.
 export default function Methods({ methods }: { methods: Method[] }) {
   const [pick, setPick] = useState(methods.find((m) => m.ready)?.id ?? methods[0]?.id);
   return (
     <div className="co-methods" role="radiogroup" aria-label="Payment method">
       {methods.map((m) => (
-        <button key={m.id} type="button" role="radio" aria-checked={pick === m.id} disabled={!m.ready} className={`co-method${pick === m.id ? " on" : ""}`} onClick={() => setPick(m.id)}>
+        <button key={m.id} type="button" role="radio" aria-checked={pick === m.id} disabled={!m.ready} className={`co-method${pick === m.id ? " on" : ""}`} onClick={() => { setPick(m.id); setMethod(m.id); }}>
           <i className="co-radio" />
           <span className="co-icon">{ICONS[m.icon]}</span>
           <span className="co-t"><strong>{m.name}</strong><small>{m.sub}</small></span>

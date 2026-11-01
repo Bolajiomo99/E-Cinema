@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import Logo from "@/components/landing/Logo";
 import LocalWhen from "@/components/dash/LocalWhen";
 import Methods from "@/components/checkout/Methods";
-import { methodsFor } from "@/lib/pay-methods";
+import { localReady, methodsFor } from "@/lib/pay-methods";
+import PayCta from "@/components/checkout/PayCta";
+import { convert } from "@/lib/fx";
 import HashToFilm from "@/components/checkout/HashToFilm";
-import PayPalTicketButton from "@/components/PayPalTicketButton";
 import CreditPay from "@/components/checkout/CreditPay";
 import { creditBalance } from "@/lib/gifts";
 import { myTickets, seatsFor } from "@/lib/api";
@@ -64,7 +65,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const owned = me ? (await myTickets(session).catch(() => [])).find((t) => t.showtimeId === s.id && t.status === "paid") : undefined;
   const country = profile?.country || loc.country;
   const q = quote(s, profile ? { ...profile, country } : { country: undefined }, Date.now(), quality);
-  const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID));
+  const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID), localReady());
+  // Paystack and Flutterwave charge in naira at today's rate, rounded up to the whole naira.
+  const ngn = methods.some((m) => (m.id === "paystack" || m.id === "flutterwave") && m.ready) ? await convert(Number(q.total), q.currency, "NGN") : null;
+  const naira = ngn ? `₦${Math.ceil(ngn).toLocaleString("en-NG")}` : "";
   const credit = me && session ? await creditBalance(session) : 0;
   const creditCovers = q.currency === "USD" && credit > 0 && credit >= Math.round(Number(q.total) * 100);
   const p = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
@@ -80,7 +84,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         <h1 className="co-h1">Checkout</h1>
         <p className="co-eyebrow">PAYMENT OPTIONS FOR {(countryName(country) || "your country").toUpperCase()}</p>
         <Methods methods={methods} />
-        <p className="co-note">Paystack, Flutterwave, bank transfer and crypto switch on as soon as each provider approves our account. Until then PayPal takes cards from every country we sell in.</p>
+        <p className="co-note">{naira ? `Paystack and Flutterwave charge ${naira} in naira at today's rate. ` : ""}Bank transfer and crypto switch on as soon as each provider approves our account. PayPal takes cards from every country we sell in.</p>
       </div>
 
       <aside className="co-sum" aria-label="Order summary">
@@ -116,7 +120,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </>
         ) : me ? (
           <>
-            <PayPalTicketButton showtimeId={s.id} quality={q.quality} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
+            <PayCta fallback={methods.find((m) => m.ready)?.id ?? "paypal"} showtimeId={s.id} quality={q.quality} total={money(q.currency, q.total)} naira={naira} />
             {creditCovers && <CreditPay showtimeId={s.id} quality={q.quality} label={`Pay with credit · ${money(q.currency, q.total)}`} balance={money("USD", (credit / 100).toFixed(2))} />}
           </>
         ) : (
@@ -129,7 +133,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         {q.preorderSave > 0 && <p className="co-sec">Free cancellation until 7 days before the screening, refunded in full to how you paid.</p>}
         <p className="co-sec">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" aria-hidden><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /></svg>
-          You pay on PayPal&apos;s own page. E‑Cinema never sees or stores your card number.
+          You pay on PayPal&apos;s, Paystack&apos;s or Flutterwave&apos;s own page. E‑Cinema never sees or stores your card number.
         </p>
       </aside>
     </main>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
+import LocalPayButton from "./LocalPayButton";
 
 type Opt = { id: string; name: string; ready: boolean };
 
@@ -25,7 +26,9 @@ export default function TryAnother({ options, showtimeId, quality, total, retryH
       <div className="pf-btns">
         {pick === "paypal"
           ? <PayPalTicketButton showtimeId={showtimeId} quality={quality} label={`Pay ${total}`} className="state-btn primary pf-pay" />
-          : <button type="button" className="state-btn primary pf-pay" disabled>Pay {total}</button>}
+          : pick === "paystack" || pick === "flutterwave"
+            ? <LocalPayButton provider={pick} showtimeId={showtimeId} quality={quality} label={`Pay with ${pick === "paystack" ? "Paystack" : "Flutterwave"}`} className="state-btn primary pf-pay" />
+            : <button type="button" className="state-btn primary pf-pay" disabled>Pay {total}</button>}
         <Link href={retryHref} className="state-btn ghost">Try the card again</Link>
       </div>
     </>
