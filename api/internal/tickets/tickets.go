@@ -14,9 +14,11 @@ var (
 	ErrNotFound = errors.New("showtime not found")
 	ErrSoldOut  = errors.New("not enough seats left")
 	ErrEnded    = errors.New("this screening has ended")
-	ErrBadSeats = errors.New("seats must be between 1 and 10")
-	ErrNoHold   = errors.New("hold not found, expired or already used")
-	ErrAdult    = errors.New("this screening is for verified adults: pass the face and ID check first")
+	// ErrDoorsClosed: late entry stops 30 minutes before the end (Figma 118:1379, "doors close").
+	ErrDoorsClosed = errors.New("doors have closed for this screening")
+	ErrBadSeats    = errors.New("seats must be between 1 and 10")
+	ErrNoHold      = errors.New("hold not found, expired or already used")
+	ErrAdult       = errors.New("this screening is for verified adults: pass the face and ID check first")
 
 	ErrBadQuality      = errors.New("quality must be hd, 4k or vr")
 	ErrTooLateToCancel = errors.New("seats can be cancelled until 7 days before the screening")
@@ -94,18 +96,22 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
 		var capacity, price int
 		var currency string
-		var adult, ended bool
-		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult, starts_at + make_interval(mins => duration_min) <= now()
-		  FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID).Scan(&capacity, &price, &currency, &adult, &ended)
+		var adult, ended, closed bool
+		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult, starts_at + make_interval(mins => duration_min) <= now(),
+		    starts_at + make_interval(mins => greatest(duration_min - $2, 15)) <= now()
+		  FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID, DoorsCloseMin).Scan(&capacity, &price, &currency, &adult, &ended, &closed)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
 		}
-		// Late entry is allowed until the credits roll, never after.
+		// Late entry is allowed until the doors close, 30 minutes before the credits roll.
 		if ended {
 			return ErrEnded
+		}
+		if closed {
+			return ErrDoorsClosed
 		}
 		if adult {
 			var verified bool
@@ -138,6 +144,9 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 	})
 	return h, err
 }
+
+// DoorsCloseMin is how long before the end of a film no new seats are sold.
+const DoorsCloseMin = 30
 
 // AttachOrder links a PayPal order to an active hold, so the webhook can find it later.
 // netCents is what the order charges for the seats before VAT; 0 means unknown.

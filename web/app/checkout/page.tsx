@@ -15,7 +15,7 @@ import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
 import { countryName } from "@/lib/plans";
-import { QUALITIES, quote } from "@/lib/ticket-quote";
+import { QUALITIES, quote, salesOver } from "@/lib/ticket-quote";
 
 // Built from the Figma frame "Web / Checkout" (18:533). Prices come from the same quote the
 // PayPal order uses, so the total here is the total PayPal charges.
@@ -107,8 +107,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         <hr />
         <p className="co-total"><span>Total</span><b>{money(q.currency, q.total)}</b></p>
         {q.phase === "grace" && <p className="co-owned">The film has started. Join in the first 15 minutes at the normal price; after that, late entry costs double.</p>}
-        {q.phase === "ended" ? (
-          <p className="co-owned">This premiere has ended. <Link href="/browse">Find another one</Link>.</p>
+        {salesOver(q.phase) ? (
+          <p className="co-owned">{q.phase === "ended" ? "This premiere has ended." : "Doors have closed for this premiere."} <Link href="/browse">Find another one</Link>.</p>
         ) : owned ? (
           <>
             <p className="co-owned">You already have a seat for this premiere.</p>

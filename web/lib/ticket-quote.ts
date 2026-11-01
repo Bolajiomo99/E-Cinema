@@ -21,15 +21,21 @@ export const asQuality = (s: Showtime, v?: string | null): Quality => (qualities
 export type Quote = { currency: string; quality: Quality; full: string; preorderSave: number; seat: string; late: string; discount: string; vat: string; vatRate: number; total: string; member: string | null; phase: Phase };
 
 // Late entry (product brief, 2026-10-14): the normal price until 15 minutes in, double after,
-// and no new seats once the film has ended.
+// and the doors close 30 minutes before the end (Figma 118:1379). "closed" means the film is still
+// playing for people inside, but no new seats are sold. The API enforces the same times.
 export const LATE_GRACE_MIN = 15;
-export type Phase = "before" | "grace" | "late" | "ended";
+export const DOORS_CLOSE_MIN = 30;
+export type Phase = "before" | "grace" | "late" | "closed" | "ended";
+export const doorsCloseAt = (s: Showtime) => Date.parse(s.startsAt) + Math.max((s.runtimeMin ?? 120) - DOORS_CLOSE_MIN, LATE_GRACE_MIN) * 60_000;
 export function phaseOf(s: Showtime, now = Date.now()): Phase {
   const start = Date.parse(s.startsAt);
   if (now < start) return "before";
   if (now >= endsAt(s)) return "ended";
+  if (now >= doorsCloseAt(s)) return "closed";
   return now < start + LATE_GRACE_MIN * 60_000 ? "grace" : "late";
 }
+// No new seats once the doors have closed or the film has ended.
+export const salesOver = (p: Phase) => p === "closed" || p === "ended";
 
 // Pre-orders (Figma "Web / Coming soon", 52:808): the price rises in 3 stages as release gets
 // closer. Full early saving until 14 days out, half of it until 3 days out, then the release price.

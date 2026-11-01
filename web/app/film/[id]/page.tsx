@@ -7,14 +7,17 @@ import LocalWhen from "@/components/dash/LocalWhen";
 import TrailerButton from "@/components/landing/TrailerButton";
 import AudioChips from "@/components/film/AudioChips";
 import PosterCard from "@/components/browse/PosterCard";
-import { myTickets, seatsFor } from "@/lib/api";
+import { liveStats, myTickets, seatsFor } from "@/lib/api";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime, showtimes } from "@/lib/catalog";
 import { filterShowtimes, typeOf } from "@/lib/browse";
 import { LANGS } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
 import type { Party } from "@/lib/parties";
-import { LATE_GRACE_MIN, phaseOf, quote } from "@/lib/ticket-quote";
+import { doorsCloseAt, LATE_GRACE_MIN, phaseOf, quote, salesOver } from "@/lib/ticket-quote";
+import LateEntry, { MinutesIn } from "@/components/film/LateEntry";
+import LiveAudience from "@/components/dash/LiveAudience";
+import { endsAt } from "@/lib/catalog";
 
 // Built from the Figma frame "Web / Film detail · premiere page" (30:904).
 export const dynamic = "force-dynamic";
@@ -38,7 +41,7 @@ const runtime = (m?: number) => (m ? `${Math.floor(m / 60)}h ${String(m % 60).pa
 export default async function FilmPage({ params }: { params: Promise<{ id: string }> }) {
   const s = findShowtime((await params).id);
   if (!s) notFound();
-  const [me, loc, seats] = await Promise.all([currentAccount(), readLocale(), seatsFor(s.id)]);
+  const [me, loc, seats, live] = await Promise.all([currentAccount(), readLocale(), seatsFor(s.id), liveStats()]);
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   let profile: { plan?: string; planStatus?: string; country?: string; audioLanguage?: string } | undefined;
   let parties: Party[] = [];
@@ -73,6 +76,8 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
       : `A ${(s.genres ?? ["new"]).join(", ").toLowerCase()} premiere from ${s.studio}. Book a few films and this card learns what you like.`;
   const more = filterShowtimes({}).filter((x) => x.id !== s.id && typeOf(x) === typeOf(s)).slice(0, 6);
   const back = `/film/${s.id}`;
+  // "Pre-order the next screening": each film screens once, so this is the next premiere of the same kind.
+  const next = showtimes.find((x) => x.id !== s.id && Date.parse(x.startsAt) > Date.now() && typeOf(x) === typeOf(s)) ?? showtimes.find((x) => Date.parse(x.startsAt) > Date.now());
 
   const body = (
     <div className="lp fd">
@@ -84,8 +89,11 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
         <div className="fd-copy">
           <div className="lp-badges">
-            {phase === "grace" || phase === "late" ? (
-              <span className="lp-badge live pulse"><i />LIVE NOW</span>
+            {phase === "grace" || phase === "late" || phase === "closed" ? (
+              <>
+                <span className="lp-badge live pulse"><i />LIVE NOW<MinutesIn start={Date.parse(s.startsAt)} /></span>
+                <LiveAudience showtimeId={s.id} initial={live.find((x) => x.showtimeId === s.id)} />
+              </>
             ) : phase === "ended" ? (
               <span className="lp-badge outline">ENDED</span>
             ) : (
@@ -104,7 +112,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
           <div className="lp-ctas">
             {phase === "ended" ? (
               <Link href="/browse" className="lp-btn lg">Find another premiere</Link>
-            ) : owned ? (
+            ) : !owned && !s.adult && (phase === "grace" || phase === "late" || phase === "closed") ? null : owned ? (
               <Link href={`/room/${s.id}`} className="lp-btn lg">{phase === "before" ? "Open my room" : "Join the room"}</Link>
             ) : s.adult ? (
               <Link href={`/unlock/${s.id}`} className="lp-btn lg">Unlock in 4 stages · {money(q.currency, q.total)} each</Link>
@@ -114,15 +122,17 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
             <TrailerButton film={s.id} title={s.film} className="lp-btn lg secondary" />
             {phase === "before" && <a href={`/api/calendar/${s.id}.ics`} className="lp-btn lg ghost">Remind me</a>}
           </div>
-          {phase !== "ended" && left !== null && seats && (
+          {!salesOver(phase) && left !== null && seats && (
             <div className="fd-seats">
               <span className="fd-bar" aria-hidden><i style={{ width: `${Math.round(pct * 100)}%` }} /></span>
               <span className={pct >= 0.75 ? "warn" : undefined}>{left === 0 ? "Sold out" : `${pct >= 0.75 ? "Selling fast · " : ""}${left.toLocaleString("en")} of ${seats.capacity.toLocaleString("en")} seats left`}</span>
             </div>
           )}
-          {(phase === "grace" || phase === "late") && !owned && (
-            <p className="fd-late">{phase === "grace" ? `The film has started. Join in the first ${LATE_GRACE_MIN} minutes at the normal price.` : `Late entry: after the first ${LATE_GRACE_MIN} minutes a seat costs double. A short catch-up recap plays as you join.`}</p>
+          {(phase === "grace" || phase === "late" || phase === "closed") && !owned && !s.adult && (
+            <LateEntry start={Date.parse(s.startsAt)} doubles={Date.parse(s.startsAt) + LATE_GRACE_MIN * 60_000} closes={doorsCloseAt(s)} end={endsAt(s)}
+              join={money(q.currency, q.total)} joinHref={`/checkout?film=${s.id}`} nextHref={next ? `/film/${next.id}` : undefined} />
           )}
+          {phase === "late" && !owned && s.adult && <p className="fd-late">Late entry: after the first {LATE_GRACE_MIN} minutes a seat costs double.</p>}
         </div>
       </header>
 
@@ -159,7 +169,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
             ) : (
               <p>Watch with friends in a private room with its own chat. Friend lists are coming soon; invite anyone by email now.</p>
             )}
-            {phase !== "ended" && <Link href={me ? `/parties/new?film=${s.id}` : `/join?next=${encodeURIComponent(`/parties/new?film=${s.id}`)}`} className="lp-btn secondary fd-full">Start a watch party</Link>}
+            {!salesOver(phase) && <Link href={me ? `/parties/new?film=${s.id}` : `/join?next=${encodeURIComponent(`/parties/new?film=${s.id}`)}`} className="lp-btn secondary fd-full">Start a watch party</Link>}
           </div>
           <div className="fd-card fd-ai">
             <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a524" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" /></svg>Why you will like it</h3>

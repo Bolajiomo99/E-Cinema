@@ -8,7 +8,7 @@ import { emailEnabled, sendAdultCode } from "@/lib/email";
 import { paypalError, paypalOrders } from "@/lib/paypal";
 import { countryName } from "@/lib/plans";
 import { createSeatOrder } from "@/lib/seat-order";
-import { ADULT_STAGES, quote } from "@/lib/ticket-quote";
+import { ADULT_STAGES, quote, salesOver } from "@/lib/ticket-quote";
 
 // The 18+ unlock (Figma 28:839). Every stage needs the adult PIN and a fresh one-time code;
 // stages 1 to 3 pay the charity, church and mosque funds, stage 4 is the seat.
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     const prof = await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null);
     const q = quote(s, prof?.status === 200 ? (prof.body as { country?: string }) : undefined);
-    if (q.phase === "ended") return json(410, { error: "This premiere has ended" });
+    if (salesOver(q.phase)) return json(410, { error: q.phase === "ended" ? "This premiere has ended" : "Doors have closed for this premiere" });
     const cur = q.currency;
     try {
       const { result } = await paypalOrders().createOrder({

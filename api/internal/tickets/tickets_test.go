@@ -244,6 +244,13 @@ func TestLateEntryUntilTheEnd(t *testing.T) {
 	if _, err := s.Hold(ctx, "late-test", "viewer", 1, ""); err != nil {
 		t.Fatalf("hold during the film: %v", err)
 	}
+	// The 90-minute film's doors close at 60 minutes in.
+	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '70 minutes' WHERE id = 'late-test'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Hold(ctx, "late-test", "viewer", 1, ""); !errors.Is(err, tickets.ErrDoorsClosed) {
+		t.Fatalf("hold after doors close: %v, want ErrDoorsClosed", err)
+	}
 	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '2 hours' WHERE id = 'late-test'`); err != nil {
 		t.Fatal(err)
 	}

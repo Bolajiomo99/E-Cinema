@@ -269,7 +269,7 @@ func fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, tickets.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
-	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold), errors.Is(err, tickets.ErrEnded), errors.Is(err, tickets.ErrTooLateToCancel), errors.Is(err, tickets.ErrGiftedSeat),
+	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold), errors.Is(err, tickets.ErrEnded), errors.Is(err, tickets.ErrDoorsClosed), errors.Is(err, tickets.ErrTooLateToCancel), errors.Is(err, tickets.ErrGiftedSeat),
 		errors.Is(err, tickets.ErrNotEnded), errors.Is(err, tickets.ErrNoPayout):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome), errors.Is(err, tickets.ErrBadQuality):

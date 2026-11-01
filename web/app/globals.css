@@ -2945,3 +2945,28 @@ p.cm-text { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #f4f4f6; 
 .sd-fine { margin: 0; font: 500 11px/normal Manrope, sans-serif; color: #6e6e7a; }
 .sd-tabs button:focus-visible, .sd-buy a:focus-visible, .sd-x:focus-visible { outline: 2px solid #f4f4f6; outline-offset: 2px; }
 @media (max-width: 760px) { .sd-dim { align-items: flex-end; } .sd { width: 100%; height: 88dvh; border-radius: 16px 16px 0 0; border-left: 0; padding: 20px 16px; } }
+
+/* Film detail · late entry (Figma 118:1379) */
+.fd-lateco { width: 640px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid #f5b841; background: rgba(11,11,13,.8); }
+.fd-lateco.closed, .fd-lateco.ended { border-color: #3a3a44; }
+.fd-lateco-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.fd-lateco h2 { margin: 0; font: 700 18px/26px Manrope, sans-serif; letter-spacing: -.2px; color: #f4f4f6; }
+.fd-lateco > p { margin: 0; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.fd-pill { padding: 4px 10px; border-radius: 999px; font: 700 11px/14px Manrope, sans-serif; letter-spacing: .8px; font-variant-numeric: tabular-nums; }
+.fd-pill.ok { background: rgba(43,179,163,.15); color: #2bb3a3; }
+.fd-pill.warn { background: rgba(245,184,65,.15); color: #f5b841; }
+.fd-tl { display: flex; flex-direction: column; gap: 8px; }
+.fd-tl-bar { position: relative; display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
+.fd-tl-bar i { display: block; height: 100%; }
+.fd-tl-bar i.a { background: #2bb3a3; }
+.fd-tl-bar i.b { background: #f5b841; }
+.fd-tl-bar i.c { background: #3a3a44; }
+.fd-tl-bar b { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #f4f4f6; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+.fd-tl-lab { display: flex; justify-content: space-between; gap: 8px; font: 500 11px/18px Manrope, sans-serif; color: #6e6e7a; white-space: nowrap; }
+.fd-tl-lab .warn { color: #f5b841; }
+.fd-lateco-b { display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .fd-tl-lab { display: grid; grid-template-columns: 1fr 1fr; white-space: normal; }
+  .fd-tl-lab span:nth-child(even) { text-align: right; }
+  .fd-lateco-b .lp-btn { flex: 1 1 100%; }
+}

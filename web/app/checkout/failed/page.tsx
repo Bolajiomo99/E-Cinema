@@ -10,7 +10,7 @@ import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
 import { readLocale } from "@/lib/locale";
 import { fallbacksFor } from "@/lib/pay-methods";
-import { quote } from "@/lib/ticket-quote";
+import { quote, salesOver } from "@/lib/ticket-quote";
 
 // Built from the Figma frame "Web / Checkout · Payment failed" (96:1254).
 // The seat stays held (10 minutes from the first try) while the viewer picks another way to pay.
@@ -66,8 +66,8 @@ export default async function PaymentFailed({ searchParams }: { searchParams: Pr
               <HoldTimer until={hold.expiresAt} />
             </div>
           )}
-          {q.phase === "ended"
-            ? <p className="pf-sub">This premiere has ended. <Link href="/browse">Find another one</Link>.</p>
+          {salesOver(q.phase)
+            ? <p className="pf-sub">{q.phase === "ended" ? "This premiere has ended." : "Doors have closed for this premiere."} <Link href="/browse">Find another one</Link>.</p>
             : <TryAnother options={fallbacksFor(country, Boolean(process.env.PAYPAL_CLIENT_ID))} showtimeId={s.id} quality={q.quality} total={money(q.currency, q.total)} retryHref={retry} />}
         </section>
       </main>

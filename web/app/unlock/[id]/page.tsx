@@ -5,7 +5,7 @@ import UnlockFlow from "@/components/unlock/UnlockFlow";
 import { myTickets } from "@/lib/api";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
-import { ADULT_STAGES, quote } from "@/lib/ticket-quote";
+import { ADULT_STAGES, quote, salesOver } from "@/lib/ticket-quote";
 
 // Built from the Figma frame "Web / 18+ unlock · four payments" (28:839).
 export const dynamic = "force-dynamic";
@@ -86,8 +86,8 @@ export default async function UnlockPage({ params }: { params: Promise<{ id: str
         </div>
         {seat ? (
           <Link href={`/room/${s.id}`} className="ul-cta">Unlocked · go to the room lobby</Link>
-        ) : q.phase === "ended" ? (
-          <p className="ul-sub">This premiere has ended.</p>
+        ) : salesOver(q.phase) ? (
+          <p className="ul-sub">{q.phase === "ended" ? "This premiere has ended." : "Doors have closed for this premiere."}</p>
         ) : (
           <UnlockFlow showtimeId={s.id} stage={current} price={money(q.currency, stageCents)} verified={state.status.verified} pinSet={state.status.pinSet} />
         )}
