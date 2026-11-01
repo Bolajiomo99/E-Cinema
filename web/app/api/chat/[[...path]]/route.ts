@@ -18,6 +18,22 @@ const AUDIO = /^audio\/(webm|ogg|mp4|x-m4a)(;.*)?$/;
 const LIMIT = { voice: 5 << 20, photo: 8 << 20 };
 const uploads = new Map<string, number[]>();
 
+// Calls connect directly where they can (STUN). When a Cloudflare TURN key is set, short-lived
+// relay credentials are added for networks that block direct connections.
+const STUN: RTCIceServer = { urls: ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"] };
+async function iceServers(): Promise<RTCIceServer[]> {
+  const id = process.env.CLOUDFLARE_TURN_KEY_ID, token = process.env.CLOUDFLARE_TURN_KEY_TOKEN;
+  if (!id || !token) return [STUN];
+  try {
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(id)}/credentials/generate-ice-servers`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ ttl: 3600 }), signal: AbortSignal.timeout(4000),
+    });
+    const j = (await r.json()) as { iceServers?: RTCIceServer | RTCIceServer[] };
+    if (r.ok && j.iceServers) return [STUN, ...(Array.isArray(j.iceServers) ? j.iceServers : [j.iceServers])];
+  } catch {}
+  return [STUN];
+}
+
 async function session() {
   return (await cookies()).get(SESSION_COOKIE)?.value;
 }
@@ -42,6 +58,11 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const r = await accountApi("POST", "/v1/me/chat/pass", {}, s);
     if (r.status !== 200) return relay(r);
     return json(200, { ...(r.body as object), ws: (process.env.API_URL ?? "").replace(/^http/, "ws") });
+  }
+  if (p.length === 1 && p[0] === "ice") {
+    const me = await accountApi("GET", "/v1/me/chat/unread", undefined, s);
+    if (me.status !== 200) return relay(me);
+    return json(200, { iceServers: await iceServers() });
   }
   if (p.length === 1 && p[0] === "media") {
     const key = q.get("key") ?? "";
