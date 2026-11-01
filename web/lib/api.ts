@@ -32,8 +32,9 @@ export async function holdSeats(showtimeId: string, seats: number, viewerRef: st
   return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef }, session);
 }
 
-export async function attachOrder(holdId: string, orderId: string) {
-  if (apiEnabled) await call(`/v1/holds/${encodeURIComponent(holdId)}/order`, { orderId });
+// netCents: what the order charges for the seats before VAT, which the studio's share is worked out from.
+export async function attachOrder(holdId: string, orderId: string, netCents = 0) {
+  if (apiEnabled) await call(`/v1/holds/${encodeURIComponent(holdId)}/order`, { orderId, netCents });
 }
 
 export async function markPaid(orderId: string, captureId: string) {

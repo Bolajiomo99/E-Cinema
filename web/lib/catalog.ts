@@ -11,7 +11,11 @@ export type Showtime = {
   runtimeMin?: number;
   rating?: string; // e.g. PG-13, 18+
   adult?: boolean; // only face- and ID-verified viewers can book
-  category?: "Nollywood" | "Bollywood" | "Hollywood" | "K-Drama";
+  category?: "Nollywood" | "Bollywood" | "Hollywood" | "K-Drama" | "Anime" | "Cartoon";
+  earlySave?: number; // pre-order: the most a seat bought early saves, in percent
+  vr?: boolean; // VR ready
+  episodes?: number; // a series premiere
+  format?: string; // e.g. "4K HDR · Dolby Atmos"
   language?: string; // original audio
   dubs?: number; // AI dub tracks offered
   featured?: boolean; // leads the landing page hero
@@ -43,6 +47,22 @@ export const showtimes: Showtime[] = [
     year: 2026, genres: ["Drama", "Romance"], runtimeMin: 104, rating: "PG", category: "K-Drama", language: "Korean", dubs: 3, poster: { from: "#14233a", via: "#070d18", to: "#000", glow: blue } },
   { id: "lagos-lights-2026-11-04", film: "Lagos Lights", studio: "Lagoon Gate Pictures", startsAt: "2026-11-04T20:00:00Z", price: { currency: "USD", value: "6.99" }, shopQuery: "neon city graphic tee",
     year: 2026, genres: ["Comedy"], runtimeMin: 126, rating: "PG-13", category: "Nollywood", language: "English", dubs: 3, poster: { from: "#2e0a2c", via: "#120411", to: "#000", glow: red } },
+  // Coming soon (Figma 52:808): bookable now at the pre-order price.
+  { id: "neon-shrine-2026-11-21", film: "Neon Shrine", studio: "Kumo Animation", startsAt: "2026-11-21T18:00:00Z", price: { currency: "USD", value: "5.99" }, shopQuery: "anime shrine poster",
+    year: 2026, genres: ["Fantasy"], runtimeMin: 108, rating: "PG", category: "Anime", language: "Japanese", dubs: 34, earlySave: 35, vr: true, format: "4K HDR",
+    poster: { from: "#1d1440", via: "#0b0819", to: "#000", glow: "rgba(230,40,90,.55)" } },
+  { id: "iron-delta-2026-12-14", film: "Iron Delta", studio: "Starlight Pictures", startsAt: "2026-12-14T19:00:00Z", price: { currency: "USD", value: "7.99" }, shopQuery: "tactical jacket",
+    year: 2026, genres: ["Thriller"], runtimeMin: 130, rating: "PG-13", category: "Hollywood", language: "English", dubs: 42, earlySave: 38, vr: true, format: "4K HDR · Dolby Atmos",
+    blurb: "A river delta, a stolen shipment and one night to get it back.", poster: { from: "#2b2e36", via: "#121318", to: "#000", glow: red } },
+  { id: "winter-in-busan-2027-01-02", film: "Winter in Busan", studio: "Hanbit Story House", startsAt: "2027-01-02T12:00:00Z", price: { currency: "USD", value: "5.49" }, shopQuery: "knit winter scarf",
+    year: 2027, genres: ["Romance", "Drama"], runtimeMin: 70, rating: "PG", category: "K-Drama", language: "Korean", dubs: 28, earlySave: 40, vr: true, episodes: 12,
+    poster: { from: "#0c2a3a", via: "#06121a", to: "#000", glow: blue } },
+  { id: "the-last-durbar-2027-03-27", film: "The Last Durbar", studio: "Sahel Lantern Films", startsAt: "2027-03-27T18:00:00Z", price: { currency: "USD", value: "6.99" }, shopQuery: "durbar horse figurine",
+    year: 2027, genres: ["Epic", "History"], runtimeMin: 152, rating: "PG-13", category: "Nollywood", language: "Hausa", dubs: 40, earlySave: 45, vr: true, format: "4K HDR · Dolby Atmos",
+    poster: { from: "#3b2a0a", via: "#160f04", to: "#000", glow: amber } },
+  { id: "little-orbit-2-2027-10-30", film: "Little Orbit 2", studio: "Starlight Kids", startsAt: "2027-10-30T15:00:00Z", price: { currency: "USD", value: "4.99" }, shopQuery: "kids rocket toy",
+    year: 2027, genres: ["Family", "Animation"], runtimeMin: 92, rating: "G", category: "Cartoon", language: "English", dubs: 38, earlySave: 50, vr: true,
+    poster: { from: "#083331", via: "#041413", to: "#000", glow: "rgba(40,200,180,.5)" } },
 ];
 
 export const endsAt = (s: Showtime) => Date.parse(s.startsAt) + (s.runtimeMin ?? 120) * 60_000;

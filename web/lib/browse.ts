@@ -21,6 +21,8 @@ export function typeOf(s: Showtime): TypeId {
     case "Nollywood": return "nollywood";
     case "Bollywood": return "bollywood";
     case "K-Drama": return "k-drama";
+    case "Anime": return "anime";
+    case "Cartoon": return "cartoons";
     default: return "movies";
   }
 }

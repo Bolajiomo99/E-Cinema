@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   try {
     const hold = await holdSeats(showtime.id, 1, randomUUID(), session);
     const { result } = await paypalOrders().createOrder({ body, paypalRequestId: randomUUID(), prefer: "return=minimal" });
-    if (hold && result.id) await attachOrder(hold.id, result.id);
+    if (hold && result.id) await attachOrder(hold.id, result.id, Math.round((Number(itemTotal) - Number(q.discount)) * 100));
     return NextResponse.json({ orderId: result.id });
   } catch (err) {
     if (err instanceof SoldOutError) return NextResponse.json({ error: "Sold out" }, { status: 409 });
