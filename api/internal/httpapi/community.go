@@ -52,6 +52,25 @@ func (s *Server) communityRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"community": c, "parties": parties})
 	}))
+	mux.HandleFunc("GET /v1/me/communities/{slug}/members", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		list, err := s.Community.Members(r.Context(), a.ID, r.PathValue("slug"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"members": list})
+	}))
+	mux.HandleFunc("PUT /v1/me/communities/{slug}/parties/{code}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ On bool }
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Community.ListParty(r.Context(), a.ID, r.PathValue("slug"), r.PathValue("code"), b.On); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	mux.HandleFunc("POST /v1/me/communities/{slug}/members", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		if err := s.Community.Join(r.Context(), a.ID, r.PathValue("slug")); err != nil {
 			fail(w, err)

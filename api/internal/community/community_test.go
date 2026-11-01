@@ -67,6 +67,15 @@ func TestCommunity(t *testing.T) {
 	if c, _, _ := s.Get(ctx, tolu, g.Slug); c.Members != 2 || !c.Joined {
 		t.Fatalf("after join = %+v", c)
 	}
+	if m, err := s.Members(ctx, eve, g.Slug); err != nil || len(m) != 2 || m[0].ID != ada || m[0].Role != "owner" {
+		t.Fatalf("members = %+v %v", m, err)
+	}
+	if c, _, _ := s.Get(ctx, eve, g.Slug); len(c.Countries) != 1 || c.Countries[0] != "NG" {
+		t.Fatalf("countries = %+v", c.Countries)
+	}
+	if err := s.ListParty(ctx, eve, g.Slug, "no-such-party", true); !errors.Is(err, community.ErrForbidden) {
+		t.Fatalf("list party: %v", err)
+	}
 	text, err := s.Post(ctx, tolu, community.NewPost{Community: g.Slug, Kind: "text", Body: "That storm scene! #TideOfLagos #tideoflagos #SnackScore"})
 	if err != nil {
 		t.Fatal(err)

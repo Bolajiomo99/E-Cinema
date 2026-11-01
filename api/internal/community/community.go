@@ -39,6 +39,13 @@ type Community struct {
 	Joined     bool      `json:"joined"`
 	Role       string    `json:"role,omitempty"`
 	CreatedAt  time.Time `json:"createdAt"`
+	Countries  []string  `json:"countries,omitempty"` // where most members are, on the group page
+}
+
+type Member struct {
+	Author
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joinedAt"`
 }
 
 type Party struct {
@@ -143,7 +150,45 @@ func (s Store) Get(ctx context.Context, me, slug string) (Community, []Party, er
 		return c, nil, err
 	}
 	parties, err := pgx.CollectRows(rows, pgx.RowToStructByPos[Party])
+	if err != nil {
+		return c, nil, err
+	}
+	rows, err = s.DB.Query(ctx, `SELECT a.country FROM community_members m JOIN accounts a ON a.id = m.account_id
+	  WHERE m.community_id = $1 AND coalesce(a.country, '') <> '' GROUP BY a.country ORDER BY count(*) DESC, a.country LIMIT 3`, c.ID)
+	if err != nil {
+		return c, nil, err
+	}
+	c.Countries, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	return c, parties, err
+}
+
+// Members lists a group's people: owner and mods first, then newest.
+func (s Store) Members(ctx context.Context, me, slug string) ([]Member, error) {
+	if _, _, err := s.Get(ctx, me, slug); err != nil {
+		return nil, err
+	}
+	rows, err := s.DB.Query(ctx, `SELECT a.id::text, a.name, coalesce(a.country, ''), m.role, m.joined_at FROM community_members m
+	  JOIN communities c ON c.id = m.community_id JOIN accounts a ON a.id = m.account_id WHERE c.slug = $1
+	  ORDER BY m.role <> 'owner', m.role <> 'mod', m.joined_at DESC LIMIT 100`, slug)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Member, error) {
+		var m Member
+		err := r.Scan(&m.ID, &m.Name, &m.Country, &m.Role, &m.JoinedAt)
+		return m, err
+	})
+}
+
+// ListParty shows a party I host on a group I belong to (or takes it off with list=false).
+func (s Store) ListParty(ctx context.Context, me, slug, code string, list bool) error {
+	tag, err := s.DB.Exec(ctx, `UPDATE parties p SET community_id = CASE WHEN $4 THEN c.id ELSE NULL END FROM communities c
+	  JOIN community_members m ON m.community_id = c.id AND m.account_id = $1
+	  WHERE c.slug = $2 AND p.code = $3 AND p.host_id = $1 AND p.visibility = 'link' AND ($4 OR p.community_id = c.id)`, me, slug, code, list)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrForbidden
+	}
+	return err
 }
 
 var slugBad = regexp.MustCompile(`[^a-z0-9]+`)
