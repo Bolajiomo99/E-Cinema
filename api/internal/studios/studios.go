@@ -25,7 +25,12 @@ var (
 	ErrNameTaken   = errors.New("a studio with that name already exists")
 	ErrLastOwner   = errors.New("a studio needs at least one owner")
 	ErrNotVerified = errors.New("this studio is not verified yet")
+	ErrTaken       = errors.New("that person already belongs to another studio")
+	ErrFull        = errors.New("a studio team can have up to 50 people")
 )
+
+// MaxMembers caps a studio team.
+const MaxMembers = 50
 
 type Store struct{ DB *pgxpool.Pool }
 
@@ -377,6 +382,22 @@ func (st Store) SetMember(ctx context.Context, acct, email, who, role string) er
 		return ErrForbidden
 	}
 	return st.withOwnerCheck(ctx, s.Name, func(tx pgx.Tx) error {
+		var cur string
+		var elsewhere bool
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT coalesce((SELECT role FROM studio_members WHERE studio = $1 AND email = $2), ''),
+		  EXISTS (SELECT 1 FROM studio_members WHERE studio <> $1 AND email = $2),
+		  (SELECT count(*) FROM studio_members WHERE studio = $1)`, s.Name, who).Scan(&cur, &elsewhere, &n); err != nil {
+			return err
+		}
+		switch {
+		case cur == "owner" && s.Role != "owner":
+			return ErrForbidden // only an owner changes another owner
+		case elsewhere:
+			return ErrTaken // one studio per person
+		case cur == "" && n >= MaxMembers:
+			return ErrFull
+		}
 		_, err := tx.Exec(ctx, `INSERT INTO studio_members (studio, email, account_id, role)
 		  VALUES ($1, $2, (SELECT id FROM accounts WHERE lower(email) = $2), $3)
 		  ON CONFLICT (studio, email) DO UPDATE SET role = EXCLUDED.role`, s.Name, who, role)

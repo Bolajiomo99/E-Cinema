@@ -14,27 +14,27 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 	on := func(fn mine) http.HandlerFunc {
 		return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) { fn(w, r, a) })
 	}
-	withSteps := func(w http.ResponseWriter, st studios.Studio, err error) {
+	withSteps := func(w http.ResponseWriter, a accounts.Account, st studios.Studio, err error) {
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"studio": st, "steps": st.Steps(), "identityOk": true})
+		writeJSON(w, http.StatusOK, map[string]any{"studio": st, "steps": st.Steps(), "identityOk": a.IDVerified && a.FaceVerified})
 	}
 
 	mux.HandleFunc("GET /v1/me/studio", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		st, err := s.Studios.Mine(r.Context(), a.ID, a.Email)
 		if err == studios.ErrNotFound {
-			writeJSON(w, http.StatusOK, map[string]any{"studio": nil})
+			writeJSON(w, http.StatusOK, map[string]any{"studio": nil, "identityOk": a.IDVerified && a.FaceVerified})
 			return
 		}
-		withSteps(w, st, err)
+		withSteps(w, a, st, err)
 	}))
 	mux.HandleFunc("PUT /v1/me/studio", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var d studios.Draft
 		if decodeN(w, r, 4<<10, &d) {
 			st, err := s.Studios.Save(r.Context(), a.ID, a.Email, d)
-			withSteps(w, st, err)
+			withSteps(w, a, st, err)
 		}
 	}))
 	mux.HandleFunc("PUT /v1/me/studio/docs", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
@@ -44,26 +44,26 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		}
 		if decodeN(w, r, 2<<10, &b) {
 			st, err := s.Studios.SetDocs(r.Context(), a.ID, a.Email, b.Key, b.OK)
-			withSteps(w, st, err)
+			withSteps(w, a, st, err)
 		}
 	}))
 	mux.HandleFunc("PUT /v1/me/studio/payout", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var p studios.Payout
 		if decodeN(w, r, 2<<10, &p) {
 			st, err := s.Studios.SetPayout(r.Context(), a.ID, a.Email, p)
-			withSteps(w, st, err)
+			withSteps(w, a, st, err)
 		}
 	}))
 	mux.HandleFunc("PUT /v1/me/studio/rights", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var b struct{ Note string }
 		if decodeN(w, r, 8<<10, &b) {
 			st, err := s.Studios.DeclareRights(r.Context(), a.ID, a.Email, b.Note)
-			withSteps(w, st, err)
+			withSteps(w, a, st, err)
 		}
 	}))
 	mux.HandleFunc("POST /v1/me/studio/terms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		st, err := s.Studios.AcceptTerms(r.Context(), a.ID, a.Email)
-		withSteps(w, st, err)
+		withSteps(w, a, st, err)
 	}))
 	mux.HandleFunc("POST /v1/me/studio/submit", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		if !a.IDVerified || !a.FaceVerified {
@@ -71,7 +71,7 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			return
 		}
 		st, err := s.Studios.Submit(r.Context(), a.ID, a.Email)
-		withSteps(w, st, err)
+		withSteps(w, a, st, err)
 	}))
 
 	mux.HandleFunc("GET /v1/me/studio/overview", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {

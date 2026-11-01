@@ -119,6 +119,23 @@ func TestOnboardingAndTeam(t *testing.T) {
 	if _, _, err := st.Payouts(ctx, other, "st-fin@example.com"); err != nil {
 		t.Fatalf("finance sees payouts: %v", err)
 	}
+	// An admin cannot demote an owner.
+	if err := st.SetMember(ctx, owner, "st-owner@example.com", "st-fin@example.com", "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetMember(ctx, other, "st-fin@example.com", "st-owner@example.com", "viewer"); !errors.Is(err, studios.ErrForbidden) {
+		t.Fatalf("admin demoted the owner: %v", err)
+	}
+	if err := st.SetMember(ctx, owner, "st-owner@example.com", "st-fin@example.com", "finance"); err != nil {
+		t.Fatal(err)
+	}
+	// One studio per person.
+	st.DB.Exec(ctx, `INSERT INTO studios (name, payout_email, slug) VALUES ('Test Other Studio', 'x@example.com', 'test-other-studio') ON CONFLICT DO NOTHING`)
+	st.DB.Exec(ctx, `INSERT INTO studio_members (studio, email, role) VALUES ('Test Other Studio', 'st-elsewhere@example.com', 'owner') ON CONFLICT DO NOTHING`)
+	defer st.DB.Exec(ctx, `DELETE FROM studios WHERE name = 'Test Other Studio'`)
+	if err := st.SetMember(ctx, owner, "st-owner@example.com", "st-elsewhere@example.com", "viewer"); !errors.Is(err, studios.ErrTaken) {
+		t.Fatalf("person in two studios: %v", err)
+	}
 	if err := st.RemoveMember(ctx, owner, "st-owner@example.com", "st-owner@example.com"); !errors.Is(err, studios.ErrLastOwner) {
 		t.Fatalf("last owner: %v", err)
 	}
