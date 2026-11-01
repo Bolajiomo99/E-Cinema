@@ -45,7 +45,7 @@ export const can = (role: Role | undefined, action: "edit" | "team" | "money") =
 export const STUDIO_NAV: { label: string; href?: string; icon: string }[] = [
   { label: "Overview", href: "/studio", icon: "home" },
   { label: "Films", href: "/studio/films", icon: "film" },
-  { label: "Upload", icon: "upload" },
+  { label: "Upload", href: "/studio/upload", icon: "upload" },
   { label: "Premieres and pricing", icon: "calendar" },
   { label: "AI dubbing", icon: "dub" },
   { label: "Live control room", icon: "live" },
@@ -78,4 +78,43 @@ export const monthLabel = (m: string) => MONTHS[Number(m.slice(5, 7)) - 1] ?? m;
 export function dayName(iso: string) {
   const d = new Date(Date.parse(iso) + 3600_000);
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+// Film uploads (Figma 35:290).
+export type UploadCheck = { state: "ok" | "warn" | "soon"; text: string };
+export type UploadFile = {
+  id: string; kind: "master" | "stems" | "subtitles" | "trailer" | "package"; name: string; size: number; contentType: string;
+  key: string; mpId: string; status: "uploading" | "uploaded" | "failed"; info: string; checks: UploadCheck[]; updatedAt: string;
+};
+export type Upload = { id: string; title: string; status: "draft" | "submitted"; createdAt: string; updatedAt: string; files: UploadFile[] };
+
+export const UPLOAD_ACCEPT = ".mov,.mp4,.m4v,.mxf,.xml,.wav,.aif,.aiff,.flac,.srt,.vtt,.ttml";
+const MIB = 1024 * 1024;
+
+// The size of each part a file is sent in. Storage allows 10,000 parts, so a 2 TB master
+// uses parts of about 233 MB; small files use 16 MB parts. Server and browser agree on it.
+export function partSize(size: number) {
+  return Math.max(16 * MIB, Math.ceil(size / 9000 / MIB) * MIB);
+}
+export function partCount(size: number) {
+  return Math.max(1, Math.ceil(size / partSize(size)));
+}
+
+export function bytes(n: number) {
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return `${n >= 100 || i === 0 ? Math.round(n) : n.toFixed(n >= 10 ? 1 : 2)} ${u[i]}`;
+}
+
+// "2 minutes ago", built by hand so server and browser agree.
+export function ago(iso: string, now: number) {
+  const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
+  if (s < 45) return "just now";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} ${m === 1 ? "minute" : "minutes"} ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} ${d === 1 ? "day" : "days"} ago`;
 }
