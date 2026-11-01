@@ -73,6 +73,14 @@ func TestNotify(t *testing.T) {
 	if n, _ := s.Unread(ctx, a, now); n != 2 {
 		t.Fatalf("unread after one = %d", n)
 	}
+	p.Exec(ctx, `UPDATE holds SET paypal_order_id = 'NTF-ORDER', paypal_capture_id = 'NTF-CAP' WHERE showtime_id = 'ntf-later'`)
+	s.Captured(ctx, "NTF-ORDER")
+	s.Captured(ctx, "NTF-ORDER")
+	s.Refunded(ctx, "NTF-CAP")
+	pay, _ = s.List(ctx, a, "payments", now)
+	if len(pay) != 3 || pay[0].Kind != "refund" || pay[1].Title != "Payment received for Later Film" {
+		t.Fatalf("payments after capture = %+v", pay)
+	}
 	s.MarkRead(ctx, a, 0)
 	if n, _ := s.Unread(ctx, a, now); n != 0 {
 		t.Fatalf("unread after all = %d", n)
