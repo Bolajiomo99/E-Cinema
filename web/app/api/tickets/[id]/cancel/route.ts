@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { cancellable, markRefunded } from "@/lib/api";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { paypalError, paypalPayments } from "@/lib/paypal";
 
 // POST /api/tickets/{holdId}/cancel: free cancellation until 7 days before the screening
@@ -18,6 +18,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const c = await cancellable(session, id);
   if (!c.ok) return NextResponse.json({ error: c.error }, { status: c.status === 401 ? 401 : c.status === 409 ? 409 : 400 });
+  // Paid with gift credit: the credit goes back to the account.
+  if (c.captureId === `CREDIT-${id}`) {
+    const r = await accountApi("POST", `/v1/me/holds/${id}/credit/refund`, {}, session);
+    return NextResponse.json(r.status === 200 ? { status: "COMPLETED", credit: true } : r.body ?? {}, { status: r.status === 200 ? 200 : 409 });
+  }
   try {
     // The hold id as the request id: a double click refunds once.
     const { result } = await paypalPayments().refundCapturedPayment({ captureId: c.captureId, paypalRequestId: `refund-${id}`, prefer: "return=minimal" });

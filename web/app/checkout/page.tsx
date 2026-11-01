@@ -7,6 +7,8 @@ import Methods from "@/components/checkout/Methods";
 import { methodsFor } from "@/lib/pay-methods";
 import HashToFilm from "@/components/checkout/HashToFilm";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
+import CreditPay from "@/components/checkout/CreditPay";
+import { creditBalance } from "@/lib/gifts";
 import { myTickets, seatsFor } from "@/lib/api";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
@@ -63,6 +65,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const country = profile?.country || loc.country;
   const q = quote(s, profile ? { ...profile, country } : { country: undefined }, Date.now(), quality);
   const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID));
+  const credit = me && session ? await creditBalance(session) : 0;
+  const creditCovers = q.currency === "USD" && credit > 0 && credit >= Math.round(Number(q.total) * 100);
   const p = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
   const planName = q.member ? q.member.charAt(0).toUpperCase() + q.member.slice(1) : "";
   const back = `/checkout?film=${s.id}${q.quality === "hd" ? "" : `&q=${q.quality}`}`;
@@ -111,7 +115,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <Link href={`/room/${s.id}`} className="lp-btn lg co-cta">Go to the room lobby</Link>
           </>
         ) : me ? (
-          <PayPalTicketButton showtimeId={s.id} quality={q.quality} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
+          <>
+            <PayPalTicketButton showtimeId={s.id} quality={q.quality} label={`Continue to PayPal · ${money(q.currency, q.total)}`} className="lp-btn lg co-cta" />
+            {creditCovers && <CreditPay showtimeId={s.id} quality={q.quality} label={`Pay with credit · ${money(q.currency, q.total)}`} balance={money("USD", (credit / 100).toFixed(2))} />}
+          </>
         ) : (
           <>
             <Link href={`/signin?next=${encodeURIComponent(back)}`} className="lp-btn lg co-cta">Sign in to buy · {money(q.currency, q.total)}</Link>
