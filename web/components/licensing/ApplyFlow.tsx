@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import FaceCheck from "@/components/FaceCheck";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
@@ -18,6 +20,7 @@ async function call(method: string, path: string, body?: unknown) {
 export default function ApplyFlow({ initial, identityOk: idOk, countries, plan: wanted, homeCountry, payReady }: {
   initial: Application | null; identityOk: boolean; countries: Country[]; plan?: Plan["id"]; homeCountry: string; payReady: boolean;
 }) {
+  const router = useRouter();
   const [app, setApp] = useState<Application | null>(initial);
   const editable = !app || app.status === "draft" || app.status === "rejected";
   const [step, setStep] = useState(editable ? 2 : 4);
@@ -84,7 +87,7 @@ export default function ApplyFlow({ initial, identityOk: idOk, countries, plan: 
   return (
     <div className="ap">
       <aside className="ap-art">
-        <a className="lp-logo" href="/" aria-label="E-Cinema home"><span>E-CINEMA</span></a>
+        <Link className="lp-logo" href="/" aria-label="E-Cinema home"><span>E-CINEMA</span></Link>
         <h2>LICENSED PARTNERS</h2>
         <p>Make and sell official E‑Cinema merch in your country, with your own sales dashboard.</p>
       </aside>
@@ -180,7 +183,7 @@ export default function ApplyFlow({ initial, identityOk: idOk, countries, plan: 
               <div className="ap-pay">
                 <p className="ap-note ok">Approved{app.reviewNote ? `: ${app.reviewNote}` : ""}. Pay the licence fee of {naira(app.feeNgn)} for one year to start.</p>
                 {payReady ? (
-                  <PayPalTicketButton label="Pay the licence fee" create={async () => (await call("POST", "application/pay")).orderId} onPaid={() => { location.href = "/partner?welcome=1"; }} />
+                  <PayPalTicketButton label="Pay the licence fee" create={async () => (await call("POST", "application/pay")).orderId} onPaid={() => router.push("/partner?welcome=1")} />
                 ) : (
                   <p className="ap-note">Card and PayPal payments are being switched on. The brand team will send you a payment link.</p>
                 )}
