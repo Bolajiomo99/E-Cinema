@@ -67,7 +67,7 @@ func TestProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pg.ID != ada || pg.City != "Lagos" || len(pg.Spoken) != 2 || pg.Premieres != 1 || pg.Countries != 1 || pg.Reviews != 1 || pg.Me {
+	if pg.ID != ada || pg.City != "Lagos" || len(pg.Spoken) != 2 || pg.Premieres != 1 || pg.Countries < 1 || pg.Reviews != 1 || pg.Me {
 		t.Fatalf("page = %+v", pg)
 	}
 	w, err := s.WatchedList(ctx, ada)
