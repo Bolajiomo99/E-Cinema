@@ -30,7 +30,7 @@ export default function StudioFilms({ films, now }: { films: FilmRow[]; now: num
           <h1>Films</h1>
           <p>{titles} {titles === 1 ? "title" : "titles"} · {count("upcoming")} upcoming · {count("live")} live</p>
         </div>
-        <span className="vf-btn red stu-soon" aria-disabled="true">Upload a film <em className="soon-tag">Soon</em></span>
+        <Link className="vf-btn red" href="/studio/upload">Upload a film</Link>
       </header>
       <div className="bp-chips" role="tablist" aria-label="Filter films">
         {([["all", `All ${films.length}`], ["live", `Live ${count("live")}`], ["upcoming", `Upcoming ${count("upcoming")}`], ["ended", `Ended ${count("ended")}`]] as const).map(([k, t]) => (

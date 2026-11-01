@@ -34,6 +34,7 @@ export function initials(name: string) {
 export default function StudioShell({ studio: s, children }: { studio: Studio; children: ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const on = (href: string) => path === href || (href !== "/studio" && path.startsWith(href + "/"));
   const place = [s.city || nameOf(s.regCountry), s.status === "verified" ? "Verified studio" : "Waiting for checks"].filter(Boolean).join(" · ");
   return (
     <div className={`pt stu ${open ? "open" : ""}`}>
@@ -48,7 +49,7 @@ export default function StudioShell({ studio: s, children }: { studio: Studio; c
         </div>
         <nav>
           {STUDIO_NAV.map((n) => n.href ? (
-            <Link key={n.label} href={n.href} className={`pt-item ${path === n.href ? "on" : ""}`} aria-current={path === n.href ? "page" : undefined} onClick={() => setOpen(false)}>
+            <Link key={n.label} href={n.href} className={`pt-item ${on(n.href) ? "on" : ""}`} aria-current={on(n.href) ? "page" : undefined} onClick={() => setOpen(false)}>
               <Icon name={n.icon} />{n.label}
             </Link>
           ) : (
