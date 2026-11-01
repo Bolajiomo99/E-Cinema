@@ -83,7 +83,7 @@ func TestPaidIsIdempotentAndExpiredHoldsFree(t *testing.T) {
 	if h.TotalCents != 1000 {
 		t.Fatalf("total %d, want 1000", h.TotalCents)
 	}
-	if err := s.AttachOrder(ctx, h.ID, "ORDER-PAY-TEST"); err != nil {
+	if err := s.AttachOrder(ctx, h.ID, "ORDER-PAY-TEST", 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.MarkPaid(ctx, "ORDER-PAY-TEST", "CAPTURE-1"); err != nil {
@@ -171,7 +171,7 @@ func TestMineAndRelease(t *testing.T) {
 		s.DB.Exec(ctx, `DELETE FROM accounts WHERE id IN ($1, $2)`, id, other)
 	})
 	paid, _ := s.Hold(ctx, "mine-test", "v", 2, id)
-	s.AttachOrder(ctx, paid.ID, "ORDER-MINE-1")
+	s.AttachOrder(ctx, paid.ID, "ORDER-MINE-1", 0)
 	if err := s.MarkPaid(ctx, "ORDER-MINE-1", "CAP-MINE-1"); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestTonightCountsPaidSeatsByCountry(t *testing.T) {
 			return
 		}
 		order := "ORDER-" + h.ID
-		if err := s.AttachOrder(ctx, h.ID, order); err != nil {
+		if err := s.AttachOrder(ctx, h.ID, order, 0); err != nil {
 			t.Fatal(err)
 		}
 		if err := s.MarkPaid(ctx, order, "CAP-"+h.ID); err != nil {

@@ -123,9 +123,10 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 }
 
 // AttachOrder links a PayPal order to an active hold, so the webhook can find it later.
-func (st Store) AttachOrder(ctx context.Context, holdID, orderID string) error {
-	tag, err := st.DB.Exec(ctx, `UPDATE holds SET paypal_order_id = $2
-	  WHERE id = $1 AND status = 'held' AND expires_at > now() AND paypal_order_id IS NULL`, holdID, orderID)
+// netCents is what the order charges for the seats before VAT; 0 means unknown.
+func (st Store) AttachOrder(ctx context.Context, holdID, orderID string, netCents int) error {
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET paypal_order_id = $2, net_cents = NULLIF($3, 0)
+	  WHERE id = $1 AND status = 'held' AND expires_at > now() AND paypal_order_id IS NULL`, holdID, orderID, netCents)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNoHold
 	}

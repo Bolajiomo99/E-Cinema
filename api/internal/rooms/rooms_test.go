@@ -110,7 +110,7 @@ func TestTicketsAndChatLimits(t *testing.T) {
 	if ok, _ := ts.HasTicket(ctx, "room-test", buyer); ok {
 		t.Fatal("an unpaid hold is not a ticket")
 	}
-	if err := ts.AttachOrder(ctx, h.ID, "room-order"); err != nil {
+	if err := ts.AttachOrder(ctx, h.ID, "room-order", 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := ts.MarkPaid(ctx, "room-order", "room-capture"); err != nil {

@@ -43,7 +43,7 @@ func TestPartyLifecycle(t *testing.T) {
 	p := pool(t)
 	ctx := context.Background()
 	if _, err := p.Exec(ctx, `DELETE FROM parties WHERE showtime_id IN ('party-test', 'party-old');
-	  INSERT INTO showtimes VALUES ('party-test', 'Tide', 'S', now() + interval '1 hour', 90, 10, 500, 'USD') ON CONFLICT (id) DO NOTHING;
+	  INSERT INTO showtimes VALUES ('party-test', 'Tide', 'S', now() + interval '1 hour', 90, 10, 500, 'USD') ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at;
 	  INSERT INTO showtimes VALUES ('party-old', 'Old', 'S', now() - interval '1 day', 90, 10, 500, 'USD') ON CONFLICT (id) DO NOTHING`); err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,7 @@ func paidSeats(t *testing.T, s tickets.Store, id string, seats int, order string
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AttachOrder(ctx, h.ID, order); err != nil {
+	if err := s.AttachOrder(ctx, h.ID, order, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.MarkPaid(ctx, order, "cap-"+order); err != nil {
@@ -106,4 +106,31 @@ func contains(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// A pre-order seat bought at a saving pays the studio its share of what was charged, not the list price.
+func TestStudioShareUsesChargedPrice(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "net-test", 10) // list price 500 cents
+	s.DB.Exec(ctx, `UPDATE showtimes SET studio = 'Lagoon Gate Pictures' WHERE id = 'net-test'`)
+	s.DB.Exec(ctx, `DELETE FROM holds WHERE paypal_order_id IN ('NETA', 'NETB')`)
+	h, err := s.Hold(ctx, "net-test", "viewer", 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AttachOrder(ctx, h.ID, "NETA", 310); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkPaid(ctx, "NETA", "cap-NETA"); err != nil {
+		t.Fatal(err)
+	}
+	paidSeats(t, s, "net-test", 1, "NETB") // no amount recorded: list price
+	st, err := s.Statement(ctx, "net-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.GrossCents != 810 {
+		t.Fatalf("gross = %d, want 310 + 500", st.GrossCents)
+	}
 }

@@ -35,7 +35,8 @@ const statementSQL = `
 SELECT s.id, s.film, s.studio, COALESCE(st.payout_email, ''), COALESCE(st.share_bps, 0),
        s.starts_at + make_interval(mins => s.duration_min) < $2,
        COALESCE((SELECT sum(h.seats) FROM holds h WHERE h.showtime_id = s.id AND h.status = 'paid'), 0),
-       s.price_cents, s.currency,
+       COALESCE((SELECT sum(COALESCE(h.net_cents, h.seats * s.price_cents)) FROM holds h WHERE h.showtime_id = s.id AND h.status = 'paid'), 0),
+       s.currency,
        COALESCE(p.status, 'unpaid'), COALESCE(p.paypal_batch_id, ''),
        p.paid_seats, p.gross_cents, p.studio_cents
 FROM showtimes s
@@ -46,19 +47,20 @@ WHERE s.id = $1`
 func scanStatement(row pgx.Row) (Statement, error) {
 	var (
 		s                   Statement
-		shareBps, price     int
+		shareBps            int
+		gross               int64
 		lockedSeats         *int
 		lockedGross, locked *int64
 	)
 	err := row.Scan(&s.ShowtimeID, &s.Film, &s.Studio, &s.PayoutEmail, &shareBps, &s.Ended,
-		&s.PaidSeats, &price, &s.Currency, &s.Status, &s.PaypalBatchID, &lockedSeats, &lockedGross, &locked)
+		&s.PaidSeats, &gross, &s.Currency, &s.Status, &s.PaypalBatchID, &lockedSeats, &lockedGross, &locked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s, ErrNotFound
 	}
 	if err != nil {
 		return s, err
 	}
-	s.GrossCents = int64(s.PaidSeats) * int64(price)
+	s.GrossCents = gross
 	s.StudioCents = s.GrossCents * int64(shareBps) / 10000
 	if lockedSeats != nil { // once claimed, the amounts are frozen
 		s.PaidSeats, s.GrossCents, s.StudioCents = *lockedSeats, *lockedGross, *locked

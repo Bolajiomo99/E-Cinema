@@ -91,13 +91,14 @@ func (s *Server) Routes() http.Handler {
 	}))
 	mux.HandleFunc("POST /v1/holds/{id}/order", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			OrderID string `json:"orderId"`
+			OrderID  string `json:"orderId"`
+			NetCents int    `json:"netCents"`
 		}
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.OrderID == "" {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.OrderID == "" || body.NetCents < 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "orderId is required"})
 			return
 		}
-		if err := s.Tickets.AttachOrder(r.Context(), r.PathValue("id"), body.OrderID); err != nil {
+		if err := s.Tickets.AttachOrder(r.Context(), r.PathValue("id"), body.OrderID, body.NetCents); err != nil {
 			fail(w, err)
 			return
 		}
