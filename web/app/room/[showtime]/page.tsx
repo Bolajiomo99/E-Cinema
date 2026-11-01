@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import WatchRoom, { type RoomMessage } from "@/components/WatchRoom";
 import type { Party, Poll } from "@/components/room/SidePanel";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
-import { filmStream, mediaEnabled } from "@/lib/media";
+import { dubLanguages, filmStream, mediaEnabled } from "@/lib/media";
 import { findShowtime } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
@@ -56,6 +56,16 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
   const pref = (prof?.status === 200 ? (prof.body as { audioLanguage?: string }).audioLanguage : undefined) || "";
   const original = findShowtime(showtime)?.language ?? "English";
   const audio = pref && langName(pref) !== original ? `${langName(pref)} (AI)` : original;
+  // AI dubs and subtitles: the film's own tracks, or the stand-in's while it plays in its place.
+  let dubFilm = showtime;
+  let dubLangs: string[] = [];
+  if (mediaEnabled) {
+    dubLangs = await dubLanguages(showtime).catch(() => []);
+    if (!dubLangs.length && stream) {
+      dubFilm = "stand-in";
+      dubLangs = await dubLanguages(dubFilm).catch(() => []);
+    }
+  }
 
   return (
     <WatchRoom
@@ -72,6 +82,10 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
       initialPolls={room.polls ?? []}
       initialTalkLeft={room.talkLeft ?? -1}
       lang={room.lang || loc.lang}
+      dubFilm={dubFilm}
+      dubLanguages={dubLangs}
+      prefAudio={pref.split("-")[0]}
+      prefSubs={loc.lang.split("-")[0]}
     />
   );
 }

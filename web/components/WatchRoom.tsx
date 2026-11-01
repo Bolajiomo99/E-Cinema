@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Lobby from "@/components/room/Lobby";
 import SidePanel, { type ChatMessage, type Party, type Poll } from "@/components/room/SidePanel";
+import { TrackChip, trackName, useTracks } from "@/components/room/Tracks";
 import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 
@@ -183,6 +184,10 @@ export default function WatchRoom({
   initialPolls = [],
   initialTalkLeft = -1,
   lang = "en",
+  dubFilm = "",
+  dubLanguages = [],
+  prefAudio = "",
+  prefSubs = "",
 }: {
   showtime: Showtime;
   viewerCode: string;
@@ -197,6 +202,10 @@ export default function WatchRoom({
   initialPolls?: Poll[];
   initialTalkLeft?: number;
   lang?: string;
+  dubFilm?: string;
+  dubLanguages?: string[];
+  prefAudio?: string;
+  prefSubs?: string;
 }) {
   const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching, initialRoomMessages, initialPolls);
@@ -243,9 +252,30 @@ export default function WatchRoom({
     return () => clearInterval(t);
   }, []);
 
+  // Volume goes to 200%: past 100% the sound runs through a Web Audio gain, which needs the film
+  // to be served with CORS. The probe finds out first, so a missing header never breaks playback.
+  const [canBoost, setCanBoost] = useState(false);
+  const gain = useRef<GainNode | null>(null);
   useEffect(() => {
-    if (video.current) video.current.volume = volume;
-  }, [volume]);
+    if (!stream) return;
+    fetch(stream.sd, { headers: { Range: "bytes=0-1" }, mode: "cors" }).then((r) => setCanBoost(r.ok)).catch(() => setCanBoost(false));
+  }, [stream]);
+  const tracks = useTracks(dubFilm, dubLanguages, prefAudio, prefSubs, video, Math.min(volume, 1));
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    const duck = tracks.ducked ? 0.3 : 1;
+    if (volume > 1 && canBoost) {
+      if (!gain.current) {
+        const ctx = new AudioContext();
+        const g = ctx.createGain();
+        ctx.createMediaElementSource(v).connect(g).connect(ctx.destination);
+        gain.current = g;
+      }
+      v.volume = 1;
+    } else v.volume = Math.min(1, volume) * duck;
+    if (gain.current) gain.current.gain.value = volume > 1 ? volume * duck : 1;
+  }, [volume, canBoost, tracks.ducked]);
 
   // Remember that the film was running, so a later reconnect reads as a dropped connection
   // rather than the pre-show lobby.
@@ -292,8 +322,8 @@ export default function WatchRoom({
           <div className="room-badges">
             {live && <span className="badge live"><i />LIVE</span>}
             {audioOnly && <button type="button" className="badge outline" onClick={() => setAudioOnly(false)}>AUDIO ONLY · SHOW VIDEO</button>}
-            <span className="badge outline">{room.watching.toLocaleString()} HERE</span>
-            <span className={`badge outline ${syncMs === null ? "" : "ok"}`}>{syncMs === null ? "SYNCING" : `SYNCED · ${syncMs} MS`}</span>
+            <span className="badge outline">{room.watching.toLocaleString()} WATCHING</span>
+            <span className={`badge outline ${syncMs === null ? "" : "ok"}`}>{syncMs === null ? "SYNCING" : `SYNCED · ${(syncMs / 1000).toFixed(1)}s`}</span>
           </div>
         </header>
 
@@ -335,6 +365,7 @@ export default function WatchRoom({
             <video
               ref={video}
               src={saver ? stream.sd : stream.hd}
+              crossOrigin={canBoost ? "anonymous" : undefined}
               preload="auto"
               playsInline
               disablePictureInPicture
@@ -353,6 +384,8 @@ export default function WatchRoom({
         )}
         {!stream && live && <div className="room-lobby"><p className="muted">The film for this screening has not been uploaded yet.</p></div>}
 
+        {tracks.line && live && joined && <div className="pc-subtitle" aria-live="polite"><span>{tracks.line}</span></div>}
+
         <div className="room-floaters" aria-hidden>
           {room.floaters.map((f) => (
             <span key={f.id} style={{ left: `${f.left}%` }}>{f.emoji}</span>
@@ -362,17 +395,29 @@ export default function WatchRoom({
         <footer className="room-controls">
           <div className="room-progress"><span style={{ width: `${(elapsedSec / totalSec) * 100}%` }} /></div>
           <div className="room-row">
-            <span className="muted small">{live ? "LIVE · everyone is on the same frame" : "Waiting for the premiere"}</span>
-            <label className="room-vol">
-              <span aria-hidden>🔊</span>
-              <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} aria-label="Volume" />
+            <span className="pc-live">{live ? "LIVE · cannot skip ahead" : phase === "ended" ? "Screening ended" : "Waiting for the premiere"}</span>
+            <label className="pc-vol">
+              <button type="button" className="pc-icon" onClick={() => setVolume((x) => (x > 0 ? 0 : 1))} aria-label={volume > 0 ? "Mute" : "Unmute"}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />{volume > 0 ? <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /> : <path d="m16 9.5 5 5m0-5-5 5" />}</svg>
+              </button>
+              <span className="pc-track" style={{ ["--v" as string]: `${(volume / (canBoost ? 2 : 1)) * 100}%`, ["--hundred" as string]: canBoost ? "50%" : "100%" }}>
+                <input type="range" min={0} max={canBoost ? 2 : 1} step={0.05} value={Math.min(volume, canBoost ? 2 : 1)} onChange={(e) => setVolume(Number(e.target.value))} aria-label="Volume" />
+              </span>
+              <span className={`pc-pct ${volume > 1 ? "boost" : ""}`}>{Math.round(volume * 100)}%</span>
             </label>
             <span className="room-spacer" />
-            <button className={`room-pill ${saver ? "on" : ""}`} onClick={() => { setSaver((s) => !s); setJoined(false); }}>
-              Data saver · {saver ? "360p" : "off"}
+            <TrackChip icon="audio" label={`Audio: ${tracks.audio ? `${trackName(tracks.audio)} (AI)` : audio.replace(/ \(AI\)$/, "")}`} value={tracks.audio}
+              options={[{ value: "", label: `Original${audio.endsWith("(AI)") ? "" : ` · ${audio}`}` }, ...dubLanguages.map((l) => ({ value: l, label: `${trackName(l)} (AI dub)` }))]}
+              onPick={tracks.setAudio} empty="AI dubs show here once this film is dubbed." />
+            <TrackChip icon="subs" label={tracks.subs ? trackName(tracks.subs) : "Subtitles off"} value={tracks.subs}
+              options={[{ value: "", label: "Off" }, ...dubLanguages.map((l) => ({ value: l, label: trackName(l) }))]}
+              onPick={tracks.setSubs} empty="Subtitles show here once this film has them." />
+            <button className={`pc-chip ${saver ? "on" : ""}`} onClick={() => { setSaver((s) => !s); setJoined(false); }} aria-pressed={saver}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="15" width="3" height="5" rx="1" /><rect x="8.5" y="11" width="3" height="9" rx="1" opacity={saver ? 0.35 : 1} /><rect x="14" y="7" width="3" height="13" rx="1" opacity={saver ? 0.35 : 1} /><rect x="19.5" y="3" width="3" height="17" rx="1" opacity={saver ? 0.35 : 1} /></svg>
+              <span>{saver ? "Data saver · 360p" : "HD · 720p"}</span>
             </button>
-            <button className="room-pill" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : stage.current?.requestFullscreen())} aria-label="Full screen">
-              ⛶
+            <button className="pc-icon" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : stage.current?.requestFullscreen())} aria-label="Full screen">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
             </button>
           </div>
           {stream && <p className="room-credit">Stand-in film: {stream.title} {stream.credit} · {stream.license}</p>}

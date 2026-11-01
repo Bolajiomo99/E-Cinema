@@ -2101,3 +2101,35 @@ body:has(.co) { background: #0a0a0c; }
   .rp-talk p { display: none; }
   .rp-compose { padding: 8px 12px; }
 }
+
+/* Player controls (Figma 17:562 "controls") */
+.pc-live { font: 600 11px/14px Manrope, sans-serif; letter-spacing: .4px; color: #a6a6b0; white-space: nowrap; }
+.pc-vol { display: inline-flex; align-items: center; gap: 10px; }
+.pc-icon { width: 30px; height: 30px; display: grid; place-items: center; border: 0; padding: 0; background: none; color: #f4f4f6; cursor: pointer; }
+.pc-track { position: relative; width: 160px; height: 16px; display: flex; align-items: center; }
+.pc-track::before { content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 4px; background: linear-gradient(90deg, #ff5a5f var(--v), rgba(255,255,255,.18) var(--v)); }
+.pc-track::after { content: ""; position: absolute; left: var(--hundred); top: 3px; width: 2px; height: 10px; background: rgba(255,255,255,.7); transform: translateX(-1px); }
+.pc-track input { position: relative; z-index: 1; width: 100%; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; height: 16px; cursor: pointer; }
+.pc-track input::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.pc-track input::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #fff; }
+.pc-pct { min-width: 36px; font: 700 13px/20px Manrope, sans-serif; color: #f4f4f6; font-variant-numeric: tabular-nums; }
+.pc-pct.boost { color: #ff5a5f; }
+.pc-chip-wrap { position: relative; }
+.pc-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 8px; border: 0; background: rgba(255,255,255,.1); color: #f4f4f6; font: 600 13px Manrope, sans-serif; cursor: pointer; white-space: nowrap; }
+.pc-chip:hover { background: rgba(255,255,255,.16); }
+.pc-chip.on { background: #f4f4f6; color: #0a0a0c; }
+.pc-menu { position: absolute; bottom: 44px; left: 0; min-width: 200px; max-height: 300px; overflow-y: auto; list-style: none; margin: 0; padding: 6px; border-radius: 10px; background: #1b1b21; border: 1px solid #2a2a31; box-shadow: 0 16px 40px rgba(0,0,0,.55); z-index: 6; }
+.pc-menu button { width: 100%; text-align: left; padding: 9px 10px; border: 0; border-radius: 6px; background: none; color: #e6e6ea; font: 600 13px Manrope, sans-serif; cursor: pointer; }
+.pc-menu button:hover { background: #26262e; }
+.pc-menu button.on { color: #fff; background: rgba(227,24,45,.18); }
+.pc-menu-note { padding: 8px 10px; font: 500 12px/18px Manrope, sans-serif; color: #8b8b96; }
+.pc-subtitle { position: absolute; z-index: 3; left: 0; right: 0; bottom: 178px; display: flex; justify-content: center; pointer-events: none; padding: 0 24px; }
+.pc-subtitle span { max-width: 640px; padding: 8px 14px; border-radius: 6px; background: rgba(0,0,0,.72); color: #fff; font: 700 18px/26px Manrope, sans-serif; text-align: center; }
+@media (max-width: 900px) {
+  .pc-live, .pc-vol { display: none; }
+  .pc-chip { height: 32px; padding: 0 10px; font-size: 12px; }
+  .pc-chip-wrap:nth-of-type(2) .pc-chip span { display: none; }
+  .pc-subtitle { bottom: 76px; }
+  .pc-subtitle span { font-size: 14px; line-height: 20px; }
+  .pc-menu { left: auto; right: 0; }
+}
