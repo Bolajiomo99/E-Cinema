@@ -165,6 +165,10 @@ jobs:
           echo "student offer ok"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/quiz")" = 403 ]
           echo "lobby quiz ok"
+          # Room panel: translations and shared files are for ticket holders only.
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"ids":[1]}' "$web/api/rooms/red-earth-2026-11-02/translate")" = 403 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/media?key=rooms/other/x.pdf")" = 404 ]
+          echo "room panel ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
