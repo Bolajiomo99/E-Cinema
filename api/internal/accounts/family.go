@@ -341,3 +341,41 @@ func (s Store) DecideRequest(ctx context.Context, accountID, id string, approve 
 	}
 	return err
 }
+
+// Active returns the profile this device (session) is using; the owner when none is set.
+func (s Store) Active(ctx context.Context, accountID, sessionID string) (Member, error) {
+	var pid *string
+	if err := s.DB.QueryRow(ctx, `SELECT profile_id FROM account_sessions WHERE id = $1 AND account_id = $2`, sessionID, accountID).Scan(&pid); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Member{}, ErrNotFound
+		}
+		return Member{}, err
+	}
+	if pid == nil {
+		return s.ProfileFor(ctx, accountID, "owner")
+	}
+	return s.ProfileFor(ctx, accountID, *pid)
+}
+
+// Switch moves this device to another profile. Leaving a kids profile needs the parent PIN.
+func (s Store) Switch(ctx context.Context, accountID, sessionID, to, pin string) (Member, error) {
+	cur, err := s.Active(ctx, accountID, sessionID)
+	if err != nil {
+		return cur, err
+	}
+	next, err := s.ProfileFor(ctx, accountID, to)
+	if err != nil {
+		return next, err
+	}
+	if cur.Kind == "kids" && cur.ID != next.ID {
+		if err := s.CheckParentPIN(ctx, accountID, pin); err != nil {
+			return cur, err
+		}
+	}
+	var pid *string
+	if next.Kind != "owner" {
+		pid = &next.ID
+	}
+	_, err = s.DB.Exec(ctx, `UPDATE account_sessions SET profile_id = $3 WHERE id = $1 AND account_id = $2`, sessionID, accountID, pid)
+	return next, err
+}

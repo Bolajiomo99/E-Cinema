@@ -39,3 +39,6 @@ CREATE TABLE kids_requests (
   decided_at  timestamptz
 );
 CREATE INDEX kids_requests_open ON kids_requests (account_id, created_at DESC) WHERE status = 'pending';
+
+-- Which profile each signed-in device is using; leaving a kids profile needs the parent PIN.
+ALTER TABLE account_sessions ADD COLUMN profile_id uuid REFERENCES profiles(id) ON DELETE SET NULL;

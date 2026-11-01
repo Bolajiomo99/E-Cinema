@@ -286,6 +286,7 @@ func (s *Server) Routes() http.Handler {
 	s.brandRoutes(mux)
 	s.licensingRoutes(mux)
 	s.careersRoutes(mux)
+	s.familyRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -350,6 +351,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadPIN), errors.Is(err, accounts.ErrBadGrant):
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrBadParentPIN):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrParentPaused):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrNeedParentPIN), errors.Is(err, accounts.ErrTooManyProfiles):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrBedtime), errors.Is(err, accounts.ErrScreenTime):
+		writeJSON(w, http.StatusLocked, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrPINPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotStudent):
