@@ -201,6 +201,7 @@ export default function WatchRoom({
   prefAudio = "",
   prefSubs = "",
   myReview = null,
+  vrSeat = false,
 }: {
   showtime: Showtime;
   viewerCode: string;
@@ -220,6 +221,7 @@ export default function WatchRoom({
   prefAudio?: string;
   prefSubs?: string;
   myReview?: { stars: number; tags: string[]; body: string } | null;
+  vrSeat?: boolean;
 }) {
   const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching, initialRoomMessages, initialPolls);
@@ -339,6 +341,7 @@ export default function WatchRoom({
           <div className="room-badges">
             {live && <span className="badge live"><i />LIVE</span>}
             {audioOnly && <button type="button" className="badge outline" onClick={() => setAudioOnly(false)}>AUDIO ONLY · SHOW VIDEO</button>}
+            {vrSeat && <Link href={`/room/${showtime.id}/vr`} className="badge outline">VR CINEMA</Link>}
             <span className="badge outline">{room.watching.toLocaleString()} WATCHING</span>
             <span className={`badge outline ${syncMs === null ? "" : "ok"}`}>{syncMs === null ? "SYNCING" : `SYNCED · ${(syncMs / 1000).toFixed(1)}s`}</span>
           </div>

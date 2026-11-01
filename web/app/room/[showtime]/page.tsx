@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import WatchRoom, { type RoomMessage } from "@/components/WatchRoom";
 import type { Party, Poll } from "@/components/room/SidePanel";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
+import { myTickets } from "@/lib/api";
 import { dubLanguages, filmStream, mediaEnabled } from "@/lib/media";
 import { findShowtime } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
@@ -52,10 +53,11 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
   const stream = mediaEnabled ? await filmStream(endsAt) : null;
   const wsBase = (process.env.API_URL ?? "").replace(/^http/, "ws");
   // The lobby shows how the viewer will hear and read the film.
-  const [prof, loc, rev] = await Promise.all([
+  const [prof, loc, rev, tickets] = await Promise.all([
     accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null),
     readLocale(),
     accountApi("GET", `/v1/me/reviews/${showtime}`, undefined, session).catch(() => null),
+    myTickets(session).catch(() => []),
   ]);
   const pref = (prof?.status === 200 ? (prof.body as { audioLanguage?: string }).audioLanguage : undefined) || "";
   const original = findShowtime(showtime)?.language ?? "English";
@@ -90,6 +92,7 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
       dubLanguages={dubLangs}
       prefAudio={pref.split("-")[0]}
       prefSubs={loc.lang.split("-")[0]}
+      vrSeat={tickets.some((t) => t.showtimeId === showtime && t.status === "paid" && t.quality === "vr")}
       myReview={rev?.status === 200 ? ((rev.body as { review?: { stars: number; tags: string[]; body: string } | null }).review ?? null) : null}
     />
   );
