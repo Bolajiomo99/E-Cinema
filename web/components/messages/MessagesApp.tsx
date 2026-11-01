@@ -5,6 +5,7 @@ import { countryName } from "@/lib/plans";
 import { langName } from "@/lib/i18n";
 import type { ChatEvent, Conversation, FriendRequest, Message, Party, Person, Thread } from "@/lib/chat-types";
 import { preview } from "@/lib/chat-types";
+import { CallOverlay, useCall } from "./Call";
 import Avatar from "./Avatar";
 import Bubble from "./Bubble";
 import Composer, { type Outgoing } from "./Composer";
@@ -122,6 +123,7 @@ export default function MessagesApp({ me, initial, requestCount, parties, openId
       case "typing": setTyping((t) => ({ ...t, [`${e.conversationId}:${e.accountId}`]: Date.now() })); break;
       case "request": setReqCount((n) => n + 1); if (tab === "requests") void api<{ requests: FriendRequest[] }>("/requests").then((r) => r.ok && setRequests(r.data.requests)); break;
       case "read": setThread((t) => (t && t.conversation.id === e.conversationId ? { ...t, readBy: { ...t.readBy, [e.accountId]: Math.max(t.readBy[e.accountId] ?? 0, e.upto) } } : t)); break;
+      case "call": void call.onSignal(e.conversationId, e.accountId ?? "", e.call, (id) => convs.find((c) => c.id === e.conversationId)?.name ?? thread?.members.find((p) => p.id === id)?.name ?? "A friend"); break;
       case "msg": {
         const m = e.message;
         const here = activeRef.current === m.conversationId;
@@ -140,6 +142,8 @@ export default function MessagesApp({ me, initial, requestCount, parties, openId
       }
     }
   });
+
+  const call = useCall(sendLive);
 
   // Drop stale typing marks.
   useEffect(() => {
@@ -314,8 +318,17 @@ export default function MessagesApp({ me, initial, requestCount, parties, openId
                 </span>
               </div>
               <div className="msg-chat-r">
-                <button type="button" className="msg-ic soon" disabled title="Voice calls are coming soon" aria-label="Voice call (coming soon)"><IconPhone /></button>
-                <button type="button" className="msg-ic soon" disabled title="Video calls are coming soon" aria-label="Video call (coming soon)"><IconVideo /></button>
+                {other ? (
+                  <>
+                    <button type="button" className="msg-ic" onClick={() => void call.start({ conv: thread.conversation.id, id: other.id, name: thread.conversation.name }, false)} title={`Voice call ${thread.conversation.name.split(" ")[0]}`} aria-label="Voice call"><IconPhone /></button>
+                    <button type="button" className="msg-ic" onClick={() => void call.start({ conv: thread.conversation.id, id: other.id, name: thread.conversation.name }, true)} title={`Video call ${thread.conversation.name.split(" ")[0]}`} aria-label="Video call"><IconVideo /></button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="msg-ic soon" disabled title="Group calls are coming soon" aria-label="Group voice call (coming soon)"><IconPhone /></button>
+                    <button type="button" className="msg-ic soon" disabled title="Group calls are coming soon" aria-label="Group video call (coming soon)"><IconVideo /></button>
+                  </>
+                )}
                 <ChatMenu thread={thread} me={me} other={other} onDone={(msg, gone) => { say(msg); if (gone) { setThread(null); setActive(undefined); setMobileChat(false); void reload(); } else void open(thread.conversation.id, false); }} onError={say} />
               </div>
             </header>
@@ -359,6 +372,7 @@ export default function MessagesApp({ me, initial, requestCount, parties, openId
       </section>
 
       {composing && <NewChat me={me} onClose={() => setComposing(false)} onDM={startDM} onGroup={async (id) => { setComposing(false); await reload(); void open(id); }} onError={say} />}
+      <CallOverlay call={call} />
       {toast && <div className="msg-toast" role="status">{toast}</div>}
     </main>
   );

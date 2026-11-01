@@ -2634,3 +2634,29 @@ body:has(.co) { background: #0a0a0c; }
   .msg-pop.party { left: 12px; width: calc(100vw - 48px); max-width: 320px; }
 }
 @keyframes msgpulse { 50% { opacity: .3; } }
+/* Calls */
+.call { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: radial-gradient(120% 80% at 50% 20%, #2a0d12 0%, #0a0a0c 60%); color: #f4f4f6; font-family: Manrope, system-ui, sans-serif; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+.call.video { background: #000; justify-content: flex-end; }
+.call-remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.call-self { position: absolute; right: 16px; top: 16px; width: 168px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 14px; border: 1px solid #ffffff2e; transform: scaleX(-1); background: #111; z-index: 2; }
+.call-self.off { opacity: 0; }
+.call-who { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.call-who strong { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+.call-who > span:last-child { font-size: 15px; color: #c9c9d1; font-variant-numeric: tabular-nums; max-width: 320px; }
+.call.video .call-who { position: absolute; top: 20px; left: 20px; align-items: flex-start; text-align: left; text-shadow: 0 1px 6px #000a; }
+.call.video .call-who strong { font-size: 18px; }
+.call-ava { border-radius: 50%; margin-bottom: 8px; }
+.call-ava .msg-av { font-size: 36px; }
+.call-ava.ring { animation: callring 1.6s ease-out infinite; }
+@keyframes callring { 0% { box-shadow: 0 0 0 0 #e50914aa; } 100% { box-shadow: 0 0 0 28px #e5091400; } }
+.call-bar { position: relative; z-index: 2; display: flex; gap: 20px; }
+.call-btn { width: 60px; height: 60px; border-radius: 50%; border: 0; display: grid; place-items: center; background: #ffffff1f; color: #fff; cursor: pointer; backdrop-filter: blur(8px); }
+.call-btn:hover { background: #ffffff33; }
+.call-btn.on { background: #f4f4f6; color: #0a0a0c; }
+.call-btn.end { background: #e50914; }
+.call-btn.end:hover { background: #f6121d; }
+.call-btn.go { background: #1db954; }
+.call-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.call-note { position: relative; z-index: 2; margin: 0; font-size: 12px; color: #8b8b96; text-align: center; }
+.call.video .call-note { color: #ffffffa6; }
+@media (max-width: 600px) { .call-self { width: 108px; right: 12px; top: 12px; } .call.video .call-who { top: 16px; left: 16px; } }
