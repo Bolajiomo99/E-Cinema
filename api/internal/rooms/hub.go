@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 
 // Event is everything the server pushes to a room.
 type Event struct {
-	Type    string   `json:"type"` // msg | react | presence | error
+	Type    string   `json:"type"` // msg | react | presence | poll | friends | error
 	Message *Message `json:"message,omitempty"`
+	Poll    *Poll    `json:"poll,omitempty"`
+	Online  []string `json:"online,omitempty"` // display names of party members connected now
 	Emoji   string   `json:"emoji,omitempty"`
 	Count   int      `json:"count,omitempty"`
 	Error   string   `json:"error,omitempty"`
@@ -23,7 +26,10 @@ type Event struct {
 
 type client struct {
 	accountID string
+	name      string
 	country   string
+	lang      string
+	partyID   string
 	out       chan Event
 }
 
@@ -141,16 +147,63 @@ func (h *Hub) statsAt(now time.Time) []Stat {
 	return out
 }
 
-// broadcast never blocks: a viewer too slow to keep up misses events instead of stalling the room.
-func (h *Hub) broadcast(room string, e Event, mine *client) {
+// OnlineIn lists the accounts of a party that are connected to the premiere right now.
+func (h *Hub) OnlineIn(room, partyID string) map[string]bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := map[string]bool{}
+	for c := range h.rooms[room] {
+		if partyID != "" && c.partyID == partyID {
+			out[c.accountID] = true
+		}
+	}
+	return out
+}
+
+func (h *Hub) partyNames(room, partyID string) []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := map[string]bool{}
+	out := []string{}
+	for c := range h.rooms[room] {
+		if c.partyID == partyID && !seen[c.accountID] {
+			seen[c.accountID] = true
+			out = append(out, c.name)
+		}
+	}
+	return out
+}
+
+// Publish sends a message stored elsewhere (a voice note or file posted over HTTP) to the room.
+func (h *Hub) Publish(room string, m Message, fromAccount string) {
+	h.broadcastParty(room, m.partyID, Event{Type: "msg", Message: &m}, &client{accountID: fromAccount})
+}
+
+// broadcast sends to everyone at the premiere.
+func (h *Hub) broadcast(room string, e Event, mine *client) { h.broadcastParty(room, "", e, mine) }
+
+// broadcastParty never blocks: a viewer too slow to keep up misses events instead of stalling the room.
+// With a partyID, only that party's members get the event.
+func (h *Hub) broadcastParty(room, partyID string, e Event, mine *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c := range h.rooms[room] {
+		if partyID != "" && c.partyID != partyID {
+			continue
+		}
 		ev := e
 		if e.Message != nil {
 			m := *e.Message
 			m.Mine = mine != nil && c.accountID == mine.accountID
 			ev.Message = &m
+		}
+		if e.Poll != nil {
+			p := *e.Poll
+			p.Mine = nil
+			if mine != nil && c.accountID == mine.accountID {
+				p.Mine = e.Poll.Mine
+			}
+			ev.Poll = &p
 		}
 		select {
 		case c.out <- ev:
@@ -160,9 +213,14 @@ func (h *Hub) broadcast(room string, e Event, mine *client) {
 }
 
 type incoming struct {
-	Type  string `json:"type"` // msg | react
-	Body  string `json:"body"`
-	Emoji string `json:"emoji"`
+	Type     string   `json:"type"` // msg | react | vote | poll
+	Body     string   `json:"body"`
+	Emoji    string   `json:"emoji"`
+	Scope    string   `json:"scope"` // msg: room | world
+	Poll     int64    `json:"poll"`
+	Choice   int      `json:"choice"`
+	Question string   `json:"question"`
+	Options  []string `json:"options"`
 }
 
 // Live serves the room WebSocket. The pass in ?t= was issued only to a ticket holder.
@@ -183,9 +241,23 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
-		c := &client{accountID: pass.AccountID, country: pass.Country, out: make(chan Event, 64)}
+		c := &client{accountID: pass.AccountID, name: pass.Name, country: pass.Country, lang: pass.Lang, partyID: pass.PartyID, out: make(chan Event, 64)}
 		h.broadcast(room, Event{Type: "presence", Count: h.join(room, c)}, nil)
-		defer func() { h.broadcast(room, Event{Type: "presence", Count: h.leave(room, c)}, nil) }()
+		if c.partyID != "" {
+			h.broadcastParty(room, c.partyID, Event{Type: "friends", Online: h.partyNames(room, c.partyID)}, nil)
+		}
+		defer func() {
+			h.broadcast(room, Event{Type: "presence", Count: h.leave(room, c)}, nil)
+			if c.partyID != "" {
+				h.broadcastParty(room, c.partyID, Event{Type: "friends", Online: h.partyNames(room, c.partyID)}, nil)
+			}
+		}()
+		say := func(err error) {
+			select {
+			case c.out <- Event{Type: "error", Error: strings.TrimPrefix(err.Error(), "invalid input: ")}:
+			default:
+			}
+		}
 
 		go func() {
 			defer cancel()
@@ -224,20 +296,47 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 			}
 			switch in.Type {
 			case "msg":
-				m, err := store.Post(ctx, room, pass.AccountID, pass.Name, in.Body)
+				party := ""
+				if in.Scope == "room" {
+					if c.partyID == "" {
+						say(ErrNoParty)
+						continue
+					}
+					party = c.partyID
+				}
+				m, err := store.PostWith(ctx, room, pass.AccountID, pass.Name, in.Body, Extra{PartyID: party, Lang: c.lang, Country: c.country})
 				if err != nil {
 					if !errors.Is(err, ErrTooFast) && !errors.Is(err, ErrEmpty) {
 						slog.Error("room message failed", "err", err)
 						err = errors.New("message not sent, try again")
 					}
-					select {
-					case c.out <- Event{Type: "error", Error: err.Error()}:
-					default:
-					}
+					say(err)
 					continue
 				}
 				h.noteChat(room, c.country, time.Now())
-				h.broadcast(room, Event{Type: "msg", Message: &m}, c)
+				h.broadcastParty(room, party, Event{Type: "msg", Message: &m}, c)
+			case "vote":
+				p, err := store.Vote(ctx, room, c.partyID, pass.AccountID, c.lang, in.Poll, in.Choice)
+				if err != nil {
+					if !errors.Is(err, ErrNoPoll) {
+						slog.Error("room vote failed", "err", err)
+						err = errors.New("vote not counted, try again")
+					}
+					say(err)
+					continue
+				}
+				h.broadcastParty(room, p.partyID, Event{Type: "poll", Poll: &p}, c)
+			case "poll":
+				p, err := store.CreatePoll(ctx, room, c.partyID, pass.AccountID, in.Question, in.Options)
+				if err != nil {
+					if !errors.Is(err, ErrNoParty) && !errors.Is(err, ErrBadPoll) && !errors.Is(err, ErrTooFast) {
+						slog.Error("room poll failed", "err", err)
+						err = errors.New("poll not started, try again")
+					}
+					say(err)
+					continue
+				}
+				h.broadcastParty(room, p.partyID, Event{Type: "poll", Poll: &p}, c)
 			case "react":
 				if Reactions[in.Emoji] && time.Since(lastReact) > 400*time.Millisecond {
 					lastReact = time.Now()

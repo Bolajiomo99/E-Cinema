@@ -10,6 +10,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -39,28 +40,57 @@ const (
 var Reactions = map[string]bool{"🔥": true, "😂": true, "😮": true, "❤️": true, "👏": true, "😭": true}
 
 type Message struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Body      string    `json:"body"`
-	Mine      bool      `json:"mine,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        int64           `json:"id"`
+	Name      string          `json:"name"`
+	Body      string          `json:"body"`
+	Mine      bool            `json:"mine,omitempty"`
+	CreatedAt time.Time       `json:"createdAt"`
+	Scope     string          `json:"scope"` // room (the viewer's party) | world (everyone at the premiere)
+	Lang      string          `json:"lang,omitempty"`
+	Country   string          `json:"country,omitempty"`
+	Kind      string          `json:"kind"` // text | voice | image | file
+	Media     json.RawMessage `json:"media,omitempty"`
+	Spoiler   bool            `json:"spoiler,omitempty"`
+	partyID   string
 }
 
 type Store struct{ DB *pgxpool.Pool }
 
-// Recent returns the latest visible messages, oldest first.
+const msgCols = `id, name, body, account_id = $2, created_at, party_id IS NOT NULL, lang, country, kind, media, spoiler`
+
+func scanMsg(r pgx.CollectableRow) (Message, error) {
+	var m Message
+	var party bool
+	err := r.Scan(&m.ID, &m.Name, &m.Body, &m.Mine, &m.CreatedAt, &party, &m.Lang, &m.Country, &m.Kind, &m.Media, &m.Spoiler)
+	m.Scope = "world"
+	if party {
+		m.Scope = "room"
+	}
+	return m, err
+}
+
+// Recent returns the latest visible world messages, oldest first.
 func (st Store) Recent(ctx context.Context, showtimeID, viewerID string, limit int) ([]Message, error) {
-	rows, err := st.DB.Query(ctx, `SELECT id, name, body, account_id = $2, created_at FROM (
-	    SELECT * FROM room_messages WHERE showtime_id = $1 AND NOT hidden ORDER BY id DESC LIMIT $3
-	  ) m ORDER BY id`, showtimeID, viewerID, limit)
+	return st.recent(ctx, showtimeID, viewerID, "", limit)
+}
+
+// RecentParty returns the latest messages of one party's room, oldest first.
+func (st Store) RecentParty(ctx context.Context, showtimeID, viewerID, partyID string, limit int) ([]Message, error) {
+	if partyID == "" {
+		return nil, nil
+	}
+	return st.recent(ctx, showtimeID, viewerID, partyID, limit)
+}
+
+func (st Store) recent(ctx context.Context, showtimeID, viewerID, partyID string, limit int) ([]Message, error) {
+	rows, err := st.DB.Query(ctx, `SELECT `+msgCols+` FROM (
+	    SELECT * FROM room_messages WHERE showtime_id = $1 AND NOT hidden
+	      AND party_id IS NOT DISTINCT FROM NULLIF($4, '')::uuid ORDER BY id DESC LIMIT $3
+	  ) m ORDER BY id`, showtimeID, viewerID, limit, partyID)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Message, error) {
-		var m Message
-		err := r.Scan(&m.ID, &m.Name, &m.Body, &m.Mine, &m.CreatedAt)
-		return m, err
-	})
+	return pgx.CollectRows(rows, scanMsg)
 }
 
 // Clean trims a message and strips control characters; it returns ErrEmpty when nothing is left.
@@ -84,6 +114,25 @@ func Clean(body string) (string, error) {
 // Post stores a message. Rate limits are checked inside the same transaction, with the
 // account's earlier messages locked, so two tabs cannot slip past them together.
 func (st Store) Post(ctx context.Context, showtimeID, accountID, name, body string) (Message, error) {
+	return st.PostWith(ctx, showtimeID, accountID, name, body, Extra{})
+}
+
+// Extra is what a message carries beyond its text: where it goes and any voice note or file.
+type Extra struct {
+	PartyID string // empty for world chat
+	Lang    string
+	Country string
+	Kind    string
+	Media   json.RawMessage
+}
+
+func (st Store) PostWith(ctx context.Context, showtimeID, accountID, name, body string, x Extra) (Message, error) {
+	if x.Kind == "" {
+		x.Kind = "text"
+	}
+	if x.Kind != "text" && x.Kind != "voice" && x.Kind != "image" && x.Kind != "file" {
+		return Message{}, ErrEmpty
+	}
 	body, err := Clean(body)
 	if err != nil {
 		return Message{}, err
@@ -102,9 +151,17 @@ func (st Store) Post(ctx context.Context, showtimeID, accountID, name, body stri
 		if lastMinute >= perMinute || (last != nil && time.Since(*last) < burstGap) {
 			return ErrTooFast
 		}
-		m = Message{Name: name, Body: body, Mine: true}
-		return tx.QueryRow(ctx, `INSERT INTO room_messages (showtime_id, account_id, name, body)
-		  VALUES ($1, $2, $3, $4) RETURNING id, created_at`, showtimeID, accountID, name, body).Scan(&m.ID, &m.CreatedAt)
+		m = Message{Name: name, Body: body, Mine: true, Scope: "world", Lang: x.Lang, Country: x.Country, Kind: x.Kind, Media: x.Media, partyID: x.PartyID}
+		if x.PartyID != "" {
+			m.Scope = "room"
+		}
+		var media any
+		if len(x.Media) > 0 {
+			media = string(x.Media)
+		}
+		return tx.QueryRow(ctx, `INSERT INTO room_messages (showtime_id, account_id, name, body, party_id, lang, country, kind, media)
+		  VALUES ($1, $2, $3, $4, NULLIF($5, '')::uuid, $6, $7, $8, $9::jsonb) RETURNING id, created_at`,
+			showtimeID, accountID, name, body, x.PartyID, x.Lang, x.Country, x.Kind, media).Scan(&m.ID, &m.CreatedAt)
 	})
 	return m, err
 }
@@ -116,6 +173,8 @@ type Pass struct {
 	Name       string
 	Expires    time.Time
 	Country    string // two-letter home country, for the room's "N countries" count
+	Lang       string // the viewer's reading language, for translated chat
+	PartyID    string // the party room this viewer belongs to at this premiere, if any
 }
 
 // Passes signs and checks room passes with a key only the API knows.
@@ -123,8 +182,8 @@ type Passes struct{ Key []byte }
 
 func (p Passes) Issue(pass Pass) string {
 	fields := []string{pass.AccountID, pass.ShowtimeID, strconv.FormatInt(pass.Expires.Unix(), 10), pass.Name}
-	if pass.Country != "" {
-		fields = append(fields, pass.Country)
+	if pass.Country != "" || pass.Lang != "" || pass.PartyID != "" {
+		fields = append(fields, pass.Country, pass.Lang, pass.PartyID)
 	}
 	payload := strings.Join(fields, "\x1f")
 	enc := base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -144,19 +203,18 @@ func (p Passes) Check(token, showtimeID string, now time.Time) (Pass, error) {
 	if err != nil {
 		return Pass{}, ErrBadPass
 	}
-	parts := strings.SplitN(string(raw), "\x1f", 5)
+	parts := strings.SplitN(string(raw), "\x1f", 7)
 	if len(parts) < 4 {
 		return Pass{}, ErrBadPass
 	}
-	country := ""
-	if len(parts) == 5 {
-		country = parts[4]
+	for len(parts) < 7 {
+		parts = append(parts, "")
 	}
 	exp, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil || now.Unix() > exp || parts[1] != showtimeID {
 		return Pass{}, ErrBadPass
 	}
-	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: country}, nil
+	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: parts[4], Lang: parts[5], PartyID: parts[6]}, nil
 }
 
 func (p Passes) sign(s string) []byte {
