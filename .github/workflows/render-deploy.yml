@@ -279,6 +279,11 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/careers/desk")" = 404 ] || { echo "hiring desk not 404"; exit 1; }
           curl -fsS -b "$jar" "$web/help/refund" | grep -q "Request a refund" || { echo "refund page"; exit 1; }
           echo "company ok"
+          # Family and kids (Figma 89:1020).
+          curl -fsS -b "$jar" "$web/api/family" | grep -q '"pinSet"' || { echo "family api"; exit 1; }
+          curl -fsS -b "$jar" "$web/family" | grep -q "Family and kids" || { echo "family page"; exit 1; }
+          curl -fsS -b "$jar" "$web/kids" | grep -q "Moonlight Fox" || { echo "kids cinema"; exit 1; }
+          echo "family ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
