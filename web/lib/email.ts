@@ -236,3 +236,57 @@ export async function sendStudentCode(to: string, code: string, school: string) 
     `Your E-Cinema student code is ${code}. It works once and ends in 10 minutes.`,
   );
 }
+
+// Careers (Figma 114:1397, 114:1531): application received, and each step after.
+const CAREERS_FROM = "E-Cinema Careers <careers@e-cinema.net>";
+const CAREERS_FOOTER = "You get this because you applied for a role at E-Cinema. Withdraw any time from My applications.";
+
+export async function sendApplicationReceived(to: string, name: string, role: string) {
+  const link = `${site()}/careers/applications`;
+  await send(
+    to,
+    `We got your application: ${role}`,
+    layout("You hear back within 10 working days", "Application received",
+      p(`${esc(name)}, thank you for applying for <b>${esc(role)}</b>. A person on the hiring team reads every application. AI only helps sort, never rejects.`) +
+      p("You hear back within 10 working days, every time.") +
+      button(link, "Track my application"),
+      "CAREERS", CAREERS_FOOTER),
+    `Thank you for applying for ${role}. You hear back within 10 working days. Track it: ${link}`,
+    CAREERS_FROM,
+  );
+}
+
+const STEP_TITLE: Record<string, string> = {
+  chat: "Let's have a chat", task: "Your paid take-home task", team: "Meet the team", offer: "We would like to offer you the role", hired: "Welcome to E-Cinema", closed: "An update on your application",
+};
+
+export async function sendApplicationUpdate(to: string, name: string, role: string, stage: string, message: string, rows: [string, string][]) {
+  const link = `${site()}/careers/applications`;
+  const title = STEP_TITLE[stage] ?? "An update on your application";
+  await send(
+    to,
+    `${title}: ${role}`,
+    layout(message || title, title,
+      p(`${esc(name)}, here is the next step for <b>${esc(role)}</b>.`) +
+      (message ? p(esc(message)) : "") +
+      (rows.length ? facts(rows) : "") +
+      button(link, "Open my applications"),
+      "CAREERS", CAREERS_FOOTER),
+    `${title} (${role}). ${message} ${rows.map(([k, v]) => `${k}: ${v}`).join(". ")} ${link}`,
+    CAREERS_FROM,
+  );
+}
+
+// For business (Figma 94:1239): a quote request lands with the sales inbox.
+export async function sendQuoteRequest(org: string, email: string, guests: number, country: string, kind: string, note: string) {
+  await send(
+    process.env.SALES_EMAIL || "admin@e-cinema.net",
+    `Group screening quote: ${org}, ${guests.toLocaleString("en-GB")} guests`,
+    layout(`${org} asked for a quote`, "New quote request",
+      facts([["Organisation", org], ["Work email", email], ["Guests", guests.toLocaleString("en-GB")], ["Country", country], ["Kind", kind || "Not said"]]) +
+      (note ? p(esc(note)) : "") + button(`${site()}/careers/desk#quotes`, "Open the sales list"),
+      "SALES", "Sent to the E-Cinema sales inbox."),
+    `Quote request from ${org} (${email}): ${guests} guests in ${country}. ${note}`,
+    "E-Cinema <sales@e-cinema.net>",
+  );
+}
