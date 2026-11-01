@@ -108,7 +108,9 @@ func (st Store) Mine(ctx context.Context, acct, email string) (Studio, error) {
 	return s, err
 }
 
-func (st Store) mine(ctx context.Context, acct, email string) (Studio, error) { return st.Mine(ctx, acct, email) }
+func (st Store) mine(ctx context.Context, acct, email string) (Studio, error) {
+	return st.Mine(ctx, acct, email)
+}
 
 func clip(s string, n int) string {
 	s = strings.TrimSpace(s)
