@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 )
 
@@ -48,6 +49,19 @@ func (s *Server) addPanel(ctx context.Context, out map[string]any, showtimeID, a
 }
 
 func (s *Server) roomPanelRoutes(mux *http.ServeMux) {
+	// A cheap check for the web app's room routes: may this viewer use the room, and in which language do they read.
+	mux.HandleFunc("GET /v1/rooms/{id}/access", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		ok, err := s.Tickets.HasTicket(r.Context(), r.PathValue("id"), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		out := map[string]any{"hasTicket": ok, "accountId": a.ID, "lang": "en"}
+		if p, err := s.Accounts.GetProfile(r.Context(), a.ID); err == nil && p.AppLanguage != "" {
+			out["lang"] = p.AppLanguage
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
 	// A voice note, photo or file the web app has already stored, posted on the viewer's behalf.
 	// Voice notes spend talk time; free members are refused once theirs is used up.
 	mux.HandleFunc("POST /v1/internal/rooms/{id}/media", s.internal(func(w http.ResponseWriter, r *http.Request) {
