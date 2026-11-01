@@ -61,7 +61,7 @@ export type Product = {
   status: "review" | "live" | "changes" | "rejected"; note: string; createdAt: string; liveAt?: string; sold: number; licence?: string; partner?: string;
   image?: string; sample?: string;
 };
-export type Share = { name: string; value: number; pct: number };
+export type Share = { name: string; value: number; pct: number; country?: string };
 export type Overview = {
   salesNgn: number; salesPrevNgn: number; items: number; itemsPrev: number; scans: number; scannedPct: number; royaltyNgn: number; royaltyDue: string;
   daily: { day: string; sales: number }[]; channels: Share[]; top: { id: string; name: string; sold: number; priceNgn: number; tag: string }[];
@@ -69,7 +69,7 @@ export type Overview = {
 };
 export type Analytics = {
   avgOrderNgn: number; avgOrderPrev: number; repeatPct: number; premiereLift: number; returnsPct: number;
-  byCountry: Share[]; byCity: Share[]; cityCountry: string; premiereHours: number[]; byFilm: Share[]; orders: number;
+  byCountry: Share[]; byCity: Share[]; cityCountry: string; premiereHours: number[]; byFilm: Share[]; orders: number; countries: string[]; products: string[];
 };
 export type Codes = {
   issued: number; onSold: number; genuine: number; suspicious: number; takenDown: number; places: Share[];

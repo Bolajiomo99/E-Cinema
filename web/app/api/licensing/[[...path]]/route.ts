@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { accountApi, currentAccount } from "@/lib/auth";
 import { showtimes } from "@/lib/catalog";
-import { aiEnabled, brandRules, readCertificate, session } from "@/lib/licensing";
+import { aiEnabled, brandRules, readCertificate, session, withPictures } from "@/lib/licensing";
 import type { Application, Check, Product } from "@/lib/licensing-types";
 import { readLocale } from "@/lib/locale";
 import { mediaEnabled, objectBytes, putRoomObject, roomObjectLink } from "@/lib/media";
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
     const r = await accountApi("GET", `/v1/me/partner/${p[1]}`, undefined, s);
     if (r.status !== 200 || p[1] !== "products") return pass(r);
     const list = (r.body as { products: Product[] }).products;
-    return json(200, { products: await Promise.all(list.map(async (x) => ({ ...x, image: (await sign([x.imageKey]))[0], sample: (await sign([x.sampleKey]))[0] }))) });
+    return json(200, { products: await withPictures(list) });
   }
 
   if (p[0] === "desk") {
@@ -143,27 +143,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     const r = await accountApi("GET", "/v1/me/licence-application", undefined, s);
     const a = (r.body as { application: Application | null }).application;
     if (!a || a.status !== "approved" || a.feeNgn <= 0) return json(409, { error: "Your application is not ready for payment" });
-    const charge = await chargeFor(a.feeNgn, (await readLocale()).country);
-    if (!charge) return json(503, { error: "Payments are briefly unavailable. Try again shortly." });
-    const value = (charge.cents / 100).toFixed(2);
     try {
-      const { result } = await paypalOrders().createOrder({
-        paypalRequestId: randomUUID(),
-        prefer: "return=minimal",
-        body: {
-          intent: CheckoutPaymentIntent.Capture,
-          purchaseUnits: [{
-            referenceId: "licence",
-            customId: `licence:${a.id}`,
-            description: `E-Cinema merch licence, ${a.plan} plan, one year`,
-            amount: { currencyCode: charge.currency, value, breakdown: { itemTotal: { currencyCode: charge.currency, value } } },
-            items: [{ name: `E-Cinema ${a.plan} licence · ${a.company}`.slice(0, 127), quantity: "1", unitAmount: { currencyCode: charge.currency, value } }],
-          }],
-        },
-      });
-      if (!result.id) return json(502, { error: "PayPal did not return an order" });
-      const at = await accountApi("POST", "/v1/me/licence-application/payment", { orderId: result.id }, s);
-      return at.status === 200 ? json(200, { orderId: result.id }) : pass(at);
+      const orderId = await feeOrder(a.feeNgn, "licence", `licence:${a.id}`, `E-Cinema merch licence, ${a.plan} plan, one year`, `E-Cinema ${a.plan} licence · ${a.company}`);
+      if (typeof orderId !== "string") return orderId;
+      const at = await accountApi("POST", "/v1/me/licence-application/payment", { orderId }, s);
+      return at.status === 200 ? json(200, { orderId }) : pass(at);
     } catch (err) {
       return paypalError(err);
     }
@@ -185,9 +169,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
       else if (sampleKey && Array.isArray(body.checks)) checks = (body.checks as Check[]).map((c) => (c.name === "Quality sample" ? { ...c, detail: "Printed sample photo added", result: "pass" as const } : c));
       return pass(await accountApi("PUT", `/v1/me/partner/products/${p[2]}`, { imageKey, sampleKey, checks }, s));
     }
-    if (p[1] === "sales") return pass(await accountApi("POST", "/v1/me/partner/sales", body, s));
+    if (p[1] === "sales") {
+      // Buyer phone numbers or emails are only used to count repeat buyers, so only a hash is kept.
+      const sales = (Array.isArray(body.sales) ? body.sales : []).map((x: Record<string, unknown>) => ({ ...x, buyer: x.buyer ? createHash("sha256").update(String(x.buyer).trim().toLowerCase()).digest("hex").slice(0, 32) : "" }));
+      return pass(await accountApi("POST", "/v1/me/partner/sales", { sales }, s));
+    }
     if (p[1] === "codes") return pass(await accountApi("POST", "/v1/me/partner/codes", { productId: body.productId, count: Number(body.count) }, s));
     if (p[1] === "members") return pass(await accountApi("POST", "/v1/me/partner/members", body, s));
+    // A renewal or upgrade: the API quotes the plan, PayPal takes the money, the capture adds the year.
+    if (p[1] === "renew") {
+      const q = await accountApi("POST", "/v1/me/partner/renew", { plan: body.plan }, s);
+      if (q.status !== 200) return pass(q);
+      const plan = q.body as { id: string; name: string; feeNgn: number };
+      try {
+        const orderId = await feeOrder(plan.feeNgn, "renewal", `renewal:${plan.id}`, `E-Cinema merch licence, ${plan.name} plan, one more year`, `E-Cinema ${plan.name} licence renewal`);
+        if (typeof orderId !== "string") return orderId;
+        const at = await accountApi("POST", "/v1/me/partner/renew", { plan: plan.id, orderId }, s);
+        return at.status === 200 ? json(200, { orderId }) : pass(at);
+      } catch (err) {
+        return paypalError(err);
+      }
+    }
   }
 
   // The brand team.
@@ -214,4 +216,26 @@ async function rules(imageKey: string, film: string, sampleKey: string): Promise
     console.error("brand rules check failed", (err as Error).message);
     return [{ name: "Logo colour and spacing", detail: "The brand team checks this by hand", result: "needed" }, sample];
   }
+}
+
+// A PayPal order for a licence fee in the payer's currency (US dollars from Nigeria).
+async function feeOrder(feeNgn: number, referenceId: string, customId: string, description: string, item: string): Promise<string | Response> {
+  const charge = await chargeFor(feeNgn, (await readLocale()).country);
+  if (!charge) return json(503, { error: "Payments are briefly unavailable. Try again shortly." });
+  const value = (charge.cents / 100).toFixed(2);
+  const { result } = await paypalOrders().createOrder({
+    paypalRequestId: randomUUID(),
+    prefer: "return=minimal",
+    body: {
+      intent: CheckoutPaymentIntent.Capture,
+      purchaseUnits: [{
+        referenceId,
+        customId,
+        description,
+        amount: { currencyCode: charge.currency, value, breakdown: { itemTotal: { currencyCode: charge.currency, value } } },
+        items: [{ name: item.slice(0, 127), quantity: "1", unitAmount: { currencyCode: charge.currency, value } }],
+      }],
+    },
+  });
+  return result.id ?? json(502, { error: "PayPal did not return an order" });
 }

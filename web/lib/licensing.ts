@@ -14,8 +14,8 @@ export async function myLicence(s: string): Promise<{ licensee: Licensee; identi
   return r.status === 200 ? (r.body as { licensee: Licensee; identityOk: boolean }) : null;
 }
 
-export async function partnerPage<T>(s: string, page: string): Promise<T | null> {
-  const r = await accountApi("GET", `/v1/me/partner/${page}`, undefined, s);
+export async function partnerPage<T>(s: string, page: string, query = ""): Promise<T | null> {
+  const r = await accountApi("GET", `/v1/me/partner/${page}${query ? `?${query}` : ""}`, undefined, s);
   return r.status === 200 ? (r.body as T) : null;
 }
 
@@ -90,4 +90,12 @@ export async function brandRules(image: Buffer, type: string, film: string, lice
     checks.push({ name: "Film artwork rights", detail: known ? `${film} artwork is licensed through E‑Cinema` : film ? `${film}: the brand team confirms the studio's approval` : r.artworkDetail || "Film artwork found: name the film", result: known ? "pass" : "needed" });
   }
   return checks;
+}
+
+// Signed links for a product's design and sample pictures (both kept private in media storage).
+const PIC = /^licensing\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+export async function withPictures<T extends { imageKey: string; sampleKey: string }>(list: T[]): Promise<(T & { image?: string; sample?: string })[]> {
+  const { mediaEnabled, roomObjectLink } = await import("@/lib/media");
+  const link = async (k: string) => (mediaEnabled && PIC.test(k) ? roomObjectLink(k) : undefined);
+  return Promise.all(list.map(async (x) => ({ ...x, image: await link(x.imageKey), sample: await link(x.sampleKey) })));
 }
