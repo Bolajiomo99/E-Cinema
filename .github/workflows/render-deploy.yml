@@ -46,9 +46,11 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || secrets.GOOGLE_CONSOLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
-          PAYSTACK_PUBLIC_KEY: ${{ secrets.PAYSTACK_PUBLIC_KEY }}
-          FLUTTERWAVE_SECRET_KEY: ${{ secrets.FLUTTERWAVE_SECRET_KEY }}
+          # Test keys while PayPal is on sandbox; switch both to live together.
+          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY_TEST }}
+          PAYSTACK_PUBLIC_KEY: pk_test_66c86e8b76bff2455c85a47a2c3a89da01c23157
+          FLUTTERWAVE_SECRET_KEY: ${{ secrets.FLW_SECRET_KEY_TEST }}
+          FLUTTERWAVE_WEBHOOK_HASH: ${{ secrets.FLW_WEBHOOK_HASH_TEST }}
           COINBASE_COMMERCE_API_KEY: ${{ secrets.COINBASE_COMMERCE_API_KEY }}
           # The public address: passkeys and Google sign-in are bound to it.
           WEBAUTHN_RP_ID: e-cinema.net
@@ -284,6 +286,14 @@ jobs:
           curl -fsS -b "$jar" "$web/family" | grep -q "Family and kids" || { echo "family page"; exit 1; }
           curl -fsS -b "$jar" "$web/kids" | grep -q "Moonlight Fox" || { echo "kids cinema"; exit 1; }
           echo "family ok"
+          # Paystack and Flutterwave open their own checkout for a held seat (test keys).
+          film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
+          ps=$(curl -s -b "$jar" -H "Origin: $web" -H 'Content-Type: application/json' -d "{\"showtimeId\":\"$film\"}" "$web/api/pay/paystack")
+          echo "$ps" | jq -e '.url | test("^https://checkout\\.paystack\\.com/")' >/dev/null || { echo "paystack start: $(echo "$ps" | jq -c '{error}')"; exit 1; }
+          fl=$(curl -s -b "$jar" -H "Origin: $web" -H 'Content-Type: application/json' -d "{\"showtimeId\":\"$film\"}" "$web/api/pay/flutterwave")
+          echo "$fl" | jq -e '.url | test("^https://checkout(-v2)?\\.flutterwave\\.com/")' >/dev/null || { echo "flutterwave start: $(echo "$fl" | jq -c '{error, url}')"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'verif-hash: wrong' -d '{}' "$web/api/flutterwave/webhook")" = 401 ] || { echo "flutterwave webhook accepts a wrong hash"; exit 1; }
+          echo "local pay ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
