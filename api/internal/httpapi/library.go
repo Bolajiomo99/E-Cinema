@@ -123,3 +123,29 @@ func (s *Server) libraryRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, map[string]string{"name": name})
 	}))
 }
+
+func (s *Server) rewatchRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /v1/me/rewatch", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct {
+			ShowtimeID string    `json:"showtimeId"`
+			StartsAt   time.Time `json:"startsAt"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		p, err := s.Library.StartRewatch(r.Context(), a.ID, b.ShowtimeID, b.StartsAt, time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, p)
+	}))
+	mux.HandleFunc("GET /v1/me/rewatch/{code}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, err := s.Library.GetRewatch(r.Context(), a.ID, r.PathValue("code"), time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+	}))
+}

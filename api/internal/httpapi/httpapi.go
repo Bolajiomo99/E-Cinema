@@ -203,6 +203,7 @@ func (s *Server) Routes() http.Handler {
 	s.roomPanelRoutes(mux)
 	s.reviewRoutes(mux)
 	s.libraryRoutes(mux)
+	s.rewatchRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -321,7 +322,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
 	case errors.Is(err, library.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
-	case errors.Is(err, library.ErrBadInput):
+	case errors.Is(err, library.ErrBadInput), errors.Is(err, library.ErrBadStart):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNoSeat), errors.Is(err, library.ErrNotOwner), errors.Is(err, library.ErrReplayGone):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})

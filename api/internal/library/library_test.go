@@ -161,3 +161,48 @@ func TestLibrary(t *testing.T) {
 		t.Fatalf("scheduled = %+v", rb)
 	}
 }
+
+func TestRewatch(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	s := library.Store{DB: p}
+	p.Exec(ctx, `INSERT INTO showtimes VALUES ('lib-rw', 'Rewatch Film', 'S', now() - interval '3 days', 90, 10, 500, 'USD') ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at`)
+	var a, b string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('lib-rw-a@example.com', 'Ada', 'x') ON CONFLICT (email) DO UPDATE SET name = 'Ada' RETURNING id`).Scan(&a)
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('lib-rw-b@example.com', 'Ben', 'x') ON CONFLICT (email) DO UPDATE SET name = 'Ben' RETURNING id`).Scan(&b)
+	p.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'lib-rw'`)
+	p.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, account_id) VALUES ('lib-rw', 1, 'r', 'paid', now(), $1)`, a)
+	now := time.Now()
+	if _, err := s.StartRewatch(ctx, a, "lib-rw", now.Add(-time.Hour), now); !errors.Is(err, library.ErrBadStart) {
+		t.Fatalf("past start: %v", err)
+	}
+	if _, err := s.StartRewatch(ctx, b, "lib-rw", now.Add(time.Hour), now); !errors.Is(err, library.ErrNotFound) {
+		t.Fatalf("no access: %v", err)
+	}
+	r, err := s.StartRewatch(ctx, a, "lib-rw", now.Add(10*time.Minute), now)
+	if err != nil || len(r.Code) != 10 || r.Host != "Ada" || r.Film != "Rewatch Film" {
+		t.Fatalf("start = %+v %v", r, err)
+	}
+	if _, err := s.GetRewatch(ctx, b, r.Code, now); !errors.Is(err, library.ErrNotFound) {
+		t.Fatalf("friend without the film: %v", err)
+	}
+	p.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, account_id) VALUES ('lib-rw', 1, 'r', 'paid', now(), $1)`, b)
+	got, err := s.GetRewatch(ctx, b, r.Code, now)
+	if err != nil || got.Mine || !got.StartsAt.Equal(r.StartsAt) {
+		t.Fatalf("get = %+v %v", got, err)
+	}
+	if _, err := s.GetRewatch(ctx, a, "zzzzzzzzzz", now); !errors.Is(err, library.ErrNotFound) {
+		t.Fatalf("unknown code: %v", err)
+	}
+}
