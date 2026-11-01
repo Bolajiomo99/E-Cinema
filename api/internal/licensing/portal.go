@@ -295,6 +295,8 @@ type Share struct {
 	Name  string `json:"name"`
 	Value int64  `json:"value"`
 	Pct   int    `json:"pct"`
+	// Country is set for scan places, so the map can place a city.
+	Country string `json:"country,omitempty"`
 }
 
 type Top struct {
@@ -633,14 +635,14 @@ func (st Store) Codes(ctx context.Context, l Licensee, now time.Time) (Codes, er
 	if err := st.DB.QueryRow(ctx, `SELECT count(*) FROM brand_reports WHERE status = 'confirmed' AND country = ANY($1) AND decided_at >= date_trunc('year', $2::timestamptz)`, l.Countries, now).Scan(&c.TakenDown); err != nil {
 		return c, err
 	}
-	rows, err := st.DB.Query(ctx, `SELECT coalesce(nullif(s.city, ''), s.country, '?'), count(*) FROM brand_scans s JOIN brand_codes b ON b.code = s.code
-	  WHERE b.licence = $1 GROUP BY 1 ORDER BY 2 DESC LIMIT 6`, l.Licence)
+	rows, err := st.DB.Query(ctx, `SELECT coalesce(nullif(s.city, ''), s.country, '?'), count(*), max(s.country) FROM brand_scans s JOIN brand_codes b ON b.code = s.code
+	  WHERE b.licence = $1 GROUP BY 1 ORDER BY 2 DESC LIMIT 10`, l.Licence)
 	if err != nil {
 		return c, err
 	}
 	if c.Places, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Share, error) {
 		var s Share
-		return s, r.Scan(&s.Name, &s.Value)
+		return s, r.Scan(&s.Name, &s.Value, &s.Country)
 	}); err != nil {
 		return c, err
 	}
