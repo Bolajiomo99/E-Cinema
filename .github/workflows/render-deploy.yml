@@ -145,6 +145,9 @@ jobs:
           curl -fsS "$web/coming-soon" | grep -q "Pre-order seat"
           curl -fsS "$web/preorder/iron-delta-2026-12-14" | grep -q "Choose how you watch"
           echo "coming soon and pre-order ok"
+          # Payment failed page is for signed-in buyers: signed out it sends you to sign in.
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/checkout/failed?film=iron-delta-2026-12-14" | grep -q "/signin"
+          echo "payment failed page ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
