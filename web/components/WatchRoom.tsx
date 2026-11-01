@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Lobby from "@/components/room/Lobby";
 import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 
@@ -160,6 +161,8 @@ export default function WatchRoom({
   initialWatching,
   stream,
   wsBase,
+  audio = "Original",
+  subtitles = "English",
 }: {
   showtime: Showtime;
   viewerCode: string;
@@ -167,6 +170,8 @@ export default function WatchRoom({
   initialWatching: number;
   stream: FilmStream | null;
   wsBase: string;
+  audio?: string;
+  subtitles?: string;
 }) {
   const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching);
@@ -245,11 +250,23 @@ export default function WatchRoom({
     if (body && room.send({ type: "msg", body })) setDraft("");
   };
 
+  // How much of the film the browser already holds, for the lobby's "pre-loaded" check.
+  const v0 = video.current;
+  const buffered = v0 && v0.buffered.length ? v0.buffered.end(0) : 0;
+  const inLobby = (phase === "waiting" || phase === "connecting") && !wasLive && !room.signedOut;
+
   const wallClock = nowMs === null ? "" : new Date(nowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const live = phase === "playing";
 
   return (
     <div className="room">
+      {inLobby && (
+        <Lobby
+          showtimeId={showtime.id} film={showtime.film} untilStart={untilStart} syncMs={syncMs} online={room.online} watching={room.watching}
+          buffered={buffered} hasStream={Boolean(stream)} messages={room.messages} onSend={(body) => room.send({ type: "msg", body })}
+          audio={audio} subtitles={subtitles} saver={saver} onSaver={() => setSaver((x) => !x)}
+        />
+      )}
       <div className="room-stage" ref={stage}>
         <header className="room-top">
           <Link href="/" className="room-back" aria-label="Leave the room">‹</Link>

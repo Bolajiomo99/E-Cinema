@@ -4,6 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import WatchRoom, { type RoomMessage } from "@/components/WatchRoom";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { filmStream, mediaEnabled } from "@/lib/media";
+import { findShowtime } from "@/lib/catalog";
+import { langName } from "@/lib/i18n";
+import { readLocale } from "@/lib/locale";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Watch room · E-Cinema", robots: { index: false } };
@@ -42,6 +45,11 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
   const endsAt = new Date(new Date(room.showtime.startsAt).getTime() + room.showtime.durationMin * 60000);
   const stream = mediaEnabled ? await filmStream(endsAt) : null;
   const wsBase = (process.env.API_URL ?? "").replace(/^http/, "ws");
+  // The lobby shows how the viewer will hear and read the film.
+  const [prof, loc] = await Promise.all([accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null), readLocale()]);
+  const pref = (prof?.status === 200 ? (prof.body as { audioLanguage?: string }).audioLanguage : undefined) || "";
+  const original = findShowtime(showtime)?.language ?? "English";
+  const audio = pref && langName(pref) !== original ? `${langName(pref)} (AI)` : original;
 
   return (
     <WatchRoom
@@ -51,6 +59,8 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
       initialWatching={room.watching ?? 0}
       stream={stream}
       wsBase={wsBase}
+      audio={audio}
+      subtitles={langName(loc.lang)}
     />
   );
 }
