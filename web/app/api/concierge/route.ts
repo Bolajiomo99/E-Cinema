@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "Busy, try again" }, { status: 429 });
     if (err instanceof Anthropic.APIError) {
-      console.error("Concierge API error", err.status);
+      console.error("Concierge API error", err.status, err.requestID ?? "", err.message.slice(0, 300));
       return NextResponse.json({ error: "Concierge unavailable" }, { status: 502 });
     }
     console.error("Concierge error", err instanceof Error ? err.message : err);

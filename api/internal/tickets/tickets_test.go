@@ -200,6 +200,10 @@ func TestLateEntryUntilTheEnd(t *testing.T) {
 	s := store(t)
 	ctx := context.Background()
 	newShow(t, s, "late-test", 10)
+	// An ended screening left behind would show up as a payout due in other suites.
+	t.Cleanup(func() {
+		s.DB.Exec(context.Background(), `DELETE FROM holds WHERE showtime_id = 'late-test'; DELETE FROM showtimes WHERE id = 'late-test'`)
+	})
 	if _, err := s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '30 minutes' WHERE id = 'late-test'`); err != nil {
 		t.Fatal(err)
 	}
