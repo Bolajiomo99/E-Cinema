@@ -219,6 +219,13 @@ jobs:
           curl -fsS -b "$jar" "$web/u/me" | grep -q "Thrillers, zobo"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/u/nobody.here.x")" = 404 ]
           echo "profile ok"
+          # Shop the film: each tab answers with real products, an unknown film is refused.
+          for tab in scene gifts; do
+            curl -fsS "$web/api/shop?showtime=red-earth-2026-11-02&tab=$tab" | grep -q '"url":"https://'
+          done
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/shop?showtime=nope")" = 400 ]
+          curl -fsS "$web/concierge?ask=hello" | grep -q "concierge"
+          echo "shop ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
