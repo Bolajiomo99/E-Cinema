@@ -15,6 +15,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
@@ -51,6 +52,8 @@ type Server struct {
 	// Chat runs friends and messages; ChatHub pushes them live.
 	Chat    chat.Store
 	ChatHub *chat.Hub
+	// Community runs groups, posts and follows.
+	Community community.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -224,6 +227,7 @@ func (s *Server) Routes() http.Handler {
 		s.ChatHub = chat.NewHub()
 	}
 	s.chatRoutes(mux)
+	s.communityRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -348,6 +352,16 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, community.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, community.ErrNotMember), errors.Is(err, community.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, community.ErrTaken), errors.Is(err, community.ErrClosed):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, community.ErrTooMany):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, community.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, chat.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, chat.ErrNotMember), errors.Is(err, chat.ErrBlocked), errors.Is(err, chat.ErrNotFriends):

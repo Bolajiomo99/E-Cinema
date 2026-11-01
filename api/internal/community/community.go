@@ -723,3 +723,10 @@ func (s Store) SaveTranslation(ctx context.Context, post int64, lang, body, sour
 	}
 	return err
 }
+
+// CountryOf is a viewer's country code, for "Trending in <country>".
+func (s Store) CountryOf(ctx context.Context, id string) string {
+	var c string
+	_ = s.DB.QueryRow(ctx, `SELECT coalesce(country, '') FROM accounts WHERE id = $1`, id).Scan(&c)
+	return c
+}

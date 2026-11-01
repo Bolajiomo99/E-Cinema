@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
@@ -103,6 +104,7 @@ func run() error {
 		Insights:       insights.Store{DB: pool},
 		Notify:         notify.Store{DB: pool},
 		Chat:           chat.Store{DB: pool},
+		Community:      community.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
