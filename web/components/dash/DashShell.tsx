@@ -17,7 +17,7 @@ const I = (d: ReactNode) => (
 export const ITEMS: Item[] = [
   { label: "Home", href: "/home", icon: I(<><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></>) },
   { label: "My tickets", href: "/tickets", icon: I(<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" />) },
-  { label: "Library", icon: I(<><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><path d="M7.5 3.5v17M16.5 3.5v17M3.5 8h4M3.5 12h17M3.5 16h4M16.5 8h4M16.5 16h4" /></>) },
+  { label: "Library", href: "/library", icon: I(<><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><path d="M7.5 3.5v17M16.5 3.5v17M3.5 8h4M3.5 12h17M3.5 16h4M16.5 8h4M16.5 16h4" /></>) },
   { label: "Downloads", icon: I(<><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" /></>) },
   { label: "Messages", icon: I(<path d="M20.5 11.5a8 8 0 0 1-11.8 7l-4.2 1.2 1.2-4A8 8 0 1 1 20.5 11.5z" />) },
   { label: "Notifications", icon: I(<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>) },
