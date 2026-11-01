@@ -159,6 +159,10 @@ jobs:
           curl -fsS "$web/gift" | grep -q "Build your gift"
           curl -fsS "$web/gift/redeem/ECG-0000-0000" | grep -q "could not find that gift"
           echo "gifts ok"
+          # Student offer: the page renders, and Student Pro is refused until the viewer is verified.
+          curl -fsS "$web/student" | grep -q "How to get it"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "content-type: application/json" -H "origin: $web" -d '{"plan":"student"}' "$web/api/me/plan")" = 403 ]
+          echo "student offer ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
