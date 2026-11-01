@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ago, bytes, partCount, partSize, UPLOAD_ACCEPT, type Upload, type UploadCheck, type UploadFile } from "@/lib/studio-types";
 import { scall } from "./scall";
@@ -188,14 +189,19 @@ export default function StudioUpload({ upload: u0, canEdit, now: now0 }: { uploa
         </div>
         <div className="pt-btns">
           {canEdit && <button className="vf-btn ghost" onClick={saveDraft}>Save draft</button>}
-          <span className="vf-btn red stu-soon" aria-disabled="true" title={hasMaster ? "Details is the next page we are building" : "Upload your master first"}>Next: details <em className="soon-tag">Soon</em></span>
+          {hasMaster
+            ? <Link className="vf-btn red" href={`/studio/films/${u.id}`}>Next: details</Link>
+            : <span className="vf-btn red stu-soon" aria-disabled="true" title="Upload your master first">Next: details</span>}
         </div>
       </header>
       {msg && <p className="bp-flash" role="status">{msg}</p>}
 
       <ol className="stup-steps" aria-label="Upload steps">
         {STEPS.map((s, i) => (
-          <li key={s} className={i === 0 ? "on" : ""} aria-current={i === 0 ? "step" : undefined}><b>{i + 1}</b><span>{s}</span>{i < STEPS.length - 1 && <i />}</li>
+          <li key={s} className={i === 0 ? "on" : ""} aria-current={i === 0 ? "step" : undefined}>
+            {i === 1 ? <Link href={`/studio/films/${u.id}`}><b>{i + 1}</b><span>{s}</span></Link> : <><b>{i + 1}</b><span>{s}</span></>}
+            {i < STEPS.length - 1 && <i />}
+          </li>
         ))}
       </ol>
 
