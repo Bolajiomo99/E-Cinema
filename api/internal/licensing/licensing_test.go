@@ -1,0 +1,229 @@
+package licensing_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func pool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func account(t *testing.T, p *pgxpool.Pool, email, name string) string {
+	t.Helper()
+	var id string
+	if err := p.QueryRow(context.Background(), `INSERT INTO accounts (email, name, password_hash) VALUES ($1, $2, '!')
+	  ON CONFLICT (email) DO UPDATE SET name = $2 RETURNING id`, email, name).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func TestLicensing(t *testing.T) {
+	p := pool(t)
+	ctx := context.Background()
+	st := licensing.Store{DB: p}
+	owner := account(t, p, "lic-owner@example.com", "Bisi Adeyemi")
+	staff := account(t, p, "lic-staff@example.com", "Tunde Bello")
+	clean := func() {
+		var lic *string
+		p.QueryRow(ctx, `SELECT licence FROM licence_applications WHERE account_id = $1`, owner).Scan(&lic)
+		p.Exec(ctx, `DELETE FROM licence_applications WHERE account_id = $1`, owner)
+		if lic != nil {
+			p.Exec(ctx, `DELETE FROM shop_products WHERE licence = $1`, *lic)
+			p.Exec(ctx, `DELETE FROM brand_scans WHERE code IN (SELECT code FROM brand_codes WHERE licence = $1)`, *lic)
+			p.Exec(ctx, `DELETE FROM brand_codes WHERE licence = $1`, *lic)
+			p.Exec(ctx, `DELETE FROM brand_licensees WHERE licence = $1`, *lic)
+		}
+	}
+	clean()
+	t.Cleanup(clean)
+
+	if _, err := st.App(ctx, owner); !errors.Is(err, licensing.ErrNotFound) {
+		t.Fatalf("no app: %v", err)
+	}
+	if _, err := st.Save(ctx, owner, licensing.Draft{Plan: "starter", Country: "NG", Countries: []string{"NG", "GH"}}); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("starter with two countries: %v", err)
+	}
+	a, err := st.Save(ctx, owner, licensing.Draft{Plan: "growth", Company: "Yaba Prints Ltd", RegNumber: "RC 1234567", Country: "ng", City: "Lagos", Website: "YabaPrints.ng", Countries: []string{"NG", "gh", "NG"}})
+	if err != nil || a.Status != "draft" || len(a.Countries) != 2 || a.Website != "yabaprints.ng" {
+		t.Fatalf("save = %+v, %v", a, err)
+	}
+	if _, err := st.Submit(ctx, owner, true); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("submit without papers: %v", err)
+	}
+	if _, err := st.SetDoc(ctx, owner, "../x.pdf", "", false); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("bad doc key: %v", err)
+	}
+	st.SetDoc(ctx, owner, "licensing/11111111-2222-4333-8444-555555555555.pdf", "Certificate for Yaba Prints Ltd, RC 1234567", true)
+	st.SetPhotos(ctx, owner, []string{"licensing/11111111-2222-4333-8444-555555555556.jpg"})
+	if _, err := st.Submit(ctx, owner, false); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("submit without face check: %v", err)
+	}
+	a, err = st.Submit(ctx, owner, true)
+	if err != nil || a.Status != "submitted" {
+		t.Fatalf("submit = %+v, %v", a, err)
+	}
+	if _, err := st.Save(ctx, owner, licensing.Draft{Plan: "growth", Country: "NG"}); !errors.Is(err, licensing.ErrState) {
+		t.Fatalf("edit after submit: %v", err)
+	}
+	if _, err := st.Review(ctx, a.ID, false, "", 0); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("reject without reason: %v", err)
+	}
+	a, err = st.Review(ctx, a.ID, true, "Welcome", 0)
+	if err != nil || a.Status != "approved" || a.FeeNGN != 1200000 {
+		t.Fatalf("approve = %+v, %v", a, err)
+	}
+	if err := st.AttachPayment(ctx, owner, "LICTEST1"); err != nil {
+		t.Fatal(err)
+	}
+	if none, _ := st.MarkPaid(ctx, "NOT-A-LICENCE"); none != nil {
+		t.Fatal("unknown order matched")
+	}
+	paid, err := st.MarkPaid(ctx, "LICTEST1")
+	if err != nil || paid == nil || paid.Status != "active" || paid.Licence == nil {
+		t.Fatalf("paid = %+v, %v", paid, err)
+	}
+	if again, _ := st.MarkPaid(ctx, "LICTEST1"); again == nil || *again.Licence != *paid.Licence {
+		t.Fatal("second capture made another licence")
+	}
+
+	l, err := st.For(ctx, owner)
+	if err != nil || l.Role != "owner" || l.Plan.RoyaltyPct != 6 || l.Licence != *paid.Licence {
+		t.Fatalf("for = %+v, %v", l, err)
+	}
+	// Team: invite by email, claimed on sign-in, staff cannot invite.
+	if err := st.AddMember(ctx, l, "LIC-staff@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	ls, err := st.For(ctx, staff)
+	if err != nil || ls.Role != "staff" {
+		t.Fatalf("staff = %+v, %v", ls, err)
+	}
+	if err := st.AddMember(ctx, ls, "x@example.com"); !errors.Is(err, licensing.ErrForbidden) {
+		t.Fatalf("staff invite: %v", err)
+	}
+	if m, _ := st.Members(ctx, l.Licence); len(m) != 2 || !m[1].Joined {
+		t.Fatalf("members = %+v", m)
+	}
+
+	// Products: approval, shop listing for Growth, labels only for approved products.
+	if _, err := st.AddProduct(ctx, l, licensing.NewProduct{Name: "Premiere tee", PriceNGN: 7500}); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("no picture: %v", err)
+	}
+	pr, err := st.AddProduct(ctx, l, licensing.NewProduct{Name: "Premiere tee, black", Detail: "Sizes S to XXL", PriceNGN: 7500, ImageKey: "licensing/11111111-2222-4333-8444-555555555557.png",
+		Checks: []licensing.Check{{Name: "Logo colour and spacing", Detail: "Matches the brand guide", Result: "pass"}}})
+	if err != nil || pr.Status != "review" || len(pr.Checks) != 1 {
+		t.Fatalf("add = %+v, %v", pr, err)
+	}
+	if _, _, err := st.Issue(ctx, l, pr.ID, 10); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("labels before approval: %v", err)
+	}
+	if q, _ := st.ProductQueue(ctx); len(q) == 0 {
+		t.Fatal("queue empty")
+	}
+	pr, err = st.DecideProduct(ctx, pr.ID, "live", "")
+	if err != nil || pr.Status != "live" || pr.LiveAt == nil {
+		t.Fatalf("decide = %+v, %v", pr, err)
+	}
+	var inShop bool
+	p.QueryRow(ctx, `SELECT active FROM shop_products WHERE licence = $1`, l.Licence).Scan(&inShop)
+	if !inShop {
+		t.Fatal("not listed in the shop")
+	}
+	batch, codes, err := st.Issue(ctx, l, pr.ID, 50)
+	if err != nil || len(codes) != 50 || batch == "" {
+		t.Fatalf("issue = %d %s, %v", len(codes), batch, err)
+	}
+	again, product, err := st.Batch(ctx, l, batch)
+	if err != nil || len(again) != 50 || product != "Premiere tee, black" {
+		t.Fatalf("batch = %d %s, %v", len(again), product, err)
+	}
+
+	// Sales and the numbers built from them.
+	now := time.Now()
+	if _, err := st.AddSales(ctx, l, []licensing.Sale{{ProductID: pr.ID, Channel: "own", Country: "US", Qty: 1, AmountNGN: 7500}}); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("country outside licence: %v", err)
+	}
+	if _, err := st.AddSales(ctx, l, []licensing.Sale{{ProductID: pr.ID, Channel: "shop", Country: "NG", Qty: 1, AmountNGN: 7500}}); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("partner adding shop sales: %v", err)
+	}
+	n, err := st.AddSales(ctx, l, []licensing.Sale{
+		{Product: "premiere tee, black", Channel: "own", Country: "NG", City: "Lagos", Qty: 4, AmountNGN: 30000, Buyer: "b1", Ref: "INV-1"},
+		{ProductID: pr.ID, Channel: "stall", Country: "NG", City: "Abuja", Qty: 2, AmountNGN: 15000, Film: "Red Earth", Buyer: "b1", Ref: "INV-2", SoldAt: now.Add(-2 * time.Hour)},
+		{ProductID: pr.ID, Channel: "wholesale", Country: "GH", City: "Accra", Qty: 10, AmountNGN: 60000, Buyer: "b2", Ref: "INV-3"},
+	})
+	if err != nil || n != 3 {
+		t.Fatalf("add sales = %d, %v", n, err)
+	}
+	if n, _ := st.AddSales(ctx, l, []licensing.Sale{{ProductID: pr.ID, Channel: "own", Country: "NG", Qty: 4, AmountNGN: 30000, Ref: "INV-1"}}); n != 0 {
+		t.Fatal("same invoice counted twice")
+	}
+	now = time.Now().Add(time.Second)
+	o, err := st.Overview(ctx, l, now)
+	if err != nil || o.SalesNGN != 105000 || o.Items != 16 || len(o.Daily) != 30 || len(o.Channels) != 3 || o.RoyaltyNGN != 6300 || len(o.Top) != 1 || o.Top[0].Tag != "Best seller" {
+		t.Fatalf("overview = %+v, %v", o, err)
+	}
+	an, err := st.Analytics(ctx, l, now)
+	if err != nil || an.Orders != 3 || an.RepeatPct != 50 || len(an.ByCountry) != 2 || an.ByCountry[0].Name != "GH" || len(an.ByFilm) != 2 {
+		t.Fatalf("analytics = %+v, %v", an, err)
+	}
+	// A copied label shows up as suspicious; codes summary counts first scans.
+	for _, city := range []string{"Lagos", "Kano", "Kaduna", "Onitsha"} {
+		p.Exec(ctx, `INSERT INTO brand_scans (code, issued, city, country) VALUES ($1, true, $2, 'NG')`, codes[0], city)
+	}
+	p.Exec(ctx, `UPDATE brand_codes SET first_scan_at = now(), scans = 4 WHERE code = $1`, codes[0])
+	c, err := st.Codes(ctx, l, now)
+	ours := false
+	for _, s := range c.List {
+		ours = ours || (s.Ours && s.Code == codes[0] && len(s.Cities) == 4)
+	}
+	if err != nil || c.Issued != 50 || c.OnSold != 16 || c.Genuine != 1 || !ours || len(c.Batches) != 1 {
+		t.Fatalf("codes = %+v, %v", c, err)
+	}
+	if o, _ := st.Overview(ctx, l, now); len(o.Alerts) == 0 || o.Alerts[0].Kind != "action" {
+		t.Fatalf("alerts = %+v", o.Alerts)
+	}
+	r, err := st.Royalties(ctx, l, now)
+	if err != nil || len(r.Statements) != 1 || r.Current.Status != "open" || r.Current.RoyaltyNGN != 6300 {
+		t.Fatalf("royalties = %+v, %v", r, err)
+	}
+	cp, err := st.Compliance(ctx, l)
+	if err != nil || cp.Score != 96 || cp.SamplesTotal != 1 {
+		t.Fatalf("compliance = %+v, %v", cp, err)
+	}
+	// Payout account needs the face check; a matching name is verified.
+	if err := st.SetPayout(ctx, l, "Zenith Bank", "0123454410", "Yaba Prints Ltd", false); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("payout without face check: %v", err)
+	}
+	if err := st.SetPayout(ctx, l, "Zenith Bank", "0123454410", "Yaba Prints Ltd", true); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ = st.For(ctx, owner); !l.PayoutVerified || l.PayoutLast4 != "4410" || l.PayoutHold == nil {
+		t.Fatalf("payout = %+v", l)
+	}
+	if err := st.Settings(ctx, l, "Lagos", "https://www.yabaprints.ng/"); err != nil {
+		t.Fatal(err)
+	}
+}
