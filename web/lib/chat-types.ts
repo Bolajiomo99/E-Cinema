@@ -17,7 +17,8 @@ export type ChatEvent =
   | { type: "read"; conversationId: string; accountId: string; upto: number }
   | { type: "presence"; accountId: string; on?: boolean }
   | { type: "typing"; conversationId: string; accountId: string }
-  | { type: "request"; accountId: string };
+  | { type: "request"; accountId: string }
+  | { type: "call"; conversationId: string; accountId?: string; call: { kind: string; video?: boolean; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit } };
 
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
