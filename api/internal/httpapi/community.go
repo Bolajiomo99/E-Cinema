@@ -390,7 +390,7 @@ func (s *Server) communityRoutes(mux *http.ServeMux) {
 			return
 		}
 		if b.On && changed {
-			note(r.PathValue("id"), notify.New{Kind: "follow", Title: a.Name + " started following you", Link: "/community?author=" + a.ID, Dedupe: "follow:" + a.ID})
+			note(r.PathValue("id"), notify.New{Kind: "follow", Title: a.Name + " started following you", Link: "/u/" + a.ID, Dedupe: "follow:" + a.ID})
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"following": b.On})
 	}))

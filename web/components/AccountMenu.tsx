@@ -55,6 +55,7 @@ export default function AccountMenu({ name, email }: { name?: string; email?: st
           </div>
           <hr />
           <Link role="menuitem" href="/home" onClick={() => setOpen(false)}>My home</Link>
+          <Link role="menuitem" href="/u/me" onClick={() => setOpen(false)}>My profile</Link>
           <Link role="menuitem" href="/tickets" onClick={() => setOpen(false)}>My tickets</Link>
           <Link role="menuitem" href="/settings/security" onClick={() => setOpen(false)}>Devices <small>2 at most</small></Link>
           <Link role="menuitem" href="/settings/account" onClick={() => setOpen(false)}>Settings</Link>

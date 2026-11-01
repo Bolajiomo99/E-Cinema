@@ -1,6 +1,6 @@
 import "server-only";
 import { accountApi } from "@/lib/auth";
-import type { Group, GroupParty, Person, Post, Tag } from "@/lib/community-types";
+import type { Group, GroupParty, Person, Post, ProfilePage, Tag } from "@/lib/community-types";
 
 // Server reads for the Community pages.
 export async function groups(session: string): Promise<Group[]> {
@@ -26,4 +26,8 @@ export async function side(session: string): Promise<{ country: string; trending
 export async function person(session: string, id: string): Promise<{ id: string; name: string; country: string; following: boolean; followers: number; follows: number; posts: number } | null> {
   const r = await accountApi("GET", `/v1/me/people/${id}`, undefined, session);
   return r.status === 200 ? (r.body as { id: string; name: string; country: string; following: boolean; followers: number; follows: number; posts: number }) : null;
+}
+export async function profilePage(session: string, who: string): Promise<ProfilePage | null> {
+  const r = await accountApi("GET", `/v1/me/people/${encodeURIComponent(who)}/page`, undefined, session);
+  return r.status === 200 ? (r.body as ProfilePage) : null;
 }

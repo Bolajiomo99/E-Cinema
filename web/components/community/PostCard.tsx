@@ -150,9 +150,9 @@ export default function PostCard({ post: initial, me, compactView = false, onGon
   return (
     <article className={`cm-post ${compactView ? "slim" : ""}`}>
       <header className="cm-post-h">
-        <Link href={`/community?author=${post.author.id}`} className="cm-who" aria-label={post.author.name}><Avatar id={post.author.id} name={post.author.name} size={compactView ? 34 : 40} /></Link>
+        <Link href={`/u/${post.author.id}`} className="cm-who" aria-label={post.author.name}><Avatar id={post.author.id} name={post.author.name} size={compactView ? 34 : 40} /></Link>
         <div className="cm-post-t">
-          <Link href={`/community?author=${post.author.id}`}>{post.author.name}</Link>
+          <Link href={`/u/${post.author.id}`}>{post.author.name}</Link>
           <span>{post.community && !compactView ? <><Link href={`/community/${post.community.slug}`}>{post.community.name}</Link>{meta.slice(post.community.name.length)}</> : meta}</span>
         </div>
         <div className="cm-menu-w">

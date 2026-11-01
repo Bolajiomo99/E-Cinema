@@ -39,3 +39,13 @@ export function endsIn(iso: string, now = Date.now()): string {
   if (s < 86400) return `ends in ${Math.floor(s / 3600)} h`;
   return `ends in ${Math.floor(s / 86400)} d`;
 }
+
+// Profile (Figma 32:1060, 95:1863, 95:2002).
+export type ProfilePage = {
+  id: string; name: string; country: string; username: string; city: string; interests: string; spoken: string[];
+  plan: string; verified: boolean; me: boolean; following: boolean; followers: number; follows: number; posts: number;
+  premieres: number; countries: number; reviews: number; showsReviews: boolean; joinedAt: string;
+};
+export type Watched = { showtimeId: string; film: string; startsAt: string; minutes: number; stars: number };
+export type ProfileReview = { showtimeId: string; film: string; stars: number; tags: string[]; body: string; likes: number; liked: boolean; createdAt: string };
+export type Badge = { key: string; name: string; about: string; letter: string; color: string; progress: number; goal: number; earned: boolean };

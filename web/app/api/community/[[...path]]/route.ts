@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ path?: string[] }> };
 const NUM = /^[1-9][0-9]{0,18}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const WHO = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[a-z0-9._]{3,20})$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;
 const IMAGE = new Set(["image/jpeg", "image/png", "image/webp"]);
 const uploads = new Map<string, number[]>();
@@ -32,6 +33,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (p.length === 2 && p[0] === "groups" && SLUG.test(p[1])) return relay(await accountApi("GET", `/v1/me/communities/${p[1]}`, undefined, s));
   if (p.length === 3 && p[0] === "groups" && SLUG.test(p[1]) && p[2] === "members") return relay(await accountApi("GET", `/v1/me/communities/${p[1]}/members`, undefined, s));
   if (p.length === 2 && p[0] === "people" && UUID.test(p[1])) return relay(await accountApi("GET", `/v1/me/people/${p[1]}`, undefined, s));
+  // Profile tabs (Figma 32:1060): {who} is an account id or a username.
+  if (p.length === 3 && p[0] === "people" && WHO.test(p[1]) && ["page", "watched", "reviews", "badges"].includes(p[2])) return relay(await accountApi("GET", `/v1/me/people/${p[1]}/${p[2]}`, undefined, s));
   if (p.length === 1 && p[0] === "side") return relay(await accountApi("GET", "/v1/me/community-side", undefined, s));
   if (p.length === 1 && p[0] === "posts") {
     const out = new URLSearchParams();
@@ -98,6 +101,15 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const id = (r.body as { id?: number })?.id;
     if (r.status === 201 && id && text.trim() && chatAiEnabled()) void detect(s, id, text);
     return relay(r);
+  }
+  if (p.length === 1 && p[0] === "profile") {
+    const b = await body(req);
+    const spoken = Array.isArray(b.spoken) ? b.spoken.map((x) => String(x).trim().slice(0, 24)).filter(Boolean).slice(0, 6) : [];
+    return relay(await accountApi("PUT", "/v1/me/public-profile", { city: String(b.city ?? "").slice(0, 40), interests: String(b.interests ?? "").slice(0, 80), spoken }, s));
+  }
+  if (p.length === 5 && p[0] === "people" && UUID.test(p[1]) && p[2] === "reviews" && /^[a-z0-9-]{1,80}$/.test(p[3]) && p[4] === "like") {
+    const b = await body(req);
+    return relay(await accountApi("PUT", `/v1/me/people/${p[1]}/reviews/${p[3]}/like`, { on: b.on === true }, s));
   }
   if (p.length === 1 && p[0] === "follow") {
     const b = await body(req);

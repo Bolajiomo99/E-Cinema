@@ -86,8 +86,8 @@ export default function GroupApp({ me, group: initial, parties, posts, more, myP
             <div className="cm-card">
               {members === null ? <p className="cm-muted">Loading members…</p> : members.map((m) => (
                 <div key={m.id} className="cm-person">
-                  <Link href={`/community?author=${m.id}`}><Avatar id={m.id} name={m.name} size={36} /></Link>
-                  <div><Link href={`/community?author=${m.id}`}>{m.name}</Link><span>{[m.role !== "member" ? (m.role === "owner" ? "Owner" : "Moderator") : "", m.country && countryName(m.country)].filter(Boolean).join(" · ")}</span></div>
+                  <Link href={`/u/${m.id}`}><Avatar id={m.id} name={m.name} size={36} /></Link>
+                  <div><Link href={`/u/${m.id}`}>{m.name}</Link><span>{[m.role !== "member" ? (m.role === "owner" ? "Owner" : "Moderator") : "", m.country && countryName(m.country)].filter(Boolean).join(" · ")}</span></div>
                 </div>
               ))}
               {members && g.members > members.length && <p className="cm-fine">Showing {members.length} of {compact(g.members)} members.</p>}

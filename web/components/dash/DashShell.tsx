@@ -23,6 +23,7 @@ export const ITEMS: Item[] = [
   { label: "Notifications", href: "/notifications", icon: I(<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>) },
   { label: "Insights", href: "/insights", icon: I(<path d="M4 4v16h16M8.5 16v-4M12.5 16V8M16.5 16v-6" />) },
   { label: "Watch parties", href: "/parties", icon: I(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.4a6.5 6.5 0 0 1 3 5.6" /></>) },
+  { label: "Profile", href: "/u/me", icon: I(<><circle cx="12" cy="8" r="4" /><path d="M4 20.5a8 8 0 0 1 16 0" /></>) },
   { label: "Community", href: "/community", icon: I(<><path d="M4 5h11v8H8l-4 3z" /><path d="M15 9h5v8l-3-2.5h-6V13" /></>) },
   { label: "Settings", href: "/settings/account", icon: I(<><circle cx="12" cy="12" r="3" /><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" /></>) },
 ];
