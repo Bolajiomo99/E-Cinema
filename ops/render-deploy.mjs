@@ -127,6 +127,22 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
   const account = zone.result?.[0]?.account?.id;
   if (account) r2Endpoint = `https://${account}.r2.cloudflarestorage.com`;
   else console.log("Could not read the Cloudflare account; R2 endpoint not set");
+  // Let the web app read media with CORS, so the watch room can boost volume past 100%
+  // through Web Audio. Reads still need a signed link; this only adds the response headers.
+  if (account) {
+    const cors = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/e-cinema-media/cors`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        rules: [{
+          allowed: { origins: ["https://e-cinema.net", "https://www.e-cinema.net", "https://e-cinema-web.onrender.com"], methods: ["GET", "HEAD"], headers: ["range"] },
+          exposeHeaders: ["Content-Length", "Content-Range", "Accept-Ranges"],
+          maxAgeSeconds: 3600,
+        }],
+      }),
+    }).then((r) => r.json()).catch((e) => ({ success: false, errors: [{ message: e.message }] }));
+    console.log(cors.success ? "R2 CORS set for the web app" : `R2 CORS not set: ${JSON.stringify(cors.errors ?? []).slice(0, 200)}`);
+  }
 }
 const r2Env = {
   R2_ENDPOINT: r2Endpoint,
