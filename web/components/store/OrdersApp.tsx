@@ -246,6 +246,7 @@ function Track({ o, t, d, now, px, onCancel }: { o: Order; t: (iso?: string) => 
         </div>
       )}
       {o.status === "placed" && <button type="button" className="sh-btn ghost sm or-cancel" onClick={onCancel}>Cancel order</button>}
+      {(o.status === "delivered" || o.status === "out") && <Link className="sh-btn ghost sm or-cancel" href={`/help/refund?order=${o.id}`}>Problem with this order?</Link>}
     </section>
   );
 }
