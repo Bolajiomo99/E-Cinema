@@ -24,7 +24,7 @@ export default async function PartnerRoyalties() {
         <div className="bp-kpi"><span>Licence fee</span><b>{l.plan.feeNgn ? "Paid" : "Agreed"}</b><em>{l.plan.name} · until {dateName(l.validUntil)}</em></div>
         <div className="bp-kpi"><span>Royalty this month</span><b>{naira(r.current.royaltyNgn)}</b><em>{l.plan.royaltyPct}% of {short(r.current.salesNgn)}</em></div>
         <div className="bp-kpi"><span>E-Cinema shop sales owed to you</span><b>{naira(r.current.shopNgn)}</b><em className={l.plan.inShop ? "" : "muted"}>{l.plan.inShop ? "paid on the 15th" : "Growth and Global plans"}</em></div>
-        <div className="bp-kpi"><span>Net to you</span><b>{naira(r.netNgn)}</b><em className={r.netNgn < 0 ? "neg" : ""}>{r.netNgn < 0 ? "royalty is more than shop sales" : "after royalty"}</em></div>
+        <div className="bp-kpi"><span>Net to you</span><b>{r.netNgn < 0 ? `−${naira(-r.netNgn)}` : naira(r.netNgn)}</b><em className={r.netNgn < 0 ? "neg" : ""}>{r.netNgn < 0 ? "royalty is more than shop sales" : "after royalty"}</em></div>
       </div>
       <section className="bp-panel">
         <h2>Statements</h2>

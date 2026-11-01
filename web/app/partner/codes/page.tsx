@@ -2,7 +2,7 @@ import { Batches, OrderLabels } from "@/components/licensing/CodesTools";
 import { accountApi } from "@/lib/auth";
 import { partnerPage, session } from "@/lib/licensing";
 import type { Codes, Product } from "@/lib/licensing-types";
-import { COUNTRIES, dots, MAP_H, MAP_W, project } from "@/lib/worldmap";
+import { COUNTRIES, countryName, dots, MAP_H, MAP_W, project } from "@/lib/worldmap";
 
 // Figma "Licensee / Authenticity codes" (116:532).
 const LAND = dots();
@@ -45,10 +45,10 @@ export default async function PartnerCodes() {
             <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="img" aria-label="Map of where buyers scanned your codes">
               {LAND.map((d, i) => <circle key={i} cx={d.x} cy={d.y} r="3.2" fill="#2c3746" />)}
               {spots.map(({ x, y, r, p }) => (
-                <g key={p.name}><title>{`${p.name}: ${p.value.toLocaleString("en-GB")} scans`}</title><circle cx={x} cy={y} r={r * 1.8} fill="#2bb3a3" fillOpacity=".2" /><circle cx={x} cy={y} r={r / 2} fill="#2bb3a3" /></g>
+                <g key={p.name}><title>{`${/^[A-Z]{2}$/.test(p.name) ? countryName(p.name) : p.name}: ${p.value.toLocaleString("en-GB")} scans`}</title><circle cx={x} cy={y} r={r * 1.8} fill="#2bb3a3" fillOpacity=".2" /><circle cx={x} cy={y} r={r / 2} fill="#2bb3a3" /></g>
               ))}
             </svg>
-            <p>{c.places.length ? c.places.slice(0, 5).map((p) => `${p.name} ${p.value.toLocaleString("en-GB")}`).join(" · ") : "No scans yet. They appear here as buyers check their labels."}</p>
+            <p>{c.places.length ? c.places.slice(0, 5).map((p) => `${/^[A-Z]{2}$/.test(p.name) ? countryName(p.name) : p.name} ${p.value.toLocaleString("en-GB")}`).join(" · ") : "No scans yet. They appear here as buyers check their labels."}</p>
           </div>
         </section>
         <section className="bp-panel">

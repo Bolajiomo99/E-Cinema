@@ -3620,11 +3620,15 @@ a.bp-pill { text-decoration: none; }
   .pc-donut { flex-direction: column; align-items: flex-start; }
   .pc-bar { grid-template-columns: 84px minmax(0, 1fr) 50px; gap: 8px; }
   .pc-cols > div:first-child { gap: 6px; }
-  .pt-table th, .pt-table td { padding: 10px 8px; }
-  .pt-table { display: block; overflow-x: auto; }
-  .pt-table.wide { min-width: 0; }
+  .pt-table thead { display: none; }
+  .pt-table, .pt-table tbody, .pt-table tr { display: block; width: 100%; }
+  .pt-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid #1b1b21; }
+  .pt-table tr:last-child { border-bottom: 0; }
+  .pt-table td { display: block; padding: 0; border: 0; white-space: normal; }
+  .pt-table td.strong { flex: 1 0 100%; }
   .pt-v { flex-wrap: wrap; }
   .pt-v.tall { flex-wrap: nowrap; }
   .ap-plans.two { grid-template-columns: 1fr; }
   .pl { padding: 16px; }
 }
+.pt a.vf-btn, .pt a.bp-pill, .pt-pop a.vf-btn { text-decoration: none; }
