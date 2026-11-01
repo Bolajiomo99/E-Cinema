@@ -16,6 +16,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
@@ -41,6 +42,8 @@ type Server struct {
 	Reviews reviews.Store
 	// Library is the viewer's shelf: replays, kept films, collections, requested classics.
 	Library library.Store
+	// Insights adds up watch time, chat and spending for the viewer's own dashboard.
+	Insights insights.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -205,6 +208,7 @@ func (s *Server) Routes() http.Handler {
 	s.libraryRoutes(mux)
 	s.rewatchRoutes(mux)
 	s.downloadRoutes(mux)
+	s.insightRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -329,6 +333,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, insights.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotOwned):
 		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrTooManyFiles), errors.Is(err, library.ErrTooManyDevs):
