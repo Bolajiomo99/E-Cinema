@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
@@ -47,6 +48,9 @@ type Server struct {
 	Insights insights.Store
 	// Notify stores the viewer's notifications.
 	Notify notify.Store
+	// Chat runs friends and messages; ChatHub pushes them live.
+	Chat    chat.Store
+	ChatHub *chat.Hub
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -216,6 +220,10 @@ func (s *Server) Routes() http.Handler {
 	s.downloadRoutes(mux)
 	s.insightRoutes(mux)
 	s.notifyRoutes(mux)
+	if s.ChatHub == nil {
+		s.ChatHub = chat.NewHub()
+	}
+	s.chatRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -340,7 +348,15 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, insights.ErrBadInput), errors.Is(err, notify.ErrBadInput):
+	case errors.Is(err, chat.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, chat.ErrNotMember), errors.Is(err, chat.ErrBlocked), errors.Is(err, chat.ErrNotFriends):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, chat.ErrAlreadyFriends), errors.Is(err, chat.ErrPending), errors.Is(err, chat.ErrSelf):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, chat.ErrTooMany):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, insights.ErrBadInput), errors.Is(err, notify.ErrBadInput), errors.Is(err, chat.ErrBadInput):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotOwned):
 		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
