@@ -171,6 +171,13 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/catchup")" = 403 ]
           curl -fsS "${{ steps.render.outputs.api_url }}/v1/showtimes/red-earth-2026-11-02/reviews" | grep -q '"count"'
           echo "room panel ok"
+          # Library: the empty shelf renders; keeping and rewatching need the film in the library; collections work.
+          curl -fsS -b "$jar" "$web/library" | grep -q "Your library"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"quality":"hd"}' "$web/api/library/red-earth-2026-11-02/keep")" = 403 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d "{\"showtimeId\":\"red-earth-2026-11-02\",\"startsAt\":\"$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)\"}" "$web/api/rewatch")" = 404 ]
+          col=$(curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"name":"Smoke shelf"}' "$web/api/collections" | sed -n 's/.*"id":"\([0-9a-f-]*\)".*/\1/p')
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X DELETE "$web/api/collections/$col")" = 204 ]
+          echo "library ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
