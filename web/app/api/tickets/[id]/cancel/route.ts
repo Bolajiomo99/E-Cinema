@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { cancellable, markRefunded } from "@/lib/api";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { paypalError, paypalPayments } from "@/lib/paypal";
+import { providerOf, refundPayment } from "@/lib/local-pay";
 
 // POST /api/tickets/{holdId}/cancel: free cancellation until 7 days before the screening
 // (Figma "Web / Pre-order", 52:958). Refunds the PayPal capture in full, then frees the seat.
@@ -22,6 +23,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (c.captureId === `CREDIT-${id}`) {
     const r = await accountApi("POST", `/v1/me/holds/${id}/credit/refund`, {}, session);
     return NextResponse.json(r.status === 200 ? { status: "COMPLETED", credit: true } : r.body ?? {}, { status: r.status === 200 ? 200 : 409 });
+  }
+  // Paid through Paystack or Flutterwave: the capture is "<reference>~<transaction id>".
+  const local = providerOf(c.captureId);
+  if (local) {
+    const [ref, tx] = c.captureId.split("~");
+    const r = await refundPayment(local, ref, tx ?? "");
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: 502 });
+    await markRefunded(c.captureId, r.id).catch((e) => console.error("Refund ledger update failed", e instanceof Error ? e.message : e));
+    return NextResponse.json({ status: "COMPLETED", refundId: r.id });
   }
   try {
     // The hold id as the request id: a double click refunds once.
