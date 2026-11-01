@@ -8,6 +8,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/shop"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/studios"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -64,6 +65,8 @@ type Server struct {
 	Brand brand.Store
 	// Licensing runs the licensed merch partners and their portal.
 	Licensing licensing.Store
+	// Studios runs the studio portal.
+	Studios studios.Store
 	// Careers runs the jobs board, applications and group screening quotes.
 	Careers careers.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
@@ -287,6 +290,7 @@ func (s *Server) Routes() http.Handler {
 	s.licensingRoutes(mux)
 	s.careersRoutes(mux)
 	s.familyRoutes(mux)
+	s.studioRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -346,6 +350,14 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, accounts.ErrSMSUnavailable), errors.Is(err, accounts.ErrPasskeysOff):
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 	case errors.Is(err, identity.ErrNoApplicant):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, studios.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, studios.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, studios.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, studios.ErrLocked), errors.Is(err, studios.ErrIncomplete), errors.Is(err, studios.ErrNameTaken), errors.Is(err, studios.ErrLastOwner), errors.Is(err, studios.ErrNotVerified):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
