@@ -33,6 +33,10 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			out["messages"] = msgs
 			out["viewerCode"] = rooms.ViewerCode(s.Passes.Key, a.ID)
 			out["watching"] = s.Hub.Count(id)
+			if err := s.addPanel(r.Context(), out, id, a.ID); err != nil {
+				fail(w, err)
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, out)
 	}))
@@ -52,12 +56,18 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			name = "Guest"
 		}
 		exp := time.Now().Add(rooms.PassFor)
-		country := ""
+		country, lang, partyID := "", "", ""
 		if p, err := s.Accounts.GetProfile(r.Context(), a.ID); err == nil {
-			country = p.Country
+			country, lang = p.Country, p.AppLanguage
+		}
+		if p, err := s.Rooms.PartyFor(r.Context(), id, a.ID); err != nil {
+			fail(w, err)
+			return
+		} else if p != nil {
+			partyID = p.ID
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country}),
+			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country, Lang: lang, PartyID: partyID}),
 			"expiresAt": exp.UTC(),
 		})
 	}))

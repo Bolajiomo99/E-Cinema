@@ -186,6 +186,7 @@ func (s *Server) Routes() http.Handler {
 	}))
 	s.accountRoutes(mux)
 	s.roomRoutes(mux)
+	s.roomPanelRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -286,6 +287,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, parties.ErrEnded), errors.Is(err, parties.ErrHostLeaves):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, rooms.ErrEmpty), errors.Is(err, rooms.ErrBadPoll):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, rooms.ErrNoParty), errors.Is(err, rooms.ErrNoPoll):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, rooms.ErrTooFast):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, rooms.ErrTalkUsedUp):
+		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
