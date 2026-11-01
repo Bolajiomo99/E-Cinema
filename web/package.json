@@ -17,6 +17,7 @@
     "@paypal/paypal-js": "11.3.0",
     "@paypal/paypal-server-sdk": "2.5.0",
     "@types/qrcode": "^1.5.5",
+    "@types/three": "^0.187.0",
     "ag-grid-community": "36.2.0",
     "ag-grid-enterprise": "36.2.0",
     "ag-grid-react": "36.2.0",
@@ -24,7 +25,8 @@
     "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@types/node": "^20",
