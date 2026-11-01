@@ -357,7 +357,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrBadInput):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrLocked), errors.Is(err, studios.ErrIncomplete), errors.Is(err, studios.ErrNameTaken), errors.Is(err, studios.ErrLastOwner), errors.Is(err, studios.ErrNotVerified), errors.Is(err, studios.ErrTaken), errors.Is(err, studios.ErrFull):
+	case errors.Is(err, studios.ErrLocked), errors.Is(err, studios.ErrIncomplete), errors.Is(err, studios.ErrNameTaken), errors.Is(err, studios.ErrLastOwner), errors.Is(err, studios.ErrNotVerified), errors.Is(err, studios.ErrTaken), errors.Is(err, studios.ErrFull), errors.Is(err, studios.ErrTooManyFiles):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})

@@ -114,6 +114,55 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		}
 	}))
 
+	// Film uploads (Figma 35:290). The web app moves the bytes; these routes keep the record.
+	mux.HandleFunc("GET /v1/me/studio/uploads", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		u, err := s.Studios.Uploads(r.Context(), a.ID, a.Email)
+		reply(w, map[string]any{"uploads": u}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Title string }
+		if decodeN(w, r, 1<<10, &b) {
+			u, err := s.Studios.CreateUpload(r.Context(), a.ID, a.Email, b.Title)
+			reply(w, map[string]any{"upload": u}, err)
+		}
+	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		u, err := s.Studios.Upload(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]any{"upload": u}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Title string }
+		if decodeN(w, r, 1<<10, &b) {
+			u, err := s.Studios.RenameUpload(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Title)
+			reply(w, map[string]any{"upload": u}, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/files", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Name string
+			Size int64
+		}
+		if decodeN(w, r, 1<<10, &b) {
+			f, err := s.Studios.AddFile(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Name, b.Size)
+			reply(w, map[string]any{"file": f}, err)
+		}
+	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/files/{file}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		f, err := s.Studios.File(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("file"), r.URL.Query().Get("write") == "1")
+		reply(w, map[string]any{"file": f}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/files/{file}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b studios.FileUpdate
+		if decodeN(w, r, 8<<10, &b) {
+			f, err := s.Studios.UpdateFile(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("file"), b)
+			reply(w, map[string]any{"file": f}, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/uploads/{id}/files/{file}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		err := s.Studios.RemoveFile(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("file"))
+		reply(w, map[string]bool{"ok": err == nil}, err)
+	}))
+
 	// The studio desk, for E-Cinema staff (the web checks STAFF_EMAILS).
 	mux.HandleFunc("GET /v1/studios/applications", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		a, err := s.Studios.Applications(r.Context())
