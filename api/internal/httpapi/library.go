@@ -149,3 +149,46 @@ func (s *Server) rewatchRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, p)
 	}))
 }
+
+func (s *Server) downloadRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /v1/me/downloads", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		list, err := s.Library.Licenses(r.Context(), a.ID, time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"downloads": list, "maxDownloads": library.MaxDownloads, "maxDevices": library.MaxDownloadDevices})
+	}))
+	mux.HandleFunc("PUT /v1/me/downloads/{showtime}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct {
+			Device    string   `json:"device"`
+			Quality   string   `json:"quality"`
+			SizeBytes int64    `json:"sizeBytes"`
+			Audio     []string `json:"audio"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		l, err := s.Library.License(r.Context(), a.ID, r.PathValue("showtime"), b.Device, b.Quality, b.SizeBytes, b.Audio, time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, l)
+	}))
+	mux.HandleFunc("GET /v1/me/downloads/{showtime}/{device}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		l, err := s.Library.CheckLicense(r.Context(), a.ID, r.PathValue("showtime"), r.PathValue("device"), time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, l)
+	}))
+	mux.HandleFunc("DELETE /v1/me/downloads/{showtime}/{device}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if err := s.Library.Revoke(r.Context(), a.ID, r.PathValue("showtime"), r.PathValue("device"), time.Now()); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+}

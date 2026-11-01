@@ -206,3 +206,71 @@ func TestRewatch(t *testing.T) {
 		t.Fatalf("unknown code: %v", err)
 	}
 }
+
+func TestDownloads(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	s := library.Store{DB: p}
+	p.Exec(ctx, `INSERT INTO showtimes VALUES ('lib-dl', 'Download Film', 'S', now() - interval '3 days', 90, 10, 500, 'USD'),
+	  ('lib-dl2', 'Second Film', 'S', now() - interval '3 days', 90, 10, 500, 'USD') ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at`)
+	var a string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('lib-dl@example.com', 'Ada', 'x') ON CONFLICT (email) DO UPDATE SET name = 'Ada' RETURNING id`).Scan(&a)
+	p.Exec(ctx, `DELETE FROM download_licenses WHERE account_id = $1`, a)
+	p.Exec(ctx, `DELETE FROM library_keeps WHERE account_id = $1`, a)
+	now := time.Now()
+	dev1, dev2, dev3 := "aaaaaaaaaaaaaaaa1", "bbbbbbbbbbbbbbbb2", "cccccccccccccccc3"
+	if _, err := s.License(ctx, a, "lib-dl", dev1, "hd", 0, nil, now); !errors.Is(err, library.ErrNotOwned) {
+		t.Fatalf("not owned: %v", err)
+	}
+	p.Exec(ctx, `INSERT INTO library_keeps (account_id, showtime_id, amount_cents, currency, status, paid_at) VALUES ($1, 'lib-dl', 998, 'USD', 'paid', now()), ($1, 'lib-dl2', 998, 'USD', 'paid', now())`, a)
+	if _, err := s.License(ctx, a, "lib-dl", "BAD DEVICE", "hd", 0, nil, now); !errors.Is(err, library.ErrBadInput) {
+		t.Fatalf("bad device: %v", err)
+	}
+	l, err := s.License(ctx, a, "lib-dl", dev1, "hd", 0, []string{"yo", "en"}, now)
+	if err != nil || l.Film != "Download Film" || len(l.Audio) != 2 {
+		t.Fatalf("license = %+v %v", l, err)
+	}
+	// Renewing keeps one licence and fills in the size.
+	l2, err := s.License(ctx, a, "lib-dl", dev1, "hd", 2_400_000_000, nil, now.Add(time.Hour))
+	if err != nil || l2.ID != l.ID || l2.SizeBytes != 2_400_000_000 || len(l2.Audio) != 2 || !l2.ExpiresAt.After(l.ExpiresAt) {
+		t.Fatalf("renew = %+v %v", l2, err)
+	}
+	if _, err := s.License(ctx, a, "lib-dl", dev2, "sd", 0, nil, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.License(ctx, a, "lib-dl2", dev3, "sd", 0, nil, now); !errors.Is(err, library.ErrTooManyDevs) {
+		t.Fatalf("third device: %v", err)
+	}
+	if _, err := s.CheckLicense(ctx, a, "lib-dl", dev2, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CheckLicense(ctx, a, "lib-dl", dev2, now.Add(31*24*time.Hour)); !errors.Is(err, library.ErrNoLicense) {
+		t.Fatalf("expired: %v", err)
+	}
+	if err := s.Revoke(ctx, a, "lib-dl", dev2, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CheckLicense(ctx, a, "lib-dl", dev2, now); !errors.Is(err, library.ErrNoLicense) {
+		t.Fatalf("revoked: %v", err)
+	}
+	if _, err := s.License(ctx, a, "lib-dl2", dev3, "sd", 0, nil, now); err != nil {
+		t.Fatalf("device freed: %v", err)
+	}
+	// A refunded keep takes its downloads with it.
+	p.Exec(ctx, `UPDATE library_keeps SET status = 'refunded' WHERE account_id = $1 AND showtime_id = 'lib-dl'`, a)
+	list, _ := s.Licenses(ctx, a, now)
+	if len(list) != 1 || list[0].ShowtimeID != "lib-dl2" {
+		t.Fatalf("after refund = %+v", list)
+	}
+}

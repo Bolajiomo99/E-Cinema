@@ -204,6 +204,7 @@ func (s *Server) Routes() http.Handler {
 	s.reviewRoutes(mux)
 	s.libraryRoutes(mux)
 	s.rewatchRoutes(mux)
+	s.downloadRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -328,6 +329,12 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrNotOwned):
+		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrTooManyFiles), errors.Is(err, library.ErrTooManyDevs):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrNoLicense):
+		writeJSON(w, http.StatusGone, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNoFriend):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):
