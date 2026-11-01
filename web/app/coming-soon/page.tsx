@@ -110,7 +110,7 @@ export default async function ComingSoonPage({ searchParams }: { searchParams: P
               </>}
             </div>
             <div className="lp-ctas">
-              <Link href={`/checkout?film=${hero.id}`} className="lp-btn">Pre-order seat</Link>
+              <Link href={`/preorder/${hero.id}`} className="lp-btn">Pre-order seat</Link>
               <TrailerButton film={hero.id} title={hero.film} className="lp-btn secondary" />
               <a href={`/api/calendar/${hero.id}.ics`} className="lp-btn ghost">Remind me</a>
             </div>
@@ -157,7 +157,7 @@ export default async function ComingSoonPage({ searchParams }: { searchParams: P
                       <strong>{save ? "Pre-order" : "Seat"} {money(s.price.currency, preorderCents(s, now))}</strong>
                       {save > 0 && <small>Save {save}%</small>}
                     </div>
-                    <Link href={`/checkout?film=${s.id}`} className="lp-btn sm secondary">{save ? "Pre-order" : "Get a seat"}</Link>
+                    <Link href={save ? `/preorder/${s.id}` : `/checkout?film=${s.id}`} className="lp-btn sm secondary">{save ? "Pre-order" : "Get a seat"}</Link>
                   </div>
                 </article>
               );

@@ -143,7 +143,8 @@ jobs:
           echo "world map ok"
           # Coming soon: pre-order prices render.
           curl -fsS "$web/coming-soon" | grep -q "Pre-order seat"
-          echo "coming soon ok"
+          curl -fsS "$web/preorder/iron-delta-2026-12-14" | grep -q "Choose how you watch"
+          echo "coming soon and pre-order ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
