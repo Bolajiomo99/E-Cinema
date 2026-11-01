@@ -17,7 +17,7 @@ export default function TopNav({ me, active, t, country, lang }: { me: Me; activ
         <span className="dash-brand">{me && <SidebarToggle />}<Logo href={me ? "/home" : "/"} /></span>
         <div className="lp-nav-links">
           <Link href={me ? "/home" : "/"} className={cls("home")}>{t.home}</Link>
-          <Link href="/releases" className={cls("coming")}>{t.comingSoon}</Link>
+          <Link href="/coming-soon" className={cls("coming")}>{t.comingSoon}</Link>
           <Link href={me ? "/home#live" : "/#live"} className={cls("live")}>{t.live}</Link>
           <Link href={me ? "/home#hm-clips" : "/browse"} className={cls("clips")}>Clips</Link>
           {["Community", "Shop", "Library"].map((l) => (

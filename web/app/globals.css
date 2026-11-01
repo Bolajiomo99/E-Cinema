@@ -1634,3 +1634,53 @@ body:has(.co) { background: #0a0a0c; }
   .wm-room { flex: 0 0 78%; scroll-snap-align: start; }
   .wmp .wm-note { margin: 32px 16px 0; padding-bottom: 96px; }
 }
+
+/* Coming soon (Figma 52:808) */
+.cs { min-height: 100vh; background: #0a0a0c; }
+.cs-hero { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 48px; min-height: 592px; padding: 142px 80px 30px 48px; box-sizing: border-box; overflow: hidden; background: linear-gradient(90deg, #000 0%, #120406 45%, #3a0d12 100%); }
+.cs-glow { position: absolute; left: 700px; top: -120px; width: 800px; height: 600px; border-radius: 50%; background: radial-gradient(closest-side, rgba(227,24,45,.35), transparent); pointer-events: none; }
+.cs-copy { position: relative; display: flex; flex-direction: column; gap: 16px; max-width: 620px; }
+.cs-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.lp-badge.cs-white { background: #fff; color: #0a0a0c; }
+.cs-copy h1 { margin: 0; font: 400 96px/92px "Bebas Neue", sans-serif; letter-spacing: 1px; color: #f4f4f6; }
+.cs-meta { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #a6a6b0; }
+.cs-cd .countdown div { width: 84px; height: 78px; border-color: rgba(255,255,255,.13); }
+.cs-cd .countdown span { font-size: 11px; color: #6e6e7a; letter-spacing: .8px; }
+.cs-price { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.cs-price b { font: 400 40px/40px "Bebas Neue", sans-serif; letter-spacing: .5px; color: #f4f4f6; }
+.cs-price > span:not(.lp-badge) { font: 500 15px/22px Manrope, sans-serif; color: #6e6e7a; }
+.cs-note { margin: 0; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.cs-hero-poster { position: relative; flex: none; width: 300px; text-decoration: none; }
+.cs-poster { position: relative; display: flex; align-items: flex-end; width: 100%; padding: 14px; border-radius: 10px; overflow: hidden; box-sizing: border-box; }
+.cs-poster .lp-poster-glow { width: 220px; height: 220px; right: -25%; top: -11%; filter: blur(60px); }
+.cs-body { padding: 32px 48px 64px; display: flex; flex-direction: column; gap: 20px; }
+.cs-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cs-head h2 { margin: 0; font: 700 24px/32px Manrope, sans-serif; letter-spacing: -.3px; color: #f4f4f6; }
+.cs-cal { border-style: dashed; }
+.cs-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.cs-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cs-p { position: relative; display: block; border-radius: 14px; overflow: hidden; text-decoration: none; }
+.cs-when { position: absolute; left: 12px; top: 12px; }
+.cs-vr { position: absolute; right: 12px; top: 12px; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: rgba(0,0,0,.67); color: #f4f4f6; font: 700 10px/14px Manrope, sans-serif; letter-spacing: .8px; }
+.cs-vr svg { width: 14px; height: 14px; }
+.cs-sub { margin: 0; font: 500 12px/18px Manrope, sans-serif; color: #6e6e7a; }
+.cs-pr { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cs-pr div { display: flex; flex-direction: column; gap: 2px; }
+.cs-pr strong { font: 600 13px/20px Manrope, sans-serif; letter-spacing: .1px; color: #f4f4f6; }
+.cs-pr small { font: 500 12px/18px Manrope, sans-serif; color: var(--status-success, #22c55e); }
+@media (max-width: 1100px) { .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cs-hero { padding-right: 48px; } }
+@media (max-width: 760px) {
+  .cs-hero { flex-direction: column-reverse; align-items: stretch; gap: 24px; padding: 88px 16px 24px; min-height: 0; }
+  .cs-hero-poster { width: 180px; }
+  .cs-glow { left: 20%; }
+  .cs-copy h1 { font-size: 64px; line-height: 60px; }
+  .cs-cd .countdown div { width: 72px; height: 68px; }
+  .cs-copy .lp-ctas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cs-copy .lp-ctas > :first-child { grid-column: 1 / -1; }
+  .cs-copy .lp-ctas .lp-btn { padding: 0 12px; }
+  .cs-body { padding: 24px 16px 96px; }
+  .cs-head .br-chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+  .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .cs-p .cs-poster { height: 220px !important; }
+  .cs-pr { flex-direction: column; align-items: stretch; }
+}
