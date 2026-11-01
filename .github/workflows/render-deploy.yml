@@ -189,6 +189,12 @@ jobs:
           curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"room","seconds":5}' "$web/api/insights/beat" | grep -q '"counted"'
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"cinema","seconds":5}' "$web/api/insights/beat")" = 400 ]
           echo "insights ok"
+          # Notifications: the page and the unread count work, mark-all answers 204, a bad id is refused.
+          curl -fsS -b "$jar" "$web/notifications" | grep -q "Mark all read"
+          curl -fsS -b "$jar" "$web/api/notifications/unread" | grep -q '"unread"'
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/all/read")" = 204 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/abc/read")" = 404 ]
+          echo "notifications ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
