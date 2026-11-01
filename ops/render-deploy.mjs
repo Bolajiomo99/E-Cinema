@@ -128,15 +128,17 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
   if (account) r2Endpoint = `https://${account}.r2.cloudflarestorage.com`;
   else console.log("Could not read the Cloudflare account; R2 endpoint not set");
   // Let the web app read media with CORS, so the watch room can boost volume past 100%
-  // through Web Audio. Reads still need a signed link; this only adds the response headers.
+  // through Web Audio. Reads and writes still need a signed link; this only adds the headers.
   if (account) {
     const cors = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/e-cinema-media/cors`, {
       method: "PUT",
       headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, "content-type": "application/json" },
       body: JSON.stringify({
         rules: [{
-          allowed: { origins: ["https://e-cinema.net", "https://www.e-cinema.net", "https://e-cinema-web.onrender.com"], methods: ["GET", "HEAD"], headers: ["range"] },
-          exposeHeaders: ["Content-Length", "Content-Range", "Accept-Ranges"],
+          // PUT lets studios send film parts straight to storage with signed links (Figma 35:290);
+          // the browser needs each part's ETag to finish the upload.
+          allowed: { origins: ["https://e-cinema.net", "https://www.e-cinema.net", "https://e-cinema-web.onrender.com"], methods: ["GET", "HEAD", "PUT"], headers: ["range", "content-type"] },
+          exposeHeaders: ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"],
           maxAgeSeconds: 3600,
         }],
       }),

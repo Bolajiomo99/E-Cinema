@@ -1,5 +1,8 @@
 import "server-only";
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand,
+  ListObjectsV2Command, ListPartsCommand, PutObjectCommand, S3Client, UploadPartCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Private media in Cloudflare R2. Viewers only ever get short-lived signed links.
@@ -152,4 +155,46 @@ export async function filmRange(quality: "sd" | "hd", range: string | null): Pro
     if (name === "InvalidRange") return { body: new ReadableStream({ start: (c) => c.close() }), status: 416, headers: {} };
     throw err;
   }
+}
+
+// Studio film uploads (Figma 35:290). The browser sends each part straight to storage with a
+// short-lived signed link, so masters of up to 2 TB never pass through our servers and a
+// dropped connection only loses the part in flight.
+export async function startMultipart(key: string, contentType: string): Promise<string> {
+  const r = await s3().send(new CreateMultipartUploadCommand({ Bucket: BUCKET, Key: key, ContentType: contentType }));
+  return r.UploadId!;
+}
+
+export async function signPart(key: string, uploadId: string, part: number): Promise<string> {
+  return getSignedUrl(s3(), new UploadPartCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId, PartNumber: part }), { expiresIn: 60 * 60 });
+}
+
+export async function uploadedParts(key: string, uploadId: string): Promise<{ part: number; etag: string; size: number }[]> {
+  const out: { part: number; etag: string; size: number }[] = [];
+  let marker: string | undefined;
+  for (let i = 0; i < 20; i++) {
+    const r = await s3().send(new ListPartsCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId, PartNumberMarker: marker, MaxParts: 1000 }));
+    for (const p of r.Parts ?? []) out.push({ part: p.PartNumber!, etag: p.ETag!, size: p.Size ?? 0 });
+    if (!r.IsTruncated) break;
+    marker = r.NextPartNumberMarker;
+  }
+  return out;
+}
+
+export async function finishMultipart(key: string, uploadId: string, parts: { part: number; etag: string }[]) {
+  await s3().send(new CompleteMultipartUploadCommand({
+    Bucket: BUCKET, Key: key, UploadId: uploadId,
+    MultipartUpload: { Parts: parts.map((p) => ({ PartNumber: p.part, ETag: p.etag })) },
+  }));
+}
+
+export async function dropUpload(key: string, uploadId: string, finished: boolean) {
+  if (!finished && uploadId) await s3().send(new AbortMultipartUploadCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId })).catch(() => {});
+  await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(() => {});
+}
+
+// A byte range of a stored object, for reading file headers without downloading the file.
+export async function objectRange(key: string, start: number, end: number): Promise<Buffer> {
+  const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: `bytes=${start}-${end}` }));
+  return Buffer.from(await obj.Body!.transformToByteArray());
 }
