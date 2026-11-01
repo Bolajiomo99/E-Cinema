@@ -180,16 +180,28 @@ func (st Store) MarkPaid(ctx context.Context, orderID, captureID string) (bool, 
 }
 
 // Due hands back paid gifts whose delivery time has come, once each, for the emails.
-func (st Store) Due(ctx context.Context) ([]Gift, error) {
+// DueGift is a gift to hand out, with the giver's email for when the recipient has only a phone number.
+type DueGift struct {
+	Gift
+	GiverEmail string `json:"giverEmail"`
+}
+
+func (st Store) Due(ctx context.Context) ([]DueGift, error) {
 	rows, err := st.DB.Query(ctx, `WITH due AS (
 	    UPDATE gifts SET delivered_at = now() WHERE id IN (
 	      SELECT id FROM gifts WHERE status = 'paid' AND delivered_at IS NULL AND deliver_at <= now() ORDER BY deliver_at LIMIT 200 FOR UPDATE SKIP LOCKED)
 	    RETURNING *)
-	  SELECT `+cols+` FROM due g JOIN accounts a ON a.id = g.giver_id`)
+	  SELECT `+cols+`, coalesce(a.email, '') FROM due g JOIN accounts a ON a.id = g.giver_id`)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Gift, error) { return scan(r) })
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (DueGift, error) {
+		var d DueGift
+		g := &d.Gift
+		err := r.Scan(&g.ID, &g.Code, &g.Kind, &g.ShowtimeID, &g.AmountCents, &g.Currency, &g.Name, &g.Email, &g.Phone, &g.Message,
+			&g.DeliverAt, &g.DeliveredAt, &g.Status, &g.RedeemedAt, &g.GiverName, &g.CreatedAt, &d.GiverEmail)
+		return d, err
+	})
 }
 
 // EndGiftPlans drops accounts whose gifted plan ran out back to Free.
@@ -313,4 +325,26 @@ func (st Store) PayWithCredit(ctx context.Context, accountID, holdID string, cen
 		_, err = tx.Exec(ctx, `INSERT INTO credits (account_id, delta_cents, reason, ref) VALUES ($1, $2, 'seat', 'hold:' || $3)`, accountID, -cents, holdID)
 		return err
 	})
+}
+
+// RefundCredit gives back the credit spent on a seat and frees the seat. The caller checks the seat
+// is the viewer's and still cancellable. Repeats change nothing (the refund row has a unique ref).
+func (st Store) RefundCredit(ctx context.Context, accountID, holdID string) (int, error) {
+	var cents int
+	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT -delta_cents FROM credits WHERE account_id = $1 AND ref = 'hold:' || $2`, accountID, holdID).Scan(&cents)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrHoldGone
+		}
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = 'CREDIT-REFUND-' || id, refunded_at = now()
+		  WHERE id = $1 AND account_id = $2 AND status = 'paid' AND paypal_capture_id = 'CREDIT-' || id`, holdID, accountID); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO credits (account_id, delta_cents, reason, ref) VALUES ($1, $2, 'refund', 'refund:' || $3) ON CONFLICT (ref) DO NOTHING`, accountID, cents, holdID)
+		return err
+	})
+	return cents, err
 }

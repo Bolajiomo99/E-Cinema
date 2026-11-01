@@ -9,6 +9,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
 func store(t *testing.T) gifts.Store {
@@ -108,6 +109,20 @@ func TestGifts(t *testing.T) {
 	if bal, _ := s.Balance(ctx, ada); bal != 400 {
 		t.Fatalf("balance after seat = %d", bal)
 	}
+	// Cancelling a seat paid with credit puts the credit back, once.
+	for i := 0; i < 2; i++ {
+		if c, err := s.RefundCredit(ctx, ada, hold); err != nil || c != 600 {
+			t.Fatalf("refund credit #%d = %d, %v", i, c, err)
+		}
+	}
+	if bal, _ := s.Balance(ctx, ada); bal != 1000 {
+		t.Fatalf("balance after refund = %d", bal)
+	}
+	var st string
+	s.DB.QueryRow(ctx, `SELECT status FROM holds WHERE id = $1`, hold).Scan(&st)
+	if st != "refunded" {
+		t.Fatalf("hold after credit refund = %s", st)
+	}
 
 	// A seat gift: the hold is bought without an owner and handed over on redeem.
 	var gh string
@@ -119,7 +134,8 @@ func TestGifts(t *testing.T) {
 		t.Fatalf("seat gift = %+v, %v", seat, err)
 	}
 	s.MarkPaid(ctx, "G-SEAT", "CAP-G2")
-	s.DB.Exec(ctx, `UPDATE holds SET status = 'paid' WHERE id = $1`, gh)
+	s.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = 'CAP-G2' WHERE id = $1`, gh)
+	s.DB.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, account_id) VALUES ('gift-test', 1, 'own', 'paid', now(), $1)`, ada)
 	if _, err := s.Redeem(ctx, seat.Code, ada); !errors.Is(err, gifts.ErrSeatInUse) {
 		t.Fatalf("Ada already has a seat: %v", err)
 	}
@@ -130,6 +146,9 @@ func TestGifts(t *testing.T) {
 	s.DB.QueryRow(ctx, `SELECT account_id FROM holds WHERE id = $1`, gh).Scan(&owner)
 	if owner != payer {
 		t.Fatal("seat not handed over")
+	}
+	if _, err := (tickets.Store{DB: s.DB}).CanCancel(ctx, payer, gh); !errors.Is(err, tickets.ErrGiftedSeat) {
+		t.Fatalf("a gifted seat must not refund the giver's payment to the recipient: %v", err)
 	}
 
 	// Plans: a month of Pro for someone on Free; credit for someone who already pays.

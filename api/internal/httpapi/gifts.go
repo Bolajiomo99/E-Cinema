@@ -76,4 +76,22 @@ func (s *Server) giftRoutes(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	// Cancelling a seat paid with credit puts the credit back instead of refunding on PayPal.
+	mux.HandleFunc("POST /v1/me/holds/{id}/credit/refund", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		c, err := s.Tickets.CanCancel(r.Context(), a.ID, r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if c.CaptureID != "CREDIT-"+c.HoldID {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "this seat was not paid with credit"})
+			return
+		}
+		cents, err := s.Gifts.RefundCredit(r.Context(), a.ID, c.HoldID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"cents": cents})
+	}))
 }

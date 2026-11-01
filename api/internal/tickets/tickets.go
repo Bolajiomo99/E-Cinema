@@ -20,6 +20,7 @@ var (
 
 	ErrBadQuality      = errors.New("quality must be hd, 4k or vr")
 	ErrTooLateToCancel = errors.New("seats can be cancelled until 7 days before the screening")
+	ErrGiftedSeat      = errors.New("a gifted seat cannot be cancelled for a refund; it stays yours to watch")
 )
 
 const HoldFor = 10 * time.Minute
@@ -276,9 +277,11 @@ func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancel
 	var c Cancellable
 	var status string
 	var startsAt time.Time
-	err := st.DB.QueryRow(ctx, `SELECT h.id, COALESCE(h.paypal_capture_id, ''), h.status, s.starts_at
+	var gifted bool
+	err := st.DB.QueryRow(ctx, `SELECT h.id, COALESCE(h.paypal_capture_id, ''), h.status, s.starts_at,
+	    h.lottery OR EXISTS (SELECT 1 FROM gifts g WHERE g.hold_id = h.id)
 	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
-	  WHERE h.id = $1 AND h.account_id = $2`, holdID, accountID).Scan(&c.HoldID, &c.CaptureID, &status, &startsAt)
+	  WHERE h.id = $1 AND h.account_id = $2`, holdID, accountID).Scan(&c.HoldID, &c.CaptureID, &status, &startsAt, &gifted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNoHold
 	}
@@ -287,6 +290,10 @@ func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancel
 	}
 	if status != "paid" || c.CaptureID == "" {
 		return c, ErrNoHold
+	}
+	// Someone else paid for a gifted or lottery seat, so there is nothing of the viewer's to refund.
+	if gifted {
+		return c, ErrGiftedSeat
 	}
 	if time.Until(startsAt) <= CancelWindow {
 		return c, ErrTooLateToCancel
