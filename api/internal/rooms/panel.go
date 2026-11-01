@@ -316,3 +316,15 @@ func (st Store) UseTalk(ctx context.Context, showtimeID, accountID, plan string,
 	}
 	return FreeTalkSeconds - used, err
 }
+
+// Muted reports whether a free member has used all their talk time at this premiere. From then
+// on they can react but not message the room (Figma "Web / Player · Free talk time used", 28:565).
+func (st Store) Muted(ctx context.Context, showtimeID, accountID string) (bool, error) {
+	var muted bool
+	err := st.DB.QueryRow(ctx, `SELECT a.plan = 'free' AND coalesce((SELECT seconds FROM talk_time t WHERE t.account_id = a.id AND t.showtime_id = $2), 0) >= $3
+	  FROM accounts a WHERE a.id = $1`, accountID, showtimeID, FreeTalkSeconds).Scan(&muted)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return muted, err
+}

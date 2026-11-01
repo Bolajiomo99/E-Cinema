@@ -227,11 +227,11 @@ export default function SidePanel(props: {
         <div className={`rp-talk ${muted ? "out" : ""}`}>
           <div className="rp-talk-row">
             <MicIcon small />
-            <span>{muted ? "Free talk time used up" : `Free talk time: ${mmss(props.talkLeft)} left`}</span>
+            <span>{muted ? "Talk time used · you are muted" : `Free talk time: ${mmss(props.talkLeft)} left`}</span>
             <Link href="/plans">Go Pro</Link>
           </div>
           <div className="rp-talk-bar"><span style={{ width: `${(props.talkLeft / FREE_TALK) * 100}%` }} /></div>
-          <p>Free members can talk for 5 minutes per premiere, then stay muted until they upgrade. Reactions stay free.</p>
+          <p>{muted ? "Upgrade to Pro to keep talking, send voice notes, images and documents in this room." : "Free members get 5 minutes of talk per premiere, then are muted. Reactions stay free."}</p>
         </div>
       )}
 
@@ -245,14 +245,14 @@ export default function SidePanel(props: {
       )}
 
       <form className="rp-compose" onSubmit={sendText}>
-        <button type="button" className="rp-icon" onClick={() => fileRef.current?.click()} disabled={busy || (tab === "room" && !party)} aria-label="Share a photo or PDF">
+        <button type="button" className="rp-icon" onClick={() => fileRef.current?.click()} disabled={busy || muted || (tab === "room" && !party)} aria-label="Share a photo or PDF">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>
         </button>
         <input ref={fileRef} type="file" hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={pickFile} />
         <input
           value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={500} aria-label="Message the room"
           placeholder={scope === "world" ? "Message the world · auto-translated" : "Message the room"}
-          disabled={tab === "room" && !party}
+          disabled={muted || (tab === "room" && !party)}
         />
         <button type="button" className="rp-icon" onClick={() => setEmojiOpen((x) => !x)} aria-label="Emoji" aria-expanded={emojiOpen}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9.5" /><path d="M8 14.5s1.5 2 4 2 4-2 4-2" /><circle cx="9" cy="9.5" r=".6" fill="currentColor" /><circle cx="15" cy="9.5" r=".6" fill="currentColor" /></svg>

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -114,6 +115,12 @@ func (s *Server) roomPanelRoutes(mux *http.ServeMux) {
 				return
 			}
 			x.PartyID = p.ID
+		}
+		if b.Kind != "voice" {
+			if muted, err := s.Rooms.Muted(r.Context(), id, b.AccountID); err != nil || muted {
+				fail(w, cmp.Or(err, rooms.ErrTalkUsedUp))
+				return
+			}
 		}
 		left := -1
 		if b.Kind == "voice" {

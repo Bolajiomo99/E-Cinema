@@ -131,6 +131,13 @@ func TestRoomPanel(t *testing.T) {
 	if left, _ := st.UseTalk(ctx, "panel-test", guest, "free", 100); left != 0 {
 		t.Fatalf("last seconds = %d", left)
 	}
+	// Once it is all used, a free member is muted for text and files too; others are not.
+	if m, err := st.Muted(ctx, "panel-test", guest); err != nil || !m {
+		t.Fatalf("guest muted = %v, %v", m, err)
+	}
+	if m, _ := st.Muted(ctx, "panel-test", stranger); m {
+		t.Fatal("stranger muted")
+	}
 	if _, err := st.UseTalk(ctx, "panel-test", stranger, "free", 301); !errors.Is(err, rooms.ErrTalkUsedUp) {
 		t.Fatalf("first note too long: %v", err)
 	}

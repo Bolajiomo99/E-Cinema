@@ -317,6 +317,10 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 					}
 					party = c.partyID
 				}
+				if muted, err := store.Muted(ctx, room, pass.AccountID); err == nil && muted {
+					say(ErrTalkUsedUp)
+					continue
+				}
 				m, err := store.PostWith(ctx, room, pass.AccountID, pass.Name, in.Body, Extra{PartyID: party, Lang: c.lang, Country: c.country})
 				if err != nil {
 					if !errors.Is(err, ErrTooFast) && !errors.Is(err, ErrEmpty) {

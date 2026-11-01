@@ -2076,7 +2076,11 @@ body:has(.co) { background: #0a0a0c; }
 .rp-talk-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
 .rp-talk-bar span { display: block; height: 100%; background: #f5a524; transition: width .4s; }
 .rp-talk p { margin: 0; font: 500 12px/18px Manrope, sans-serif; color: #8b8b96; }
-.rp-talk.out .rp-talk-row { color: #ff8a96; }
+.rp-talk.out { background: rgba(227,24,45,.08); border-top-color: rgba(227,24,45,.18); }
+.rp-talk.out .rp-talk-row { font-weight: 600; }
+.rp-talk.out .rp-talk-row a { color: #e3182d; }
+.rp-talk.out p { font-size: 13px; color: #6e6e7a; }
+.rp-compose > input:disabled, .rp-compose .rp-mic:disabled, .rp-compose .rp-icon:disabled { opacity: .4; }
 .rp-compose { position: relative; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid #222228; }
 .rp-compose > input:not([type=file]) { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid #2a2a31; background: #1b1b20; color: #f4f4f6; padding: 0 15px; font: 500 14px Manrope, sans-serif; }
 .rp-compose > input:disabled { opacity: .5; }
