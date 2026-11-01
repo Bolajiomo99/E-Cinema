@@ -143,6 +143,8 @@ const webEnv = {
   PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
   PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  // Voice notes in the watch room get an auto-transcript from ElevenLabs speech to text.
+  ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
   CHANNEL3_API_KEY: process.env.CHANNEL3_API_KEY,
   NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY,
   ...r2Env,

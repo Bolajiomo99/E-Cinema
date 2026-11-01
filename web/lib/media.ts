@@ -1,5 +1,5 @@
 import "server-only";
-import { GetObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Private media in Cloudflare R2. Viewers only ever get short-lived signed links.
@@ -99,4 +99,14 @@ export async function trailer(film: string): Promise<{ url: string; studio: bool
   }
   const stand = await filmStream(new Date());
   return stand ? { url: stand.sd, studio: false, endSec: 120, credit: `${stand.title} · ${stand.credit} · ${stand.license}` } : null;
+}
+
+// Watch-room uploads (voice notes, photos, files) live under rooms/<showtime>/ and are only
+// ever handed out through the room's own media route, which checks the viewer's ticket.
+export async function putRoomObject(key: string, body: Buffer, contentType: string) {
+  await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType, CacheControl: "private, max-age=86400" }));
+}
+
+export async function roomObjectLink(key: string) {
+  return getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: LINK_SECONDS });
 }
