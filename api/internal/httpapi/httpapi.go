@@ -161,6 +161,18 @@ func (s *Server) Routes() http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		// A licence renewal or upgrade: one more year on the paid plan.
+		if rn, err := s.Licensing.MarkRenewed(r.Context(), body.OrderID); err != nil || rn != nil {
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			if rn.Account != "" {
+				s.note(rn.Account, notify.New{Kind: "payment", Title: "Licence " + rn.Licence + " renewed", Body: "Valid until " + rn.ValidUntil.Format("2 Jan 2006") + ".", Link: "/partner/licence", Dedupe: "renew:" + body.OrderID})
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		// A shop order: placed once paid, and the buyer's open pages hear about it.
 		if o, err := s.Shop.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil || o != nil {
 			if err != nil {

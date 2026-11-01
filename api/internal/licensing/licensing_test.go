@@ -226,4 +226,26 @@ func TestLicensing(t *testing.T) {
 	if err := st.Settings(ctx, l, "Lagos", "https://www.yabaprints.ng/"); err != nil {
 		t.Fatal(err)
 	}
+	// Renewal: a year from the current end date, on the same or a bigger plan; repeats are no-ops.
+	ls, _ = st.For(ctx, staff)
+	if err := st.StartRenewal(ctx, ls, staff, "growth", "RENEWTEST1"); !errors.Is(err, licensing.ErrForbidden) {
+		t.Fatalf("staff renewing: %v", err)
+	}
+	if _, err := licensing.RenewalQuote(l, "global"); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("global quote: %v", err)
+	}
+	p.Exec(ctx, `DELETE FROM licence_renewals WHERE order_id = 'RENEWTEST1'`)
+	if err := st.StartRenewal(ctx, l, owner, l.Plan.ID, "RENEWTEST1"); err != nil {
+		t.Fatal(err)
+	}
+	rn, err := st.MarkRenewed(ctx, "RENEWTEST1")
+	if err != nil || rn == nil || !rn.ValidUntil.Equal(l.ValidUntil.AddDate(0, 0, 365)) {
+		t.Fatalf("renewed = %+v, %v (was %v)", rn, err, l.ValidUntil)
+	}
+	if again, _ := st.MarkRenewed(ctx, "RENEWTEST1"); again == nil || !again.ValidUntil.Equal(rn.ValidUntil) {
+		t.Fatalf("repeat renewal = %+v", again)
+	}
+	if none, _ := st.MarkRenewed(ctx, "NOT-A-RENEWAL"); none != nil {
+		t.Fatal("unknown renewal matched")
+	}
 }

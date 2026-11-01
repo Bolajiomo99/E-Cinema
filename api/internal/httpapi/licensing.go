@@ -229,6 +229,21 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 			reply(w, map[string]bool{"ok": true}, s.Licensing.Settings(r.Context(), l, b.City, b.Website))
 		}
 	}))
+	mux.HandleFunc("POST /v1/me/partner/renew", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {
+		var b struct {
+			Plan    string `json:"plan"`
+			OrderID string `json:"orderId"`
+		}
+		if decodeN(w, r, 1<<10, &b) {
+			if b.OrderID == "" {
+				// A quote only: the web app asks before it creates the PayPal order.
+				p, err := licensing.RenewalQuote(l, b.Plan)
+				reply(w, p, err)
+				return
+			}
+			reply(w, map[string]bool{"ok": true}, s.Licensing.StartRenewal(r.Context(), l, a.ID, b.Plan, b.OrderID))
+		}
+	}))
 	mux.HandleFunc("PUT /v1/me/partner/payout", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {
 		var b struct{ Bank, Number, Name string }
 		if decodeN(w, r, 2<<10, &b) {
