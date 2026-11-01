@@ -111,6 +111,11 @@ func (s Store) IssueCode(ctx context.Context, identifier, purpose string) (CodeI
 	if err != nil {
 		return CodeIssued{}, err
 	}
+	return s.issue(ctx, acctID, email, name, phone, purpose)
+}
+
+// issue makes and stores a fresh code for a known account, texting it when it can.
+func (s Store) issue(ctx context.Context, acctID, email, name, phone, purpose string) (CodeIssued, error) {
 	if until, err := s.pausedUntil(ctx, acctID, purpose); err != nil {
 		return CodeIssued{}, err
 	} else if time.Until(until) > 0 {

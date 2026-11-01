@@ -116,6 +116,12 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 			if !verified {
 				return ErrAdult
 			}
+			// The seat is stage 4 of the adult unlock: the three fund stages come first.
+			if n, err := paidStages(ctx, tx, accountID, showtimeID); err != nil {
+				return err
+			} else if n < len(Funds) {
+				return ErrStagesDue
+			}
 		}
 		var used int
 		if err := tx.QueryRow(ctx, `SELECT `+taken+` FROM showtimes s WHERE s.id = $1`, showtimeID).Scan(&used); err != nil {
@@ -150,6 +156,10 @@ func (st Store) MarkPaid(ctx context.Context, orderID, captureID string) error {
 	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = $2
 	  WHERE paypal_order_id = $1 AND (status = 'held' OR (status = 'paid' AND paypal_capture_id = $2))`, orderID, captureID)
 	if err == nil && tag.RowsAffected() == 0 {
+		// Not a seat: it may be one of the adult unlock stages.
+		if ok, err := st.markStagePaid(ctx, orderID, captureID); err != nil || ok {
+			return err
+		}
 		return ErrNoHold
 	}
 	return err

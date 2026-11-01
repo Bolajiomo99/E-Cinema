@@ -3,6 +3,7 @@ package tickets_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -138,6 +139,7 @@ func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'adult-test'`)
+		s.DB.Exec(ctx, `DELETE FROM adult_stages WHERE showtime_id = 'adult-test'`)
 		s.DB.Exec(ctx, `DELETE FROM accounts WHERE id = $1`, id)
 	})
 	if _, err := s.Hold(ctx, "adult-test", "v", 1, ""); !errors.Is(err, tickets.ErrAdult) {
@@ -149,8 +151,40 @@ func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
 	if _, err := s.DB.Exec(ctx, `UPDATE accounts SET face_verified_at = now(), id_verified_at = now() WHERE id = $1`, id); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); !errors.Is(err, tickets.ErrStagesDue) {
+		t.Fatalf("verified, no stages paid: want ErrStagesDue, got %v", err)
+	}
+	// Stages go in order: 1 charity, 2 church, 3 mosque. Each is paid through PayPal.
+	if err := s.AttachStage(ctx, id, "adult-test", 2, "ORD-A2", 879, "USD"); !errors.Is(err, tickets.ErrWrongStage) {
+		t.Fatalf("skipping stage 1: %v", err)
+	}
+	for i := 1; i <= 3; i++ {
+		order := fmt.Sprintf("ORD-A%d-%s", i, id[:8])
+		if err := s.AttachStage(ctx, id, "adult-test", i, "STALE-"+order, 879, "USD"); err != nil {
+			t.Fatalf("stage %d: %v", i, err)
+		}
+		if err := s.AttachStage(ctx, id, "adult-test", i, order, 879, "USD"); err != nil {
+			t.Fatalf("stage %d retry: %v", i, err)
+		}
+		if err := s.MarkPaid(ctx, "STALE-"+order, "CAP-STALE"); !errors.Is(err, tickets.ErrNoHold) {
+			t.Fatalf("a replaced stage order must not pay: %v", err)
+		}
+		if err := s.MarkPaid(ctx, order, "CAP-"+order); err != nil {
+			t.Fatalf("pay stage %d: %v", i, err)
+		}
+		if err := s.MarkPaid(ctx, order, "CAP-"+order); err != nil {
+			t.Fatalf("webhook repeat for stage %d: %v", i, err)
+		}
+	}
+	got, err := s.Stages(ctx, id, "adult-test")
+	if err != nil || len(got) != 3 || got[2].Fund != "mosque" || got[0].Status != "paid" {
+		t.Fatalf("stages = %+v, %v", got, err)
+	}
+	if err := s.AttachStage(ctx, id, "adult-test", 3, "ORD-AGAIN", 879, "USD"); !errors.Is(err, tickets.ErrWrongStage) {
+		t.Fatalf("paying stage 3 twice: %v", err)
+	}
 	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); err != nil {
-		t.Fatalf("verified: %v", err)
+		t.Fatalf("all stages paid: %v", err)
 	}
 }
 
