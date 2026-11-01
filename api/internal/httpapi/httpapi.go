@@ -12,6 +12,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
@@ -32,6 +33,8 @@ type Server struct {
 	Parties parties.Store
 	// Classics are member requests to bring older films back.
 	Classics classics.Store
+	// Gifts are seats, plans and credit bought for someone else.
+	Gifts gifts.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -114,7 +117,13 @@ func (s *Server) Routes() http.Handler {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "orderId and captureId are required"})
 			return
 		}
-		if err := s.Tickets.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil {
+		// A gift order pays for a gift row, and for a seat gift also its hold.
+		gift, err := s.Gifts.MarkPaid(r.Context(), body.OrderID, body.CaptureID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if err := s.Tickets.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil && !(gift && errors.Is(err, tickets.ErrNoHold)) {
 			fail(w, err)
 			return
 		}
@@ -180,6 +189,7 @@ func (s *Server) Routes() http.Handler {
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
 	s.lotteryRoutes(mux)
+	s.giftRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -240,6 +250,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrPINPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, gifts.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, gifts.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, gifts.ErrNotPaid), errors.Is(err, gifts.ErrRedeemed), errors.Is(err, gifts.ErrOwnGift), errors.Is(err, gifts.ErrHoldGone), errors.Is(err, gifts.ErrSeatInUse):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, gifts.ErrNoCredit):
+		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNotSoldOut), errors.Is(err, tickets.ErrDrawClosed), errors.Is(err, tickets.ErrHasTicket), errors.Is(err, tickets.ErrNoWin):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNotVerified):

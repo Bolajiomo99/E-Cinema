@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
@@ -91,6 +92,7 @@ func run() error {
 		Hub:            rooms.NewHub(),
 		Parties:        parties.Store{DB: pool},
 		Classics:       classics.Store{DB: pool},
+		Gifts:          gifts.Store{DB: pool},
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
 	// Accounts whose 30-day deletion grace has ended are removed hourly.
@@ -98,6 +100,11 @@ func run() error {
 		t := time.NewTicker(time.Hour)
 		defer t.Stop()
 		for {
+			if n, err := srv.Gifts.EndGiftPlans(ctx); err != nil {
+				slog.Error("end gift plans", "err", err)
+			} else if n > 0 {
+				slog.Info("gifted plans ended", "count", n)
+			}
 			if n, err := srv.Accounts.PurgeDeleted(ctx); err != nil {
 				slog.Error("purge deleted accounts", "err", err)
 			} else if n > 0 {
