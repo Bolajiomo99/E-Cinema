@@ -1829,3 +1829,40 @@ body:has(.co) { background: #0a0a0c; }
   .ul-total { flex-direction: column; align-items: stretch; gap: 8px; }
   .ul-bar { width: 100%; max-width: none; }
 }
+
+/* Sold out · free-seat lottery (Figma 31:1121) */
+.so { min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 48px 16px 96px; box-sizing: border-box; background: linear-gradient(180deg, #2a070c, #0a0a0c 70%); text-align: center; }
+.so-top { display: flex; align-items: center; justify-content: space-between; width: 1312px; max-width: 100%; }
+.so-badge { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 4px; background: #ff2d46; color: #fff; font: 700 11px/14px Manrope, sans-serif; letter-spacing: .8px; }
+.so-badge i { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.so h1 { margin: 0; font: 400 96px/92px "Bebas Neue", sans-serif; letter-spacing: 1px; color: #f4f4f6; }
+.so-lead { margin: 0; font: 500 17px/26px Manrope, sans-serif; color: #a6a6b0; }
+.so-stats { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.so-stats > div { width: 200px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px; border-radius: 16px; background: #131317; border: 1px solid #26262e; }
+.so-stats b { font: 400 40px/44px "Bebas Neue", sans-serif; letter-spacing: .5px; color: #f4f4f6; }
+.so-stats small { font: 500 13px/18px Manrope, sans-serif; color: #6e6e7a; }
+.so-entry { width: 640px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 18px; background: #131317; border: 1px solid #e3182d; text-align: left; }
+.so-r { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.so-entry h2 { margin: 0; font: 700 18px/26px Manrope, sans-serif; letter-spacing: -.2px; color: #f4f4f6; }
+.so-entry > p { margin: 0; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.so-tag { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; background: #fff; color: #0a0a0c; font: 700 11px/14px Manrope, sans-serif; letter-spacing: .8px; }
+.so-boost { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 10px; background: #1b1b21; }
+.so-boost p { margin: 0; flex: 1; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.so-entry > p.so-audit { font-size: 12px; color: #6e6e7a; }
+.so-audit code { font: 500 11px/16px ui-monospace, monospace; color: #a6a6b0; word-break: break-all; }
+.so-err { color: #f87171 !important; }
+.so-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.so-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 52px; padding: 0 28px; border: 0; border-radius: 10px; background: #e3182d; color: #fff; font: 600 16px/20px Manrope, sans-serif; letter-spacing: .1px; text-decoration: none; cursor: pointer; }
+.so-btn.sec { background: rgba(255,255,255,.12); color: #f4f4f6; }
+.so-btn:disabled { opacity: .55; cursor: not-allowed; }
+.so-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 720px) {
+  .so { padding: 20px 16px 140px; gap: 18px; }
+  .so h1 { font-size: 64px; line-height: 64px; }
+  .so-lead { font-size: 15px; line-height: 22px; }
+  .so-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .so-stats > div { width: auto; padding: 14px; }
+  .so-entry { padding: 18px; }
+  .so-ctas { flex-direction: column; width: 100%; }
+  .so-btn { width: 100%; }
+}

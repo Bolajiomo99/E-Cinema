@@ -157,3 +157,32 @@ export async function sendAdultCode(to: string, code: string, film: string, stag
     `Your E-Cinema adult payment code is ${code}. It works once and ends in 10 minutes.`,
   );
 }
+
+// Sold-out lottery (Figma 31:1121): the draw picked you.
+export async function sendLotteryWin(to: string, name: string, film: string, showtimeId: string) {
+  const link = `${site()}/sold-out/${showtimeId}`;
+  await send(
+    to,
+    `You won a free seat for ${film}`,
+    layout("Claim it within 30 minutes", "You won a free seat",
+      p(`${esc(name || "Hi")}, the draw for <b>${esc(film)}</b> picked your entry. The seat is yours for nothing, but it is held for only 30 minutes.`) +
+      button(link, "Claim my free seat") +
+      note("If you do not claim it in time, the seat goes back to the waitlist."),
+      "FREE SEAT"),
+    `You won a free seat for ${film}. Claim it within 30 minutes: ${link}`,
+  );
+}
+
+// Waitlist: a paid seat came back.
+export async function sendSeatBack(to: string, name: string, film: string, showtimeId: string) {
+  const link = `${site()}/checkout?film=${showtimeId}`;
+  await send(
+    to,
+    `A seat for ${film} just came back`,
+    layout("First come, first served", "A seat came back",
+      p(`${esc(name || "Hi")}, someone gave back a seat for <b>${esc(film)}</b>. Everyone on the waitlist for it hears at the same time as seats return, so be quick.`) +
+      button(link, "Get the seat"),
+      "WAITLIST"),
+    `A seat for ${film} came back: ${link}`,
+  );
+}

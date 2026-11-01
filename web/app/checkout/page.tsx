@@ -7,7 +7,7 @@ import Methods from "@/components/checkout/Methods";
 import { methodsFor } from "@/lib/pay-methods";
 import HashToFilm from "@/components/checkout/HashToFilm";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
-import { myTickets } from "@/lib/api";
+import { myTickets, seatsFor } from "@/lib/api";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
@@ -50,6 +50,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   }
 
   if (s.adult) redirect(`/unlock/${s.id}`);
+  // Sold out: the free-seat lottery and the waitlist take over (Figma 31:1121).
+  const left = await seatsFor(s.id);
+  if (left && left.available === 0) redirect(`/sold-out/${s.id}`);
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   let profile: { plan?: string; planStatus?: string; country?: string; audioLanguage?: string } | undefined;
   if (me && session) {
