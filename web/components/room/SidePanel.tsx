@@ -12,7 +12,7 @@ export type ChatMessage = {
   id: number; name: string; body: string; mine?: boolean; createdAt: string;
   scope?: "room" | "world"; lang?: string; country?: string; kind?: "text" | "voice" | "image" | "file"; media?: Media; spoiler?: boolean;
 };
-export type Friend = { name: string; country?: string; host?: boolean; online: boolean };
+export type Friend = { name: string; country?: string; host?: boolean; online: boolean; me?: boolean };
 export type Party = { id: string; code: string; name: string; rules: string[]; members: Friend[] };
 export type Poll = { id: number; scope: "room" | "world"; question: string; options: { text: string; votes: number }[]; votes: number; languages: number; mine?: number };
 

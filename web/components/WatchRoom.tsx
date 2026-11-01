@@ -8,6 +8,7 @@ import { TrackChip, trackName, useTracks } from "@/components/room/Tracks";
 import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 import ReviewCard from "@/components/review/ReviewCard";
+import CatchUp from "@/components/room/CatchUp";
 
 export type RoomMessage = ChatMessage;
 
@@ -15,6 +16,7 @@ type Showtime = { id: string; film: string; studio: string; startsAt: string; du
 type Phase = "connecting" | "waiting" | "playing" | "ended";
 type Floater = { id: number; emoji: string; left: number };
 
+const CATCH_UP_AFTER = 5 * 60; // seconds into the film before a late arrival gets "what you missed"
 const DRIFT_LIMIT = 0.5; // seconds; beyond this the player jumps back into step with everyone
 
 const pad = (n: number) => String(Math.floor(n)).padStart(2, "0");
@@ -232,6 +234,7 @@ export default function WatchRoom({
   const [mark, setMark] = useState({ x: 12, y: 18 });
   const [audioOnly, setAudioOnly] = useState(false);
   const [wasLive, setWasLive] = useState(false);
+  const [caughtUp, setCaughtUp] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
 
   const elapsedSec = nowMs === null ? 0 : Math.max(0, Math.min(totalSec, (nowMs - startMs) / 1000));
@@ -352,6 +355,12 @@ export default function WatchRoom({
           </div>
         )}
 
+        {live && !joined && !caughtUp && elapsedSec >= CATCH_UP_AFTER && !dropped && (
+          <CatchUp showtimeId={showtime.id} minutesIn={Math.floor(elapsedSec / 60)} partyName={party?.name}
+            friends={(party?.members ?? []).filter((m) => !m.me && (room.onlineNames ? room.onlineNames.includes(m.name) : m.online)).map((m) => m.name.split(" ")[0])}
+            onJoin={() => { setCaughtUp(true); join(); }} />
+        )}
+
         {phase === "ended" && (
           <div className="room-review">
             <ReviewCard compact showtimeId={showtime.id} eyebrow={`${showtime.film.toUpperCase()} · THE END`} initial={myReview}
@@ -386,7 +395,7 @@ export default function WatchRoom({
             <div className="room-mark" style={{ left: `${mark.x}%`, top: `${mark.y}%` }} aria-hidden>
               E-CINEMA · {viewerCode} · {wallClock}
             </div>
-            {live && !joined && (
+            {live && !joined && elapsedSec < CATCH_UP_AFTER && (
               <button className="room-join" onClick={join}>
                 <span>▶</span> Join the screening
               </button>
