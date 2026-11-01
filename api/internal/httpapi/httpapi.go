@@ -179,6 +179,7 @@ func (s *Server) Routes() http.Handler {
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
+	s.lotteryRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	return securityHeaders(mux)
 }
@@ -239,6 +240,10 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrPINPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+	case errors.Is(err, tickets.ErrNotSoldOut), errors.Is(err, tickets.ErrDrawClosed), errors.Is(err, tickets.ErrHasTicket), errors.Is(err, tickets.ErrNoWin):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, tickets.ErrNotVerified):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrStagesDue), errors.Is(err, tickets.ErrWrongStage), errors.Is(err, tickets.ErrNotAdultFlm):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, rooms.ErrNoTicket), errors.Is(err, tickets.ErrAdult), errors.Is(err, accounts.ErrNotAdult), errors.Is(err, accounts.ErrNoPIN):
