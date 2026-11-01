@@ -8,6 +8,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -234,7 +235,7 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, accounts.ErrCodeExpired):
 		writeJSON(w, http.StatusGone, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadInput), errors.Is(err, accounts.ErrBadCode):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
 	case errors.Is(err, accounts.ErrBadLogin), errors.Is(err, accounts.ErrNoSession), errors.Is(err, accounts.ErrBadPasskey), errors.Is(err, accounts.ErrWrongPassword):
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrEmailTaken), errors.Is(err, accounts.ErrPhoneTaken), errors.Is(err, accounts.ErrReusedPass), errors.Is(err, accounts.ErrUsernameTaken), errors.Is(err, accounts.ErrLastSignIn):
@@ -297,4 +298,13 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
+}
+
+// readable drops the "invalid input: " prefix from wrapped input errors, so people read only the advice.
+func readable(err error) string {
+	m := strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": ")
+	if m == "" {
+		return m
+	}
+	return strings.ToUpper(m[:1]) + m[1:]
 }
