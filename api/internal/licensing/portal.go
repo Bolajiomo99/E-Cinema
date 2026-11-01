@@ -487,33 +487,60 @@ func thousands(n int64) string {
 // ---- Sales analytics (Figma 116:441) ----
 
 type Analytics struct {
-	AvgOrderNGN   int64   `json:"avgOrderNgn"`
-	AvgOrderPrev  int64   `json:"avgOrderPrev"`
-	RepeatPct     int     `json:"repeatPct"`
-	PremiereLift  float64 `json:"premiereLift"` // average daily sales on film nights over other days
-	ReturnsPct    float64 `json:"returnsPct"`
-	ByCountry     []Share `json:"byCountry"`
-	ByCity        []Share `json:"byCity"`
-	CityCountry   string  `json:"cityCountry"`
-	PremiereHours []int   `json:"premiereHours"` // units by hour, 0-23, on film nights
-	ByFilm        []Share `json:"byFilm"`
-	Orders        int     `json:"orders"`
+	AvgOrderNGN   int64    `json:"avgOrderNgn"`
+	AvgOrderPrev  int64    `json:"avgOrderPrev"`
+	RepeatPct     int      `json:"repeatPct"`
+	PremiereLift  float64  `json:"premiereLift"` // average daily sales on film nights over other days
+	ReturnsPct    float64  `json:"returnsPct"`
+	ByCountry     []Share  `json:"byCountry"`
+	ByCity        []Share  `json:"byCity"`
+	CityCountry   string   `json:"cityCountry"`
+	PremiereHours []int    `json:"premiereHours"` // units by hour, 0-23, on film nights
+	ByFilm        []Share  `json:"byFilm"`
+	Orders        int      `json:"orders"`
+	Countries     []string `json:"countries"`
+	Products      []string `json:"products"`
 }
 
-func (st Store) Analytics(ctx context.Context, l Licensee, now time.Time) (Analytics, error) {
-	a := Analytics{ByCountry: []Share{}, ByCity: []Share{}, ByFilm: []Share{}, PremiereHours: make([]int, 24), CityCountry: l.Country}
-	window := `licence = $1 AND sold_at > $2::timestamptz - interval '90 days' AND sold_at <= $2::timestamptz`
+// Filter narrows the analytics page (Figma 116:441 chips): a period, a country and a product.
+type Filter struct {
+	Days    int    // 30, 90 or 0 for this year
+	Country string // "" for all
+	Product string // product name, "" for all
+}
+
+func (f Filter) since(now time.Time) time.Time {
+	switch f.Days {
+	case 90:
+		return now.AddDate(0, 0, -90)
+	case 0:
+		return time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	return now.AddDate(0, 0, -30)
+}
+
+func (st Store) Analytics(ctx context.Context, l Licensee, now time.Time, f Filter) (Analytics, error) {
+	a := Analytics{ByCountry: []Share{}, ByCity: []Share{}, ByFilm: []Share{}, PremiereHours: make([]int, 24), CityCountry: l.Country, Countries: []string{}, Products: []string{}}
+	if f.Country != "" {
+		a.CityCountry = f.Country
+	}
+	since := f.since(now)
+	prev := since.Add(-now.Sub(since))
+	// $1 licence, $2 now, $3 since, $4 country, $5 product, $6 start of the previous period.
+	match := `licence = $1 AND ($4 = '' OR country = $4) AND ($5 = '' OR product = $5)`
+	window := match + ` AND sold_at > $3 AND sold_at <= $2`
+	args := []any{l.Licence, now, since, f.Country, f.Product, prev}
 	var buyers, repeat, returned int
 	var filmDays, otherDays int
 	var filmSales, otherSales int64
-	err := st.DB.QueryRow(ctx, `SELECT count(*), coalesce(avg(amount_ngn) FILTER (WHERE sold_at > $2::timestamptz - interval '30 days'), 0)::bigint,
-	    coalesce(avg(amount_ngn) FILTER (WHERE sold_at <= $2::timestamptz::timestamptz - interval '30 days' AND sold_at > $2::timestamptz - interval '60 days'), 0)::bigint,
-	    count(*) FILTER (WHERE returned),
+	err := st.DB.QueryRow(ctx, `SELECT count(*) FILTER (WHERE sold_at > $3), coalesce(avg(amount_ngn) FILTER (WHERE sold_at > $3), 0)::bigint,
+	    coalesce(avg(amount_ngn) FILTER (WHERE sold_at <= $3), 0)::bigint,
+	    count(*) FILTER (WHERE returned AND sold_at > $3),
 	    (SELECT count(*) FROM (SELECT buyer FROM licence_sales WHERE `+window+` AND buyer <> '' GROUP BY buyer) b),
 	    (SELECT count(*) FROM (SELECT buyer FROM licence_sales WHERE `+window+` AND buyer <> '' GROUP BY buyer HAVING count(*) > 1) b),
-	    count(DISTINCT sold_at::date) FILTER (WHERE film <> ''), count(DISTINCT sold_at::date) FILTER (WHERE film = ''),
-	    coalesce(sum(amount_ngn) FILTER (WHERE film <> '' AND NOT returned), 0), coalesce(sum(amount_ngn) FILTER (WHERE film = '' AND NOT returned), 0)
-	  FROM licence_sales WHERE `+window, l.Licence, now).Scan(&a.Orders, &a.AvgOrderNGN, &a.AvgOrderPrev, &returned, &buyers, &repeat, &filmDays, &otherDays, &filmSales, &otherSales)
+	    count(DISTINCT sold_at::date) FILTER (WHERE film <> '' AND sold_at > $3), count(DISTINCT sold_at::date) FILTER (WHERE film = '' AND sold_at > $3),
+	    coalesce(sum(amount_ngn) FILTER (WHERE film <> '' AND NOT returned AND sold_at > $3), 0), coalesce(sum(amount_ngn) FILTER (WHERE film = '' AND NOT returned AND sold_at > $3), 0)
+	  FROM licence_sales WHERE `+match+` AND sold_at > $6 AND sold_at <= $2`, args...).Scan(&a.Orders, &a.AvgOrderNGN, &a.AvgOrderPrev, &returned, &buyers, &repeat, &filmDays, &otherDays, &filmSales, &otherSales)
 	if err != nil {
 		return a, err
 	}
@@ -526,8 +553,8 @@ func (st Store) Analytics(ctx context.Context, l Licensee, now time.Time) (Analy
 	if filmDays > 0 && otherDays > 0 && otherSales > 0 {
 		a.PremiereLift = math.Round((float64(filmSales)/float64(filmDays))/(float64(otherSales)/float64(otherDays))*10) / 10
 	}
-	group := func(col, extra string, args ...any) ([]Share, error) {
-		rows, err := st.DB.Query(ctx, `SELECT `+col+`, sum(amount_ngn) FROM licence_sales WHERE `+window+` AND NOT returned `+extra+` GROUP BY 1 ORDER BY 2 DESC LIMIT 6`, append([]any{l.Licence, now}, args...)...)
+	group := func(col, extra string, more ...any) ([]Share, error) {
+		rows, err := st.DB.Query(ctx, `SELECT `+col+`, sum(amount_ngn) FROM licence_sales WHERE `+window+` AND NOT returned `+extra+` GROUP BY 1 ORDER BY 2 DESC LIMIT 6`, append(args[:5:5], more...)...)
 		if err != nil {
 			return nil, err
 		}
@@ -540,13 +567,17 @@ func (st Store) Analytics(ctx context.Context, l Licensee, now time.Time) (Analy
 	if a.ByCountry, err = group("country", ""); err != nil {
 		return a, err
 	}
-	if a.ByCity, err = group("coalesce(nullif(city, ''), 'Not given')", "AND country = $3", l.Country); err != nil {
+	if a.ByCity, err = group("coalesce(nullif(city, ''), 'Not given')", "AND country = $6", a.CityCountry); err != nil {
 		return a, err
 	}
 	if a.ByFilm, err = group("coalesce(nullif(film, ''), 'No film')", ""); err != nil {
 		return a, err
 	}
-	rows, err := st.DB.Query(ctx, `SELECT extract(hour FROM sold_at AT TIME ZONE 'Africa/Lagos')::int, sum(qty) FROM licence_sales WHERE `+window+` AND film <> '' AND NOT returned GROUP BY 1`, l.Licence, now)
+	// The choices for the filter chips: every country and product this partner has sold.
+	if err := st.DB.QueryRow(ctx, `SELECT coalesce(array_agg(DISTINCT country), '{}'), coalesce(array_agg(DISTINCT product), '{}') FROM licence_sales WHERE licence = $1`, l.Licence).Scan(&a.Countries, &a.Products); err != nil {
+		return a, err
+	}
+	rows, err := st.DB.Query(ctx, `SELECT extract(hour FROM sold_at AT TIME ZONE 'Africa/Lagos')::int, sum(qty) FROM licence_sales WHERE `+window+` AND film <> '' AND NOT returned GROUP BY 1`, args[:5]...)
 	if err != nil {
 		return a, err
 	}

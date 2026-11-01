@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -143,7 +145,9 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 		case "overview":
 			v, err = s.Licensing.Overview(ctx, l, now)
 		case "analytics":
-			v, err = s.Licensing.Analytics(ctx, l, now)
+			q := r.URL.Query()
+			days, _ := strconv.Atoi(q.Get("days"))
+			v, err = s.Licensing.Analytics(ctx, l, now, licensing.Filter{Days: days, Country: strings.ToUpper(q.Get("country")), Product: q.Get("product")})
 		case "codes":
 			v, err = s.Licensing.Codes(ctx, l, now)
 		case "royalties":
