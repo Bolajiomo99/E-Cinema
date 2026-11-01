@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"log/slog"
 	"net/http"
@@ -35,7 +36,8 @@ type Server struct {
 	// Classics are member requests to bring older films back.
 	Classics classics.Store
 	// Gifts are seats, plans and credit bought for someone else.
-	Gifts gifts.Store
+	Gifts   gifts.Store
+	Reviews reviews.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -187,6 +189,7 @@ func (s *Server) Routes() http.Handler {
 	s.accountRoutes(mux)
 	s.roomRoutes(mux)
 	s.roomPanelRoutes(mux)
+	s.reviewRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -295,6 +298,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
 	case errors.Is(err, rooms.ErrTalkUsedUp):
 		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})
+	case errors.Is(err, reviews.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, reviews.ErrNotWatched):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, reviews.ErrTooSoon):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, rooms.ErrBadReason):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
 	case errors.Is(err, tickets.ErrNoStudio):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
