@@ -255,11 +255,11 @@ jobs:
           echo "brand ok"
           # Licensing: plans and agreement load, the apply flow opens for a member, a member
           # without a licence is sent to apply, and the licensing desk stays staff only.
-          curl -fsS "$web/licensing" | grep -q "Choose Growth"
-          curl -fsS "$web/licensing/agreement" | grep -q "Merch licence agreement"
-          curl -fsS -b "$jar" "$web/licensing/apply?plan=growth" | grep -q "Continue to plan"
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/partner" | grep -q "/licensing/apply"
-          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/licensing/desk")" = 404 ]
+          curl -fsS "$web/licensing" | grep -q "Choose Growth" || { echo "licensing page"; exit 1; }
+          curl -fsS "$web/licensing/agreement" | grep -q "Merch licence agreement" || { echo "agreement page"; exit 1; }
+          curl -fsSL -b "$jar" "$web/licensing/apply?plan=growth" | grep -q "Continue to plan" || { echo "apply page"; exit 1; }
+          curl -sL -o /dev/null -w '%{url_effective}' -b "$jar" "$web/partner" | grep -q "/licensing/apply" || { echo "partner redirect"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/licensing/desk")" = 404 ] || { echo "desk not 404"; exit 1; }
           echo "licensing ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
