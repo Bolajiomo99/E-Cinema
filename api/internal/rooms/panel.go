@@ -35,6 +35,7 @@ type Friend struct {
 	Country   string `json:"country,omitempty"`
 	Host      bool   `json:"host,omitempty"`
 	Online    bool   `json:"online"`
+	Me        bool   `json:"me,omitempty"`
 }
 
 // PartyFor returns the viewer's party for this premiere, or nil when they are not in one.

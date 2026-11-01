@@ -22,6 +22,7 @@ func (s *Server) addPanel(ctx context.Context, out map[string]any, showtimeID, a
 		online := s.Hub.OnlineIn(showtimeID, party.ID)
 		for i := range party.Members {
 			party.Members[i].Online = online[party.Members[i].AccountID]
+			party.Members[i].Me = party.Members[i].AccountID == accountID
 		}
 		msgs, err := s.Rooms.RecentParty(ctx, showtimeID, accountID, party.ID, 50)
 		if err != nil {
@@ -51,12 +52,17 @@ func (s *Server) addPanel(ctx context.Context, out map[string]any, showtimeID, a
 func (s *Server) roomPanelRoutes(mux *http.ServeMux) {
 	// A cheap check for the web app's room routes: may this viewer use the room, and in which language do they read.
 	mux.HandleFunc("GET /v1/rooms/{id}/access", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
-		ok, err := s.Tickets.HasTicket(r.Context(), r.PathValue("id"), a.ID)
+		st, err := s.Tickets.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
 			fail(w, err)
 			return
 		}
-		out := map[string]any{"hasTicket": ok, "accountId": a.ID, "lang": "en"}
+		ok, err := s.Tickets.HasTicket(r.Context(), st.ID, a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		out := map[string]any{"hasTicket": ok, "accountId": a.ID, "lang": "en", "startsAt": st.StartsAt.UTC()}
 		if p, err := s.Accounts.GetProfile(r.Context(), a.ID); err == nil && p.AppLanguage != "" {
 			out["lang"] = p.AppLanguage
 		}
