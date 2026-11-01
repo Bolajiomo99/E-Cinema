@@ -186,3 +186,39 @@ export async function sendSeatBack(to: string, name: string, film: string, showt
     `A seat for ${film} came back: ${link}`,
   );
 }
+
+// Gift a seat (Figma 94:1398): the gift lands on its delivery date.
+export async function sendGift(to: string, name: string, giver: string, what: string, message: string, code: string) {
+  const link = `${site()}/gift/redeem/${code}`;
+  await send(
+    to,
+    `${giver} sent you ${what} on E-Cinema`,
+    layout(message || "Open it to claim your gift", `${name ? `${name}, you` : "You"} have a gift`,
+      p(`${esc(giver)} sent you <b>${esc(what)}</b>.`) +
+      (message ? note(`“${esc(message)}”<br><span style="color:#7a7a84">${esc(giver)}</span>`) + `<div style="height:20px"></div>` : "") +
+      button(link, "Claim my gift") +
+      facts([["Gift code", code], ["Works in", "Any country, any currency"]]) +
+      p("Sign in or join free to claim it. The gift is yours once you claim it; until then nobody else can use the code without this email."),
+      "GIFT",
+      `You got this email because ${giver} sent a gift to this address. We will not email you again unless someone sends you another.`),
+    `${giver} sent you ${what} on E-Cinema.${message ? ` “${message}”` : ""} Claim it: ${link} (code ${code})`,
+    "E-Cinema <gifts@e-cinema.net>",
+  );
+}
+
+// WhatsApp delivery is not switched on yet, so the giver passes the link on themselves.
+export async function sendGiftToForward(to: string, name: string, phone: string, what: string, code: string) {
+  const link = `${site()}/gift/redeem/${code}`;
+  await send(
+    to,
+    `Your gift for ${name || phone} is ready to send`,
+    layout("Forward the link by WhatsApp or text", "Your gift is ready",
+      p(`Your gift of <b>${esc(what)}</b> for ${esc(name || phone)} is ready. Sending it by WhatsApp from E-Cinema is coming soon, so please pass this link on to ${esc(phone || "them")} yourself.`) +
+      facts([["Link", link], ["Gift code", code]]) +
+      button(link, "Open the gift page") +
+      note("Only share this link with the person the gift is for: whoever claims it first gets it."),
+      "GIFT"),
+    `Your gift for ${name || phone} is ready. Send them this link: ${link} (code ${code})`,
+    "E-Cinema <gifts@e-cinema.net>",
+  );
+}

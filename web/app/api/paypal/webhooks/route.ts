@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook, type PayPalEvent } from "@/lib/paypal-webhook";
 import { markPaid, markRefunded, SoldOutError } from "@/lib/api";
+import { sweepGifts } from "@/lib/gifts";
 import { activateFromPayPal, endFromPayPal } from "@/lib/plan-activation";
 import type { Subscription } from "@/lib/paypal-subs";
 
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
     if (orderId && captureId) {
       try {
         await markPaid(orderId, captureId);
+        await sweepGifts(true).catch(() => undefined);
       } catch (err) {
         console.error("Ledger update failed", err instanceof Error ? err.message : err);
         return NextResponse.json({ error: "Retry later" }, { status: 503 }); // PayPal retries

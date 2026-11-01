@@ -4,6 +4,7 @@ import Countdown from "@/components/Countdown";
 import HeroWhen from "@/components/landing/HeroWhen";
 import LanguageDemo from "@/components/landing/LanguageDemo";
 import Logo from "@/components/landing/Logo";
+import LandingFooter from "@/components/landing/LandingFooter";
 import AccountMenu from "@/components/AccountMenu";
 import PremiereStrip from "@/components/landing/PremiereStrip";
 import PlanPickLink from "@/components/plans/PlanPickLink";
@@ -70,12 +71,6 @@ const PLANS: { id: PlanId; badge: string; kind: string; per: string; ticks: stri
 const METHODS = ["Mastercard", "Visa", "Verve", "Paystack", "Flutterwave", "M-Pesa", "UPI", "Apple Pay", "Google Pay", "Bitcoin", "USDC", "Ethereum"];
 const LIVE_METHODS = new Set(["Mastercard", "Visa"]); // through PayPal today
 
-const FOOTER: [string, [string, string][]][] = [
-  ["Watch", [["Premieres", "#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
-  ["Account", [["Plans", "/plans"], ["Student offer", "#plans"], ["Gift a seat", "/checkout"]]],
-  ["Company", [["About", "/terms"], ["Studios and distributors", "mailto:admin@e-cinema.net?subject=Studios"], ["Careers", "mailto:admin@e-cinema.net?subject=Careers"]]],
-  ["Help", [["Help centre", "/concierge"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
-];
 
 export default async function Home() {
   const [me, seats, loc] = await Promise.all([currentAccount(), liveSeats(), readLocale()]);
@@ -226,20 +221,7 @@ export default async function Home() {
         <p className="lp-note">Cards work today through PayPal. The other methods switch on next, starting with Paystack and Flutterwave.</p>
       </section>
 
-      <footer className="lp-footer">
-        <div className="lp-footer-brand">
-          <Logo />
-          <p>© 2026 Online Cinema Ltd, trading as E-Cinema. Premieres, together.</p>
-        </div>
-        <div className="lp-footer-cols">
-          {FOOTER.map(([head, links]) => (
-            <div key={head}>
-              <p>{({ Watch: t.watch, Account: t.account, Company: t.company, Help: t.help } as Record<string, string>)[head] ?? head}</p>
-              {links.map(([t, href]) => <a key={t} href={href}>{t}</a>)}
-            </div>
-          ))}
-        </div>
-      </footer>
+      <LandingFooter heads={{ Watch: t.watch, Account: t.account, Company: t.company, Help: t.help }} />
     </div>
   );
 }

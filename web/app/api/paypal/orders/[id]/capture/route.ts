@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { paypalError, paypalOrders } from "@/lib/paypal";
 import { markPaid } from "@/lib/api";
+import { sweepGifts } from "@/lib/gifts";
 
 // Captures an approved order and confirms the seat. A declined card answers 422 with the issue code.
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -13,6 +14,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     if (capture?.status === "DECLINED") return NextResponse.json({ error: "Payment declined", issue: "INSTRUMENT_DECLINED" }, { status: 422 });
     // The webhook does this too; doing it here means the seat is confirmed straight away.
     if (result.status === "COMPLETED" && capture?.id) await markPaid(id, capture.id).catch((e) => console.error("Ledger update failed", e instanceof Error ? e.message : e));
+    // A gift set to arrive now goes out straight away.
+    if (result.status === "COMPLETED") await sweepGifts(true).catch(() => undefined);
     return NextResponse.json({ status: result.status, captureId: capture?.id, amount: capture?.amount });
   } catch (err) {
     return paypalError(err);
