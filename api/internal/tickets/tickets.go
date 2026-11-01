@@ -17,6 +17,9 @@ var (
 	ErrBadSeats = errors.New("seats must be between 1 and 10")
 	ErrNoHold   = errors.New("hold not found, expired or already used")
 	ErrAdult    = errors.New("this screening is for verified adults: pass the face and ID check first")
+
+	ErrBadQuality      = errors.New("quality must be hd, 4k or vr")
+	ErrTooLateToCancel = errors.New("seats can be cancelled until 7 days before the screening")
 )
 
 const HoldFor = 10 * time.Minute
@@ -75,9 +78,16 @@ func (st Store) Get(ctx context.Context, id string) (Showtime, error) {
 // Hold reserves seats for HoldFor. The showtime row is locked, so concurrent buyers queue
 // on it and the availability check plus insert happen as one step.
 // accountID links the seats to a signed-in viewer; it is empty for guest holds.
-func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats int, accountID string) (Hold, error) {
+func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats int, accountID string, quality ...string) (Hold, error) {
 	if seats < 1 || seats > 10 {
 		return Hold{}, ErrBadSeats
+	}
+	q := "hd"
+	if len(quality) > 0 && quality[0] != "" {
+		q = quality[0]
+	}
+	if q != "hd" && q != "4k" && q != "vr" {
+		return Hold{}, ErrBadQuality
 	}
 	var h Hold
 	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
@@ -115,9 +125,9 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 			return ErrSoldOut
 		}
 		h = Hold{ShowtimeID: showtimeID, Seats: seats, TotalCents: price * seats, Currency: currency}
-		return tx.QueryRow(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, expires_at, account_id)
-		  VALUES ($1, $2, $3, now() + $4::interval, NULLIF($5, '')::uuid) RETURNING id, expires_at`,
-			showtimeID, seats, viewerRef, HoldFor.String(), accountID).Scan(&h.ID, &h.ExpiresAt)
+		return tx.QueryRow(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, expires_at, account_id, quality)
+		  VALUES ($1, $2, $3, now() + $4::interval, NULLIF($5, '')::uuid, $6) RETURNING id, expires_at`,
+			showtimeID, seats, viewerRef, HoldFor.String(), accountID, q).Scan(&h.ID, &h.ExpiresAt)
 	})
 	return h, err
 }
@@ -164,7 +174,8 @@ type MyTicket struct {
 	HoldID     string    `json:"holdId"`
 	ShowtimeID string    `json:"showtimeId"`
 	Seats      int       `json:"seats"`
-	Status     string    `json:"status"` // held or paid
+	Status     string    `json:"status"`  // held or paid
+	Quality    string    `json:"quality"` // hd, 4k or vr
 	OrderID    string    `json:"orderId,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 	CreatedAt  time.Time `json:"createdAt"`
@@ -172,7 +183,7 @@ type MyTicket struct {
 
 // Mine lists an account's paid seats and its live holds, soonest screening first.
 func (st Store) Mine(ctx context.Context, accountID string) ([]MyTicket, error) {
-	rows, err := st.DB.Query(ctx, `SELECT h.id, h.showtime_id, h.seats, h.status, COALESCE(h.paypal_order_id, ''), h.expires_at, h.created_at
+	rows, err := st.DB.Query(ctx, `SELECT h.id, h.showtime_id, h.seats, h.status, h.quality, COALESCE(h.paypal_order_id, ''), h.expires_at, h.created_at
 	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
 	  WHERE h.account_id = $1 AND (h.status = 'paid' OR (h.status = 'held' AND h.expires_at > now()))
 	  ORDER BY s.starts_at, h.created_at`, accountID)
@@ -183,7 +194,7 @@ func (st Store) Mine(ctx context.Context, accountID string) ([]MyTicket, error) 
 	out := []MyTicket{}
 	for rows.Next() {
 		var t MyTicket
-		if err := rows.Scan(&t.HoldID, &t.ShowtimeID, &t.Seats, &t.Status, &t.OrderID, &t.ExpiresAt, &t.CreatedAt); err != nil {
+		if err := rows.Scan(&t.HoldID, &t.ShowtimeID, &t.Seats, &t.Status, &t.Quality, &t.OrderID, &t.ExpiresAt, &t.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -238,4 +249,47 @@ func (st Store) Tonight(ctx context.Context) ([]Upcoming, error) {
 		}
 	}
 	return out, rows.Err()
+}
+
+// CancelWindow is how close to the screening a paid seat can still be cancelled for a refund.
+const CancelWindow = 7 * 24 * time.Hour
+
+// Cancellable is a paid hold the viewer may cancel, with what to refund on PayPal.
+type Cancellable struct {
+	HoldID    string `json:"holdId"`
+	CaptureID string `json:"captureId"`
+}
+
+// CanCancel checks that the hold is the account's own paid seat and the screening is more than
+// CancelWindow away. It changes nothing; the seat is released once PayPal confirms the refund.
+func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancellable, error) {
+	var c Cancellable
+	var status string
+	var startsAt time.Time
+	err := st.DB.QueryRow(ctx, `SELECT h.id, COALESCE(h.paypal_capture_id, ''), h.status, s.starts_at
+	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
+	  WHERE h.id = $1 AND h.account_id = $2`, holdID, accountID).Scan(&c.HoldID, &c.CaptureID, &status, &startsAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return c, ErrNoHold
+	}
+	if err != nil {
+		return c, err
+	}
+	if status != "paid" || c.CaptureID == "" {
+		return c, ErrNoHold
+	}
+	if time.Until(startsAt) <= CancelWindow {
+		return c, ErrTooLateToCancel
+	}
+	return c, nil
+}
+
+// MarkRefunded frees the seats of a refunded capture. Repeats for the same refund change nothing.
+func (st Store) MarkRefunded(ctx context.Context, captureID, refundID string) error {
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = $2, refunded_at = now()
+	  WHERE paypal_capture_id = $1 AND (status = 'paid' OR (status = 'refunded' AND paypal_refund_id = $2))`, captureID, refundID)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNoHold
+	}
+	return err
 }

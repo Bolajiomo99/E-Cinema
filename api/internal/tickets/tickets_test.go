@@ -266,3 +266,58 @@ func TestTonightCountsPaidSeatsByCountry(t *testing.T) {
 	}
 	t.Fatal("tonight-test missing from Tonight()")
 }
+
+func TestCancelAndRefund(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	newShow(t, s, "cancel-test", 5)
+	s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() + interval '30 days' WHERE id = 'cancel-test'`)
+	s.DB.Exec(ctx, `DELETE FROM accounts WHERE email IN ('cancel-a@example.com', 'cancel-b@example.com')`)
+	var a, b string
+	s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('cancel-a@example.com', 'A', '!') RETURNING id`).Scan(&a)
+	s.DB.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('cancel-b@example.com', 'B', '!') RETURNING id`).Scan(&b)
+
+	if _, err := s.Hold(ctx, "cancel-test", "v", 1, a, "8k"); !errors.Is(err, tickets.ErrBadQuality) {
+		t.Fatalf("bad quality: %v", err)
+	}
+	h, err := s.Hold(ctx, "cancel-test", "v", 2, a, "4k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CanCancel(ctx, a, h.ID); !errors.Is(err, tickets.ErrNoHold) {
+		t.Fatalf("unpaid hold must not be cancellable: %v", err)
+	}
+	s.AttachOrder(ctx, h.ID, "ORDER-CANCEL", 0)
+	if err := s.MarkPaid(ctx, "ORDER-CANCEL", "CAP-CANCEL"); err != nil {
+		t.Fatal(err)
+	}
+	mine, _ := s.Mine(ctx, a)
+	if len(mine) != 1 || mine[0].Quality != "4k" {
+		t.Fatalf("mine = %+v, want one 4k seat", mine)
+	}
+	if _, err := s.CanCancel(ctx, b, h.ID); !errors.Is(err, tickets.ErrNoHold) {
+		t.Fatalf("someone else's seat: %v", err)
+	}
+	c, err := s.CanCancel(ctx, a, h.ID)
+	if err != nil || c.CaptureID != "CAP-CANCEL" {
+		t.Fatalf("can cancel = %+v, %v", c, err)
+	}
+	if err := s.MarkRefunded(ctx, "CAP-CANCEL", "REF-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkRefunded(ctx, "CAP-CANCEL", "REF-1"); err != nil {
+		t.Fatalf("repeat refund must be a no-op: %v", err)
+	}
+	st, _ := s.Get(ctx, "cancel-test")
+	if st.Available != 5 {
+		t.Fatalf("available = %d, want the refunded seats back", st.Available)
+	}
+
+	s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() + interval '6 days' WHERE id = 'cancel-test'`)
+	h2, _ := s.Hold(ctx, "cancel-test", "v", 1, a)
+	s.AttachOrder(ctx, h2.ID, "ORDER-CANCEL-2", 0)
+	s.MarkPaid(ctx, "ORDER-CANCEL-2", "CAP-CANCEL-2")
+	if _, err := s.CanCancel(ctx, a, h2.ID); !errors.Is(err, tickets.ErrTooLateToCancel) {
+		t.Fatalf("inside 7 days: %v", err)
+	}
+}

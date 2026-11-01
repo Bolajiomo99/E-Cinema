@@ -67,6 +67,7 @@ func (s *Server) Routes() http.Handler {
 		var body struct {
 			Seats     int    `json:"seats"`
 			ViewerRef string `json:"viewerRef"`
+			Quality   string `json:"quality"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.ViewerRef == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seats and viewerRef are required"})
@@ -82,7 +83,7 @@ func (s *Server) Routes() http.Handler {
 			}
 			accountID = acct.ID
 		}
-		h, err := s.Tickets.Hold(r.Context(), r.PathValue("id"), body.ViewerRef, body.Seats, accountID)
+		h, err := s.Tickets.Hold(r.Context(), r.PathValue("id"), body.ViewerRef, body.Seats, accountID, body.Quality)
 		if err != nil {
 			fail(w, err)
 			return
@@ -114,6 +115,21 @@ func (s *Server) Routes() http.Handler {
 			return
 		}
 		if err := s.Tickets.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	mux.HandleFunc("POST /v1/payments/refunded", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			CaptureID string `json:"captureId"`
+			RefundID  string `json:"refundId"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.CaptureID == "" || body.RefundID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "captureId and refundId are required"})
+			return
+		}
+		if err := s.Tickets.MarkRefunded(r.Context(), body.CaptureID, body.RefundID); err != nil {
 			fail(w, err)
 			return
 		}
@@ -197,10 +213,10 @@ func fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, tickets.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
-	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold), errors.Is(err, tickets.ErrEnded),
+	case errors.Is(err, tickets.ErrSoldOut), errors.Is(err, tickets.ErrNoHold), errors.Is(err, tickets.ErrEnded), errors.Is(err, tickets.ErrTooLateToCancel),
 		errors.Is(err, tickets.ErrNotEnded), errors.Is(err, tickets.ErrNoPayout):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome):
+	case errors.Is(err, tickets.ErrBadSeats), errors.Is(err, tickets.ErrBadOutcome), errors.Is(err, tickets.ErrBadQuality):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrCodeExpired):
 		writeJSON(w, http.StatusGone, map[string]string{"error": err.Error()})

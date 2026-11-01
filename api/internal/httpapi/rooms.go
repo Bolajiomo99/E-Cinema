@@ -61,6 +61,15 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			"expiresAt": exp.UTC(),
 		})
 	}))
+	// Before refunding on PayPal, the web app checks the seat is the viewer's own and still cancellable.
+	mux.HandleFunc("POST /v1/me/holds/{id}/cancel", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		c, err := s.Tickets.CanCancel(r.Context(), a.ID, r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, c)
+	}))
 	// The viewer's own seats: paid tickets and holds waiting for PayPal approval.
 	mux.HandleFunc("GET /v1/me/tickets", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		list, err := s.Tickets.Mine(r.Context(), a.ID)
