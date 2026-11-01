@@ -416,7 +416,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, shop.ErrBadInput), errors.Is(err, shop.ErrEmptyCart), errors.Is(err, shop.ErrNoAddress):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
-	case errors.Is(err, shop.ErrCantShip), errors.Is(err, shop.ErrNotLagos), errors.Is(err, shop.ErrTooLate), errors.Is(err, shop.ErrPriceMoved):
+	case errors.Is(err, shop.ErrCantShip), errors.Is(err, shop.ErrNotLagos), errors.Is(err, shop.ErrTooLate), errors.Is(err, shop.ErrPriceMoved), errors.Is(err, shop.ErrAlreadyAsked):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": readable(err)})
 	case errors.Is(err, shop.ErrNotBuyer):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})

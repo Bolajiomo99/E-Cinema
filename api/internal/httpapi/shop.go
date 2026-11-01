@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
@@ -161,6 +163,46 @@ func (s *Server) shopRoutes(mux *http.ServeMux) {
 		s.orderChanged(o)
 		writeJSON(w, http.StatusOK, o)
 	}))
+	// Refund requests (Figma 96:1426): what each reason would get, then the request itself.
+	mux.HandleFunc("GET /v1/me/orders/{id}/refund", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		o, err := s.Shop.Mine(r.Context(), a.ID, r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		rf, err := s.Shop.RefundFor(r.Context(), a.ID, o.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		verdicts := map[string]any{}
+		for _, k := range []string{"late", "wrong", "damaged", "never"} {
+			if v, err := shop.Judge(o, k, time.Now()); err == nil {
+				verdicts[k] = v
+			} else {
+				verdicts[k] = map[string]any{"blocked": strings.TrimPrefix(err.Error(), shop.ErrBadInput.Error()+": ")}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"order": o, "refund": rf, "verdicts": verdicts, "late": shop.Late(o)})
+	}))
+	mux.HandleFunc("POST /v1/me/orders/{id}/refund", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct {
+			Reason      string `json:"reason"`
+			Note        string `json:"note"`
+			Outcome     string `json:"outcome"`
+			CreditCents int    `json:"creditCents"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		rf, o, err := s.Shop.AskRefund(r.Context(), a.ID, r.PathValue("id"), b.Reason, b.Note, b.Outcome, b.CreditCents, time.Now())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		// The web app refunds an approved PayPal capture; it gets the capture id only here.
+		writeJSON(w, http.StatusCreated, map[string]any{"refund": rf, "order": o, "captureId": o.CaptureID, "method": o.Method})
+	}))
 	mux.HandleFunc("POST /v1/me/orders/{id}/reorder", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		if _, err := s.Shop.Reorder(r.Context(), a.ID, r.PathValue("id")); err != nil {
 			fail(w, err)
@@ -191,6 +233,62 @@ func (s *Server) shopRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"orders": list})
+	}))
+	mux.HandleFunc("GET /v1/shop/refunds", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		review, err := s.Shop.PendingRefunds(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		send, err := s.Shop.ToSend(r.Context())
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"review": review, "send": send})
+	}))
+	mux.HandleFunc("POST /v1/shop/refunds/{id}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Action string `json:"action"` // approve, decline or sent
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if b.Action == "sent" {
+			if err := s.Shop.MarkSent(r.Context(), r.PathValue("id")); err != nil {
+				fail(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if b.Action != "approve" && b.Action != "decline" {
+			fail(w, shop.ErrBadInput)
+			return
+		}
+		rf, o, err := s.Shop.DecideRefund(r.Context(), r.PathValue("id"), b.Action == "approve")
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"refund": rf, "order": o, "captureId": o.CaptureID, "method": o.Method})
+	}))
+	mux.HandleFunc("POST /v1/shop/refunds/{id}/paid", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			RefundID string `json:"refundId"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if b.RefundID == "" {
+			fail(w, shop.ErrBadInput)
+			return
+		}
+		if err := s.Shop.MarkRefundPaid(r.Context(), r.PathValue("id"), b.RefundID); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	mux.HandleFunc("POST /v1/shop/orders/{number}/status", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct {
