@@ -152,6 +152,9 @@ jobs:
           curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -q "Unlock in 4 stages"
           curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -q "/signin"
           echo "18+ unlock ok"
+          # Sold-out page: a premiere with seats left sends you to checkout; the lottery API answers.
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/lagos-lights-2026-11-04" | grep -q "/checkout"
+          echo "sold-out lottery ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
