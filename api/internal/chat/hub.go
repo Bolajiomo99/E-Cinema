@@ -20,6 +20,9 @@ type Event struct {
 	Upto           int64    `json:"upto,omitempty"`
 	Online         []string `json:"online,omitempty"` // hello: friends online now
 	On             bool     `json:"on,omitempty"`
+	// call: a voice or video call signal (ring, accept, decline, end, offer, answer, ice)
+	// relayed as is between the two people in a direct chat.
+	Call json.RawMessage `json:"call,omitempty"`
 }
 
 type client struct {
@@ -107,7 +110,7 @@ func (h *Hub) Live(store Store, check func(token string) (string, error), origin
 			return
 		}
 		defer conn.CloseNow()
-		conn.SetReadLimit(1024)
+		conn.SetReadLimit(64 << 10) // call offers carry SDP
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
@@ -155,32 +158,88 @@ func (h *Hub) Live(store Store, check func(token string) (string, error), origin
 			}
 		}()
 
-		// The only thing a client says over the socket is "I am typing"; at most every 2s.
-		var lastTyping time.Time
+		// A client says two things over the socket: "I am typing" (at most every 2s) and call
+		// signals for a direct chat (at most 120 every 10s, enough for ICE candidates).
+		var lastTyping, window time.Time
+		signals := 0
 		for {
 			_, data, err := conn.Read(ctx)
 			if err != nil {
 				return
 			}
 			var in struct {
-				Type           string `json:"type"`
-				ConversationID string `json:"conversationId"`
+				Type           string          `json:"type"`
+				ConversationID string          `json:"conversationId"`
+				Call           json.RawMessage `json:"call"`
 			}
-			if json.Unmarshal(data, &in) != nil || in.Type != "typing" || time.Since(lastTyping) < 2*time.Second {
+			if json.Unmarshal(data, &in) != nil {
 				continue
 			}
-			lastTyping = time.Now()
-			ids, err := store.Members(ctx, me, in.ConversationID)
-			if err != nil {
-				continue
-			}
-			others := ids[:0]
-			for _, id := range ids {
-				if id != me {
-					others = append(others, id)
+			switch in.Type {
+			case "typing":
+				if time.Since(lastTyping) < 2*time.Second {
+					continue
 				}
+				lastTyping = time.Now()
+			case "call":
+				if time.Since(window) > 10*time.Second {
+					window, signals = time.Now(), 0
+				}
+				if signals++; signals > 120 || !validSignal(in.Call) {
+					continue
+				}
+			default:
+				continue
 			}
-			h.Send(others, Event{Type: "typing", ConversationID: in.ConversationID, AccountID: me})
+			others, err := h.others(ctx, store, me, in.ConversationID, in.Type == "call")
+			if err != nil || len(others) == 0 {
+				if in.Type == "call" {
+					c.out <- Event{Type: "call", ConversationID: in.ConversationID, Call: json.RawMessage(`{"kind":"unavailable"}`)}
+				}
+				continue
+			}
+			if in.Type == "typing" {
+				h.Send(others, Event{Type: "typing", ConversationID: in.ConversationID, AccountID: me})
+			} else {
+				h.Send(others, Event{Type: "call", ConversationID: in.ConversationID, AccountID: me, Call: in.Call})
+			}
 		}
 	}
+}
+
+// others is everyone else in a conversation me belongs to. For calls it must be a direct
+// chat whose other person has the site open; group calls are not offered.
+func (h *Hub) others(ctx context.Context, store Store, me, conv string, call bool) ([]string, error) {
+	if call {
+		peer, err := store.CallPeer(ctx, me, conv)
+		if err != nil || !h.IsOnline(peer) {
+			return nil, err
+		}
+		return []string{peer}, nil
+	}
+	ids, err := store.Members(ctx, me, conv)
+	if err != nil {
+		return nil, err
+	}
+	out := []string{}
+	for _, id := range ids {
+		if id != me {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
+var signalKinds = map[string]bool{"ring": true, "accept": true, "decline": true, "busy": true, "end": true, "offer": true, "answer": true, "ice": true}
+
+// validSignal checks a call signal has a known kind and, for ring, a known media type.
+func validSignal(raw json.RawMessage) bool {
+	var s struct {
+		Kind  string `json:"kind"`
+		Video *bool  `json:"video"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &s) != nil || !signalKinds[s.Kind] {
+		return false
+	}
+	return s.Kind != "ring" || s.Video != nil
 }

@@ -3,8 +3,11 @@ package chat_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
@@ -28,7 +31,9 @@ func TestChat(t *testing.T) {
 	p.Exec(ctx, `DELETE FROM conversations WHERE created_by IN (SELECT id FROM accounts WHERE email LIKE 'chat-%@example.com')`)
 	p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'chat-%@example.com'`)
 	p.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'chat-room'`)
+	run := fmt.Sprint(time.Now().UnixNano())
 	id := func(email, name, country string) string {
+		email = strings.Replace(email, "@", "+"+run+"@", 1)
 		var x string
 		if err := p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash, country, app_language) VALUES ($1, $2, 'x', $3, 'en') RETURNING id`, email, name, country).Scan(&x); err != nil {
 			t.Fatal(err)
@@ -48,7 +53,7 @@ func TestChat(t *testing.T) {
 	if got, _ := s.Search(ctx, ada, "Eve"); len(got) != 0 {
 		t.Fatalf("stranger listed by name: %+v", got)
 	}
-	if got, _ := s.Search(ctx, ada, "chat-eve@example.com"); len(got) != 1 {
+	if got, _ := s.Search(ctx, ada, "chat-eve+"+run+"@example.com"); len(got) != 1 {
 		t.Fatalf("exact email search = %+v", got)
 	}
 
@@ -140,6 +145,16 @@ func TestChat(t *testing.T) {
 	if groups, _ := s.List(ctx, lea, "groups"); len(groups) != 1 || groups[0].ID != g || groups[0].Members != 3 {
 		t.Fatalf("groups = %+v", groups)
 	}
+	// Calls: only the other person in a direct chat, never a group.
+	if peer, err := s.CallPeer(ctx, ada, dm); err != nil || peer != kwame {
+		t.Fatalf("call peer = %q %v", peer, err)
+	}
+	if _, err := s.CallPeer(ctx, ada, g); !errors.Is(err, chat.ErrNotMember) {
+		t.Fatalf("group call: %v", err)
+	}
+	if _, err := s.CallPeer(ctx, eve, dm); !errors.Is(err, chat.ErrNotMember) {
+		t.Fatalf("outsider call: %v", err)
+	}
 	if err := s.Report(ctx, ada, m.ID, "spam"); err != nil {
 		t.Fatal(err)
 	}
@@ -150,5 +165,8 @@ func TestChat(t *testing.T) {
 	s.Unfriend(ctx, ada, kwame)
 	if _, _, err := s.Send(ctx, ada, dm, chat.New{Kind: "text", Body: "still there?"}); !errors.Is(err, chat.ErrNotFriends) {
 		t.Fatalf("send after unfriend: %v", err)
+	}
+	if _, err := s.CallPeer(ctx, ada, dm); !errors.Is(err, chat.ErrNotFriends) {
+		t.Fatalf("call after unfriend: %v", err)
 	}
 }

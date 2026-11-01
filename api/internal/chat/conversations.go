@@ -546,3 +546,35 @@ func (s Store) Unread(ctx context.Context, me string) (int, error) {
 	  AND m.id > cm.last_read AND m.sender_id IS DISTINCT FROM $1 WHERE cm.account_id = $1`, me).Scan(&n)
 	return n, err
 }
+
+// CallPeer is the other person in a direct chat I may call: friends, and neither has
+// blocked the other.
+func (s Store) CallPeer(ctx context.Context, me, conv string) (string, error) {
+	var peer string
+	err := pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT om.account_id::text FROM conversations c
+		  JOIN conversation_members mm ON mm.conversation_id = c.id AND mm.account_id = $2
+		  JOIN conversation_members om ON om.conversation_id = c.id AND om.account_id <> $2
+		  WHERE c.id::text = $1 AND c.kind = 'dm'`, conv, me).Scan(&peer)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotMember
+		}
+		if err != nil {
+			return err
+		}
+		if b, err := blockedEither(ctx, tx, me, peer); err != nil || b {
+			if err == nil {
+				err = ErrBlocked
+			}
+			return err
+		}
+		if f, err := areFriends(ctx, tx, me, peer); err != nil || !f {
+			if err == nil {
+				err = ErrNotFriends
+			}
+			return err
+		}
+		return nil
+	})
+	return peer, err
+}
