@@ -136,3 +136,20 @@ export async function filmFile(quality: "sd" | "hd"): Promise<{ body: ReadableSt
     throw err;
   }
 }
+
+// A byte range of the screening's film, for the VR cinema: a headset draws the film onto a
+// WebGL screen, which needs the video from our own origin. Gated by the room's ticket check.
+export async function filmRange(quality: "sd" | "hd", range: string | null): Promise<{ body: ReadableStream; status: number; headers: Record<string, string> } | null> {
+  try {
+    const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: `${STAND_IN}/feature-${quality === "hd" ? "720p" : "360p"}.mp4`, Range: range ?? undefined }));
+    if (!obj.Body) return null;
+    const headers: Record<string, string> = { "Content-Type": "video/mp4", "Accept-Ranges": "bytes", "Cache-Control": "private, no-store", "Content-Length": String(obj.ContentLength ?? 0) };
+    if (obj.ContentRange) headers["Content-Range"] = obj.ContentRange;
+    return { body: obj.Body.transformToWebStream(), status: obj.ContentRange ? 206 : 200, headers };
+  } catch (err) {
+    const name = (err as { name?: string }).name;
+    if (name === "NoSuchKey") return null;
+    if (name === "InvalidRange") return { body: new ReadableStream({ start: (c) => c.close() }), status: 416, headers: {} };
+    throw err;
+  }
+}
