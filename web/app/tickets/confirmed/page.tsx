@@ -32,7 +32,7 @@ export default async function Confirmed({ searchParams }: { searchParams: Promis
   const url = `https://e-cinema.net/#premieres`;
 
   return (
-    <main className="ok">
+    <main className="ok-page">
       <div className="ok-top"><Logo /></div>
       <span className="ok-check" aria-hidden>
         <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>

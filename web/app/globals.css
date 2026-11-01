@@ -1166,10 +1166,10 @@ a.lp-plan:hover .lp-plan-cta { color: #fff; }
 .tr-note { margin: 0; padding: 12px 18px; font-size: 12px; color: #8a8a94; }
 
 /* Payment success (Figma 29:590) */
-.ok { box-sizing: border-box; min-height: 100dvh; padding: 56px 24px 64px; display: flex; flex-direction: column; align-items: center; gap: 28px; background: #0a0a0c; color: #f4f4f6; text-align: center; }
+.ok-page { box-sizing: border-box; min-height: 100dvh; padding: 56px 24px 64px; display: flex; flex-direction: column; align-items: center; gap: 28px; background: #0a0a0c; color: #f4f4f6; text-align: center; }
 .ok-top { width: min(1312px, 100%); display: flex; justify-content: space-between; }
 .ok-check { width: 64px; height: 64px; border-radius: 32px; background: #22c55e; display: grid; place-items: center; }
-.ok h1 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 800; letter-spacing: -.5px; }
+.ok-page h1 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 800; letter-spacing: -.5px; }
 .ok-lead { margin: -12px 0 0; color: #a6a6b0; font-size: 17px; line-height: 26px; font-weight: 500; max-width: 720px; }
 .ok-ticket { width: min(820px, 100%); display: flex; text-align: left; border-radius: 20px; border: 1px solid #26262e; background: #131317; overflow: hidden; }
 .ok-poster { position: relative; flex: none; width: 260px; min-height: 380px; display: flex; align-items: flex-end; padding: 14px; box-sizing: border-box; overflow: hidden; }
@@ -1196,8 +1196,8 @@ a.lp-plan:hover .lp-plan-cta { color: #fff; }
 .ok-plan-art span { align-self: flex-start; }
 .ok-plan-art b { font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 56px; line-height: 52px; }
 @media (max-width: 720px) {
-  .ok { padding: 24px 16px 96px; gap: 22px; }
-  .ok h1 { font-size: 30px; line-height: 36px; }
+  .ok-page { padding: 24px 16px 96px; gap: 22px; }
+  .ok-page h1 { font-size: 30px; line-height: 36px; }
   .ok-ticket { flex-direction: column; }
   .ok-poster, .ok-plan-art { width: 100%; min-height: 180px; }
   .ok-info { padding: 22px; }
