@@ -171,6 +171,14 @@ func (st Store) SetQty(ctx context.Context, accountID, productID, variant string
 	if p.Ships == "digital" {
 		return fmt.Errorf("%w: gift cards are sent from the gift page", ErrBadInput)
 	}
+	if variant == "" && add {
+		// The bundle offer and quick adds take the first colour and size.
+		parts := make([]string, len(p.Options))
+		for i, o := range p.Options {
+			parts[i] = o.Values[0]
+		}
+		variant = strings.Join(parts, " · ")
+	}
 	v, ok := validVariant(p, variant)
 	if !ok {
 		return fmt.Errorf("%w: pick %s", ErrBadInput, optionNames(p))
