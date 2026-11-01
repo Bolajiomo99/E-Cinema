@@ -267,6 +267,17 @@ jobs:
           done
           curl -fsS "$web/cookies" | grep -q "Reject all extras" || { echo "cookie choices"; exit 1; }
           echo "legal ok"
+          # Company pages, careers and business quotes (Figma 94:947 to 94:1239, 114:1273 to 114:1531).
+          curl -fsS "$web/about" | grep -q "PREMIERES, TOGETHER." || { echo "about"; exit 1; }
+          curl -fsS "$web/for-studios" | grep -q "How it works" || { echo "for studios"; exit 1; }
+          curl -fsS "$web/careers" | grep -q "Open roles" || { echo "careers"; exit 1; }
+          curl -fsS "$web/careers/jobs" | grep -q "How roles are shared" || { echo "jobs board"; exit 1; }
+          curl -fsS "$web/business" | grep -q "Get a quote" || { echo "business"; exit 1; }
+          curl -fsS "$api/v1/jobs" | grep -q '"ngShare"' || { echo "jobs api"; exit 1; }
+          curl -fsS "$api/v1/about" | grep -q '"members"' || { echo "about api"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/careers/desk")" = 404 ] || { echo "hiring desk not 404"; exit 1; }
+          curl -fsS -b "$jar" "$web/help/refund" | grep -q "Request a refund" || { echo "refund page"; exit 1; }
+          echo "company ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
