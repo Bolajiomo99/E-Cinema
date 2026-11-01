@@ -57,7 +57,7 @@ export default async function LicensingPage() {
               <em>+ {p.royaltyPct}% of sales</em>
               <span>{PLAN_LINE[p.id]}</span>
               {p.feeNgn ? (
-                <a className={`vf-btn ${p.id === "growth" ? "red" : "soft"}`} href={`/licensing/apply?plan=${p.id}`}>Choose {p.name}</a>
+                <a className={`vf-btn ${p.id === "growth" ? "red" : "soft"}`} href={`/licensing/apply?plan=${p.id}`}>{`Choose ${p.name}`}</a>
               ) : (
                 <a className="vf-btn soft" href="mailto:admin@e-cinema.net?subject=Global%20merch%20licence">Talk to sales</a>
               )}

@@ -261,6 +261,12 @@ jobs:
           curl -sL -o /dev/null -w '%{url_effective}' -b "$jar" "$web/partner" | grep -q "/licensing/apply" || { echo "partner redirect"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/licensing/desk")" = 404 ] || { echo "desk not 404"; exit 1; }
           echo "licensing ok"
+          # Legal pages and cookie choices (Figma 92:841 to 92:1350).
+          for pg in terms privacy cookies refunds legal/kids legal/studios legal/community; do
+            curl -fsS "$web/$pg" | grep -q 'class="lp lg"' || { echo "legal $pg"; exit 1; }
+          done
+          curl -fsS "$web/cookies" | grep -q "Reject all extras" || { echo "cookie choices"; exit 1; }
+          echo "legal ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
