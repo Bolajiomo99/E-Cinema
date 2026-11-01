@@ -286,6 +286,10 @@ jobs:
           curl -fsS -b "$jar" "$web/family" | grep -q "Family and kids" || { echo "family page"; exit 1; }
           curl -fsS -b "$jar" "$web/kids" | grep -q "Moonlight Fox" || { echo "kids cinema"; exit 1; }
           echo "family ok"
+          # VR cinema (Figma 52:1122): gated to VR seat holders, film only for ticket holders.
+          curl -fsS -b "$jar" "$web/room/iron-delta-2026-12-14/vr" | grep -q "Get a VR seat" || { echo "vr gate"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/iron-delta-2026-12-14/film")" = 403 ] || { echo "vr film not 403"; exit 1; }
+          echo "vr ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
           ps=$(curl -s -b "$jar" -H "Origin: $web" -H 'Content-Type: application/json' -d "{\"showtimeId\":\"$film\"}" "$web/api/pay/paystack")
