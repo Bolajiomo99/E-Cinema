@@ -52,7 +52,11 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
   const stream = mediaEnabled ? await filmStream(endsAt) : null;
   const wsBase = (process.env.API_URL ?? "").replace(/^http/, "ws");
   // The lobby shows how the viewer will hear and read the film.
-  const [prof, loc] = await Promise.all([accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null), readLocale()]);
+  const [prof, loc, rev] = await Promise.all([
+    accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null),
+    readLocale(),
+    accountApi("GET", `/v1/me/reviews/${showtime}`, undefined, session).catch(() => null),
+  ]);
   const pref = (prof?.status === 200 ? (prof.body as { audioLanguage?: string }).audioLanguage : undefined) || "";
   const original = findShowtime(showtime)?.language ?? "English";
   const audio = pref && langName(pref) !== original ? `${langName(pref)} (AI)` : original;
@@ -86,6 +90,7 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
       dubLanguages={dubLangs}
       prefAudio={pref.split("-")[0]}
       prefSubs={loc.lang.split("-")[0]}
+      myReview={rev?.status === 200 ? ((rev.body as { review?: { stars: number; tags: string[]; body: string } | null }).review ?? null) : null}
     />
   );
 }

@@ -7,6 +7,7 @@ import SidePanel, { type ChatMessage, type Party, type Poll } from "@/components
 import { TrackChip, trackName, useTracks } from "@/components/room/Tracks";
 import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
+import ReviewCard from "@/components/review/ReviewCard";
 
 export type RoomMessage = ChatMessage;
 
@@ -195,6 +196,7 @@ export default function WatchRoom({
   dubLanguages = [],
   prefAudio = "",
   prefSubs = "",
+  myReview = null,
 }: {
   showtime: Showtime;
   viewerCode: string;
@@ -213,6 +215,7 @@ export default function WatchRoom({
   dubLanguages?: string[];
   prefAudio?: string;
   prefSubs?: string;
+  myReview?: { stars: number; tags: string[]; body: string } | null;
 }) {
   const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching, initialRoomMessages, initialPolls);
@@ -350,9 +353,10 @@ export default function WatchRoom({
         )}
 
         {phase === "ended" && (
-          <StateCard overlay icon="film" title="This premiere has ended" action={{ label: "See what is on next", href: "/releases", primary: true }}>
-            Each film screens once. Classic requests and clips from the night are coming soon.
-          </StateCard>
+          <div className="room-review">
+            <ReviewCard compact showtimeId={showtime.id} eyebrow={`${showtime.film.toUpperCase()} · THE END`} initial={myReview}
+              next={{ text: "Each film screens once. See what is on next.", href: "/releases", cta: "Release calendar" }} />
+          </div>
         )}
 
         {dropped && (
