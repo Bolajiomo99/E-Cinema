@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/brand"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/careers"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
@@ -111,6 +112,7 @@ func run() error {
 		Shop:           shop.Store{DB: pool},
 		Brand:          brand.Store{DB: pool},
 		Licensing:      licensing.Store{DB: pool},
+		Careers:        careers.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}

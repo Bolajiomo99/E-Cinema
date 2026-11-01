@@ -15,6 +15,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/brand"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/careers"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
@@ -63,6 +64,8 @@ type Server struct {
 	Brand brand.Store
 	// Licensing runs the licensed merch partners and their portal.
 	Licensing licensing.Store
+	// Careers runs the jobs board, applications and group screening quotes.
+	Careers careers.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -282,6 +285,7 @@ func (s *Server) Routes() http.Handler {
 	s.shopRoutes(mux)
 	s.brandRoutes(mux)
 	s.licensingRoutes(mux)
+	s.careersRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -406,6 +410,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, careers.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, careers.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, careers.ErrClosed), errors.Is(err, careers.ErrApplied):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, careers.ErrNotEligible):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, licensing.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, licensing.ErrBadInput), errors.Is(err, licensing.ErrLimit):
@@ -477,6 +489,7 @@ func readable(err error) string {
 	m := strings.TrimPrefix(strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": "), shop.ErrBadInput.Error()+": ")
 	m = strings.TrimPrefix(m, brand.ErrBadInput.Error()+": ")
 	m = strings.TrimPrefix(strings.TrimPrefix(m, licensing.ErrBadInput.Error()+": "), licensing.ErrLimit.Error()+": ")
+	m = strings.TrimPrefix(m, careers.ErrBadInput.Error()+": ")
 	if m == "" {
 		return m
 	}
