@@ -6,6 +6,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 )
 
 // Library routes (Figma 19:583, 101:1208, 101:1387).
@@ -120,6 +121,8 @@ func (s *Server) libraryRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		_ = s.Notify.AddByEmail(r.Context(), b.Email, notify.New{Kind: "share", Title: a.Name + " shared a collection with you",
+			Body: "It is in your Library under Collections.", Link: "/library?tab=collections", Dedupe: "share:" + r.PathValue("id")})
 		writeJSON(w, http.StatusOK, map[string]string{"name": name})
 	}))
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
@@ -44,6 +45,8 @@ type Server struct {
 	Library library.Store
 	// Insights adds up watch time, chat and spending for the viewer's own dashboard.
 	Insights insights.Store
+	// Notify stores the viewer's notifications.
+	Notify notify.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -138,6 +141,7 @@ func (s *Server) Routes() http.Handler {
 				fail(w, err)
 				return
 			}
+			_ = s.Notify.Captured(r.Context(), body.OrderID)
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -145,6 +149,7 @@ func (s *Server) Routes() http.Handler {
 			fail(w, err)
 			return
 		}
+		_ = s.Notify.Captured(r.Context(), body.OrderID)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	mux.HandleFunc("POST /v1/payments/refunded", s.internal(func(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +165,7 @@ func (s *Server) Routes() http.Handler {
 			fail(w, err)
 			return
 		}
+		_ = s.Notify.Refunded(r.Context(), body.CaptureID)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	mux.HandleFunc("GET /v1/payouts/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +215,7 @@ func (s *Server) Routes() http.Handler {
 	s.rewatchRoutes(mux)
 	s.downloadRoutes(mux)
 	s.insightRoutes(mux)
+	s.notifyRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -333,7 +340,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, insights.ErrBadInput):
+	case errors.Is(err, insights.ErrBadInput), errors.Is(err, notify.ErrBadInput):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotOwned):
 		writeJSON(w, http.StatusPaymentRequired, map[string]string{"error": err.Error()})

@@ -9,15 +9,20 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 )
 
 // Account routes are internal: only the web app calls them, passing the viewer's
 // session token (kept in an httpOnly cookie on the web side) in X-Session-Token.
 // signedInReply answers a sign-in. A new device on an account with login alerts gets a lock token
 // so the web app can send the "New sign-in" email with a working "This wasn't me" button.
-func (s *Server) signedInReply(w http.ResponseWriter, r *http.Request, acct accounts.Account, sess accounts.Session) {
+func (s *Server) signedInReply(w http.ResponseWriter, r *http.Request, acct accounts.Account, sess accounts.Session, device string) {
 	out := map[string]any{"account": acct, "session": sess}
 	if sess.Alert {
+		if device == "" {
+			device = "a new device"
+		}
+		_ = s.Notify.Add(r.Context(), acct.ID, notify.New{Kind: "signin", Title: "New sign-in on " + device, Body: "If this was not you, sign out all devices now.", Link: "/account/devices"})
 		if t, err := s.Accounts.IssueLockToken(r.Context(), acct.ID); err == nil {
 			out["lockToken"] = t
 		}
@@ -61,7 +66,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		s.signedInReply(w, r, acct, sess)
+		s.signedInReply(w, r, acct, sess, b.Device)
 	}))
 	// One-time codes: sign in without a password, or reset it (Figma 16:296, 105:1186-105:1447).
 	// The web app emails the code when the reply carries one; texts go out from here.
@@ -91,7 +96,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		s.signedInReply(w, r, acct, sess)
+		s.signedInReply(w, r, acct, sess, b.Device)
 	}))
 	mux.HandleFunc("POST /v1/codes/reset", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ Identifier, Code string }
@@ -421,7 +426,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		s.signedInReply(w, r, acct, sess)
+		s.signedInReply(w, r, acct, sess, b.Device)
 	}))
 	mux.HandleFunc("GET /v1/passkeys", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		list, err := s.Accounts.Passkeys(r.Context(), a.ID)

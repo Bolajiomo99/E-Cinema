@@ -43,6 +43,7 @@ func (s *Server) giftRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		_ = s.Notify.GiftRedeemed(r.Context(), r.PathValue("code"))
 		writeJSON(w, http.StatusOK, out)
 	}))
 	// Gifts whose delivery time has come, each handed out once; the web app emails them.

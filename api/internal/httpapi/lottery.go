@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
@@ -31,6 +32,10 @@ func (s *Server) lotteryRoutes(mux *http.ServeMux) {
 		if err != nil {
 			fail(w, err)
 			return
+		}
+		for _, wn := range won {
+			_ = s.Notify.Add(r.Context(), wn.AccountID, notify.New{Kind: "lottery", Title: "You won a free seat",
+				Body: "Your lottery seat is held for 30 minutes. Claim it before it goes to the next person.", Link: "/sold-out/" + r.PathValue("id"), Dedupe: "won:" + wn.HoldID})
 		}
 		back, err := s.Tickets.WaitlistDue(r.Context(), r.PathValue("id"))
 		if err != nil {

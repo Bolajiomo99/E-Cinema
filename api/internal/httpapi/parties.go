@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 )
 
@@ -71,6 +72,7 @@ func (s *Server) partyRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		s.notifyInvites(r, a.Name, p, b.Emails)
 		writeJSON(w, http.StatusOK, p)
 	}))
 	mux.HandleFunc("DELETE /v1/parties/{code}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
@@ -80,4 +82,17 @@ func (s *Server) partyRoutes(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+}
+
+// notifyInvites tells invited viewers who already have an account.
+func (s *Server) notifyInvites(r *http.Request, host string, p parties.Party, emails []string) {
+	for _, e := range emails {
+		_ = s.Notify.AddByEmail(r.Context(), e, notify.New{
+			Kind:   "party",
+			Title:  host + " invited you to a watch party",
+			Body:   p.Film + " · " + p.StartsAt.UTC().Format("Mon 15:04") + " UTC",
+			Link:   "/p/" + p.Code,
+			Dedupe: "invite:" + p.Code,
+		})
+	}
 }
