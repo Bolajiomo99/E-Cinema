@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime, type Showtime } from "@/lib/catalog";
 
-export const json = (status: number, body: unknown) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
+export const json = (status: number, body: unknown) =>
+  status === 204 ? new NextResponse(null, { status, headers: { "Cache-Control": "no-store" } }) : NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 export type RoomAccess = { s: Showtime; session: string; accountId: string; lang: string; startsAt: number };
 
