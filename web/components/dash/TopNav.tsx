@@ -20,9 +20,10 @@ export default function TopNav({ me, active, t, country, lang }: { me: Me; activ
           <Link href="/coming-soon" className={cls("coming")}>{t.comingSoon}</Link>
           <Link href={me ? "/home#live" : "/#live"} className={cls("live")}>{t.live}</Link>
           <Link href={me ? "/home#hm-clips" : "/browse"} className={cls("clips")}>Clips</Link>
-          {["Community", "Shop", "Library"].map((l) => (
+          {["Community", "Shop", ...(me ? [] : ["Library"])].map((l) => (
             <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
           ))}
+          {me && <Link href="/library">Library</Link>}
         </div>
       </div>
       <div className="lp-nav-right">

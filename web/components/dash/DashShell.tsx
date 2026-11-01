@@ -19,7 +19,7 @@ export const ITEMS: Item[] = [
   { label: "My tickets", href: "/tickets", icon: I(<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" />) },
   { label: "Library", href: "/library", icon: I(<><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><path d="M7.5 3.5v17M16.5 3.5v17M3.5 8h4M3.5 12h17M3.5 16h4M16.5 8h4M16.5 16h4" /></>) },
   { label: "Downloads", href: "/downloads", icon: I(<><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" /></>) },
-  { label: "Messages", icon: I(<path d="M20.5 11.5a8 8 0 0 1-11.8 7l-4.2 1.2 1.2-4A8 8 0 1 1 20.5 11.5z" />) },
+  { label: "Messages", href: "/messages", icon: I(<path d="M20.5 11.5a8 8 0 0 1-11.8 7l-4.2 1.2 1.2-4A8 8 0 1 1 20.5 11.5z" />) },
   { label: "Notifications", href: "/notifications", icon: I(<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>) },
   { label: "Insights", href: "/insights", icon: I(<path d="M4 4v16h16M8.5 16v-4M12.5 16V8M16.5 16v-6" />) },
   { label: "Watch parties", href: "/parties", icon: I(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.4a6.5 6.5 0 0 1 3 5.6" /></>) },
@@ -29,30 +29,33 @@ export const ITEMS: Item[] = [
 const Ctx = createContext<{ open: boolean; toggle: () => void }>({ open: false, toggle: () => {} });
 const KEY = "ec.sidebar";
 
-// Unread notifications for the sidebar badge, checked every 30 seconds while the tab is visible.
-function useUnread(): number {
+// Unread counts for the sidebar badges, checked every 30 seconds while the tab is visible.
+function useUnread(url: string, event: string, pick: (b: Record<string, number>) => number): number {
   const [n, setN] = useState(0);
   useEffect(() => {
     let stop = false;
     const check = async () => {
       if (stop || document.visibilityState !== "visible") return;
-      const r = await fetch("/api/notifications/unread", { cache: "no-store" }).catch(() => null);
+      const r = await fetch(url, { cache: "no-store" }).catch(() => null);
       if (r?.status === 401) stop = true;
-      if (r?.ok) setN(((await r.json()) as { unread?: number }).unread ?? 0);
+      if (r?.ok) setN(pick((await r.json()) as Record<string, number>));
     };
     check();
     const t = setInterval(check, 30000);
-    window.addEventListener("ec:notifications", check);
+    window.addEventListener(event, check);
     document.addEventListener("visibilitychange", check);
-    return () => { clearInterval(t); window.removeEventListener("ec:notifications", check); document.removeEventListener("visibilitychange", check); };
-  }, []);
+    return () => { clearInterval(t); window.removeEventListener(event, check); document.removeEventListener("visibilitychange", check); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, event]);
   return n;
 }
 
 export function DashShell({ children, defaultOpen = false }: { children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const path = usePathname();
-  const unread = useUnread();
+  const unread = useUnread("/api/notifications/unread", "ec:notifications", (b) => b.unread ?? 0);
+  const chats = useUnread("/api/chat/unread", "ec:messages", (b) => (b.unread ?? 0) + (b.requests ?? 0));
+  const badge: Record<string, number> = { "/notifications": unread, "/messages": chats };
 
   useEffect(() => {
     try {
@@ -96,7 +99,7 @@ export function DashShell({ children, defaultOpen = false }: { children: ReactNo
               return it.href ? (
                 <Link key={it.label} href={it.href} className={`dash-item${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>
                   {it.icon}<span>{it.label}</span>
-                  {it.href === "/notifications" && unread > 0 && <b aria-label={`${unread} unread`}>{unread > 99 ? "99+" : unread}</b>}
+                  {(badge[it.href] ?? 0) > 0 && <b aria-label={`${badge[it.href]} unread`}>{badge[it.href] > 99 ? "99+" : badge[it.href]}</b>}
                 </Link>
               ) : (
                 <span key={it.label} className="dash-item soon" aria-disabled="true" title={`${it.label} is coming soon`}>
