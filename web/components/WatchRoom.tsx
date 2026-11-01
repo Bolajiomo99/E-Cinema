@@ -9,6 +9,7 @@ import type { FilmStream } from "@/lib/media";
 import StateCard from "@/components/states/StateCard";
 import ReviewCard from "@/components/review/ReviewCard";
 import CatchUp from "@/components/room/CatchUp";
+import { useWatchBeat } from "@/components/insights/useWatchBeat";
 
 export type RoomMessage = ChatMessage;
 
@@ -313,6 +314,7 @@ export default function WatchRoom({
 
   const wallClock = nowMs === null ? "" : new Date(nowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const live = phase === "playing";
+  useWatchBeat(showtime.id, "room", live && joined, tracks.audio, tracks.subs);
 
   return (
     <div className="room">

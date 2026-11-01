@@ -49,7 +49,7 @@ export default async function PlayPage({ params }: { params: Promise<{ showtime:
     <LibraryPlayer
       film={s.film} stream={stream} viewerCode={me.id.slice(0, 8).toUpperCase()} original={s.language ?? "English"}
       dubFilm={dubFilm} dubLanguages={langs} prefAudio={p.audioLanguage ?? ""} prefSubs={loc.lang.split("-")[0]}
-      back={`/library?film=${s.id}`}
+      back={`/library?film=${s.id}`} showtimeId={s.id}
     />
   );
 }

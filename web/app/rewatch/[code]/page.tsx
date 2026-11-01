@@ -66,7 +66,7 @@ export default async function RewatchParty({ params }: { params: Promise<{ code:
       </div>
       <LibraryPlayer
         film={p.film} stream={stream} viewerCode={me.id.slice(0, 8).toUpperCase()} original={s?.language ?? "English"}
-        dubFilm={dubFilm} dubLanguages={langs} prefAudio={pa} prefSubs={loc.lang.split("-")[0]} syncStart={start}
+        dubFilm={dubFilm} dubLanguages={langs} prefAudio={pa} prefSubs={loc.lang.split("-")[0]} syncStart={start} showtimeId={p.showtimeId}
       />
     </>
   );

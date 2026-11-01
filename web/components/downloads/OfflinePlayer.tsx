@@ -58,7 +58,7 @@ export default function OfflinePlayer({ id: given }: { id: string }) {
     <LibraryPlayer
       film={file.film} stream={{ hd: url, sd: url, title: "", credit: "", license: "", durationSec: 0 }} credit={file.credit}
       viewerCode={deviceId().slice(0, 8).toUpperCase()} original={file.audio[0] ?? "Original"} dubFilm={id} dubLanguages={[]}
-      prefAudio="" prefSubs="" back="/downloads" offline
+      prefAudio="" prefSubs="" back="/downloads" offline showtimeId={id}
     />
     </>
   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TrackChip, trackName, useTracks } from "@/components/room/Tracks";
+import { useWatchBeat } from "@/components/insights/useWatchBeat";
 
 // Replays from the Library. On its own the viewer can pause and seek; in a rewatch party
 // (syncStart set) everyone follows one shared clock, like the premiere.
@@ -14,9 +15,9 @@ const fmt = (s: number) => {
   return `${h ? `${h}:${String(m).padStart(2, "0")}` : m}:${String(sec).padStart(2, "0")}`;
 };
 
-export default function LibraryPlayer({ film, stream, viewerCode, original, dubFilm, dubLanguages, prefAudio, prefSubs, syncStart, back = "/library", offline = false, credit }: {
+export default function LibraryPlayer({ film, stream, viewerCode, original, dubFilm, dubLanguages, prefAudio, prefSubs, syncStart, back = "/library", offline = false, credit, showtimeId }: {
   film: string; stream: Stream | null; viewerCode: string; original: string; dubFilm: string; dubLanguages: string[];
-  prefAudio: string; prefSubs: string; syncStart?: number; back?: string; offline?: boolean; credit?: string;
+  prefAudio: string; prefSubs: string; syncStart?: number; back?: string; offline?: boolean; credit?: string; showtimeId?: string;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -45,6 +46,7 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
   }, [stream]);
 
   const tracks = useTracks(dubFilm, dubLanguages, prefAudio, prefSubs, video, Math.min(volume, 1));
+  useWatchBeat(showtimeId ?? "", offline ? "offline" : "replay", playing, tracks.audio, tracks.subs);
   useEffect(() => {
     const v = video.current;
     if (!v) return;
