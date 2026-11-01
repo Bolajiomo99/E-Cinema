@@ -7,8 +7,19 @@ import type { OnApproveDataOneTimePayments } from "@paypal/paypal-js/sdk-v6";
 type Status = "loading" | "ready" | "paying" | "paid" | "unavailable" | "error" | "signin";
 
 // Pass showtimeId to create a one-seat order, or orderId to pay an order the concierge prepared.
-export default function PayPalTicketButton({ showtimeId, orderId, quality, label = "Pay with PayPal", className = "pp-button" }: { showtimeId?: string; orderId?: string; quality?: string; label?: string; className?: string }) {
+// create: makes the order itself (the 18+ unlock stages); onPaid: runs after a good capture instead of redirecting.
+export default function PayPalTicketButton({ showtimeId, orderId, quality, label = "Pay with PayPal", className = "pp-button", create, onPaid, disabled }: {
+  showtimeId?: string; orderId?: string; quality?: string; label?: string; className?: string;
+  create?: () => Promise<string>; onPaid?: () => void; disabled?: boolean;
+}) {
+  const createRef = useRef(create);
+  const paidRef = useRef(onPaid);
+  useEffect(() => {
+    createRef.current = create;
+    paidRef.current = onPaid;
+  });
   const [status, setStatus] = useState<Status>("loading");
+  const [err, setErr] = useState("");
   const startRef = useRef<(() => Promise<void>) | null>(null);
   const statusRef = useRef<Status>("loading");
   useEffect(() => {
@@ -33,18 +44,19 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
       const session = sdk.createPayPalOneTimePaymentSession({
         onApprove: async ({ orderId }: OnApproveDataOneTimePayments) => {
           const res = await fetch(`/api/paypal/orders/${orderId}/capture`, { method: "POST" });
+          if (res.ok && paidRef.current) return paidRef.current();
           if (res.ok && showtimeId) return window.location.assign(`/tickets/confirmed?film=${encodeURIComponent(showtimeId)}`);
-          if (!res.ok && showtimeId) return failed((((await res.json().catch(() => ({}))) as { issue?: string }).issue) ?? "error");
+          if (!res.ok && showtimeId && !createRef.current) return failed((((await res.json().catch(() => ({}))) as { issue?: string }).issue) ?? "error");
           setStatus(res.ok ? "paid" : "error");
         },
         onCancel: () => setStatus("ready"),
-        onError: () => (showtimeId ? failed("error") : setStatus("error")),
+        onError: () => (showtimeId && !createRef.current ? failed("error") : setStatus("error")),
       });
 
       startRef.current = async () => {
         if (statusRef.current === "signin") return;
         setStatus("paying");
-        const order = orderId ? Promise.resolve({ orderId }) : fetch("/api/paypal/orders", {
+        const order = createRef.current ? createRef.current().then((id) => ({ orderId: id })) : orderId ? Promise.resolve({ orderId }) : fetch("/api/paypal/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ showtimeId, quality }),
@@ -81,10 +93,10 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
   if (status === "unavailable") return <p className="pp-note">PayPal is not available right now. You have not been charged.</p>;
   return (
     <div>
-      <button className={className} disabled={status !== "ready"} onClick={() => startRef.current?.().catch((e: Error) => setStatus(e.message === "signin" ? "signin" : "error"))}>
+      <button className={className} disabled={(status !== "ready" && status !== "error") || disabled} onClick={() => startRef.current?.().catch((e: Error) => { setErr(e.message === "signin" || e.message === "order failed" ? "" : e.message); setStatus(e.message === "signin" ? "signin" : "error"); })}>
         {status === "loading" ? "Loading PayPal…" : status === "paying" ? "Waiting for PayPal…" : label}
       </button>
-      {status === "error" && <p className="pp-note pp-err">Something went wrong. You have not been charged.</p>}
+      {status === "error" && <p className="pp-note pp-err">{err || "Something went wrong."} You have not been charged.</p>}
     </div>
   );
 }

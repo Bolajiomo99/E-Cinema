@@ -106,6 +106,8 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
               <Link href="/browse" className="lp-btn lg">Find another premiere</Link>
             ) : owned ? (
               <Link href={`/room/${s.id}`} className="lp-btn lg">{phase === "before" ? "Open my room" : "Join the room"}</Link>
+            ) : s.adult ? (
+              <Link href={`/unlock/${s.id}`} className="lp-btn lg">Unlock in 4 stages · {money(q.currency, q.total)} each</Link>
             ) : (
               <Link href={`/checkout?film=${s.id}`} className="lp-btn lg">{phase === "late" ? "Late entry" : "Get a seat"} · {money(q.currency, q.total)}</Link>
             )}

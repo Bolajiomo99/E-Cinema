@@ -1,5 +1,5 @@
 import { endsAt, type Showtime } from "@/lib/catalog";
-import { vatRate } from "@/lib/plans";
+import { priceOf, vatRate } from "@/lib/plans";
 
 // Paid members get 10% off premiere seats (Figma "Web / Checkout", 18:533).
 export const MEMBER_DISCOUNT = 0.1;
@@ -53,14 +53,18 @@ const fmt = (c: number) => (c / 100).toFixed(2);
 
 // The one place a ticket price is worked out, used by the checkout page and the PayPal order,
 // so what the viewer sees is exactly what PayPal charges.
+// Adult titles (Figma 28:839) unlock in four equal payments, each 10% above the Pro upgrade.
+export const ADULT_STAGES = 4;
+export const ADULT_STAGE_CENTS = Math.round(priceOf("pro", "USD") * 110);
+
 export function quote(s: Showtime, who?: { plan?: string; planStatus?: string; country?: string }, now = Date.now(), quality?: string): Quote {
-  const qual = asQuality(s, quality);
-  const full = Math.round(cents(Number(s.price.value)) * QUALITIES.find((x) => x.id === qual)!.factor);
-  const save = preorderSave(s, now);
+  const qual = s.adult ? "hd" : asQuality(s, quality);
+  const full = s.adult ? ADULT_STAGE_CENTS : Math.round(cents(Number(s.price.value)) * QUALITIES.find((x) => x.id === qual)!.factor);
+  const save = s.adult ? 0 : preorderSave(s, now);
   const seat = Math.round(full * (1 - save / 100));
   const phase = phaseOf(s, now);
   const late = phase === "late" ? seat : 0;
-  const member = who?.planStatus === "active" && who.plan && MEMBER_PLANS.has(who.plan) ? who.plan : null;
+  const member = !s.adult && who?.planStatus === "active" && who.plan && MEMBER_PLANS.has(who.plan) ? who.plan : null;
   const discount = member ? Math.round(seat * MEMBER_DISCOUNT) : 0;
   const rate = vatRate(who?.country);
   const vat = Math.round((seat + late - discount) * rate);

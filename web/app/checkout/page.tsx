@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Logo from "@/components/landing/Logo";
 import LocalWhen from "@/components/dash/LocalWhen";
 import Methods from "@/components/checkout/Methods";
@@ -48,6 +49,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     );
   }
 
+  if (s.adult) redirect(`/unlock/${s.id}`);
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   let profile: { plan?: string; planStatus?: string; country?: string; audioLanguage?: string } | undefined;
   if (me && session) {

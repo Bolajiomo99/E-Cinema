@@ -145,3 +145,15 @@ export async function sendPartyInvite(to: string, host: string, party: string, f
     "E-Cinema <parties@e-cinema.net>",
   );
 }
+
+export async function sendAdultCode(to: string, code: string, film: string, stage: number, where: Where) {
+  await send(
+    to,
+    `${code} is your E-Cinema adult payment code`,
+    layout("Your code is inside. It ends in 10 minutes", "Adult payment code",
+      p(`Use this code with your adult PIN to pay stage ${stage} of 4 for ${esc(film)}, asked from ${esc(where.device)}${where.place ? `, ${esc(where.place)}` : ""}.`) +
+      codeBox(code) +
+      note("Did not ask for this? Change your password, because someone may be signed in to your account. Nobody can pay without your PIN and this code.")),
+    `Your E-Cinema adult payment code is ${code}. It works once and ends in 10 minutes.`,
+  );
+}
