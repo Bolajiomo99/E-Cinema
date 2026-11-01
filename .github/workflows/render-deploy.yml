@@ -195,6 +195,12 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/all/read")" = 204 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/abc/read")" = 404 ]
           echo "notifications ok"
+          # Messages: the page, the unread count, a live pass, and media refused for a stranger's key.
+          curl -fsS -b "$jar" "$web/messages" | grep -q "Messages"
+          curl -fsS -b "$jar" "$web/api/chat/unread" | grep -q '"requests"'
+          curl -fsS -b "$jar" -H "origin: $web" -X POST "$web/api/chat/pass" | grep -q '"ws":"wss://'
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/chat/media?key=chat/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000.png")" != 302 ]
+          echo "messages ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
