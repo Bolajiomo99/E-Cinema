@@ -775,3 +775,27 @@ func (s Store) CountryOf(ctx context.Context, id string) string {
 	_ = s.DB.QueryRow(ctx, `SELECT coalesce(country, '') FROM accounts WHERE id = $1`, id).Scan(&c)
 	return c
 }
+
+// Profile is what the Community page shows about one person.
+type Profile struct {
+	Author
+	Following bool `json:"following"`
+	Followers int  `json:"followers"`
+	Follows   int  `json:"follows"`
+	Posts     int  `json:"posts"`
+}
+
+func (s Store) Profile(ctx context.Context, me, id string) (Profile, error) {
+	var p Profile
+	err := s.DB.QueryRow(ctx, `SELECT a.id::text, a.name, coalesce(a.country, ''),
+	    EXISTS (SELECT 1 FROM follows WHERE follower_id = $1 AND followee_id = a.id),
+	    (SELECT count(*)::int FROM follows WHERE followee_id = a.id), (SELECT count(*)::int FROM follows WHERE follower_id = a.id),
+	    (SELECT count(*)::int FROM posts WHERE author_id = a.id AND deleted_at IS NULL)
+	  FROM accounts a WHERE a.id::text = $2
+	    AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = $1 AND b.blocked_id = a.id) OR (b.blocker_id = a.id AND b.blocked_id = $1))`, me, id).
+		Scan(&p.ID, &p.Name, &p.Country, &p.Following, &p.Followers, &p.Follows, &p.Posts)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return p, ErrNotFound
+	}
+	return p, err
+}

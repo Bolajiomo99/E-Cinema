@@ -291,6 +291,14 @@ func (s *Server) communityRoutes(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
+	mux.HandleFunc("GET /v1/me/people/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, err := s.Community.Profile(r.Context(), a.ID, r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+	}))
 	mux.HandleFunc("PUT /v1/me/follows/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		var b struct{ On bool }
 		if !decode(w, r, &b) {

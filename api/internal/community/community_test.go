@@ -122,6 +122,9 @@ func TestCommunity(t *testing.T) {
 	if ok, err := s.Follow(ctx, eve, tolu, true); err != nil || !ok {
 		t.Fatalf("follow = %v %v", ok, err)
 	}
+	if pr, err := s.Profile(ctx, eve, tolu); err != nil || !pr.Following || pr.Followers != 1 || pr.Posts != 1 {
+		t.Fatalf("profile = %+v %v", pr, err)
+	}
 	if posts, _ := s.Posts(ctx, eve, community.Feed{Following: true}); len(posts) != 1 || posts[0].ID != text {
 		t.Fatalf("following after = %+v", posts)
 	}
