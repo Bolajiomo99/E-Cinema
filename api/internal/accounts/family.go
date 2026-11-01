@@ -56,7 +56,7 @@ type Member struct {
 }
 
 type Family struct {
-	Profiles  []Member `json:"profiles"`
+	Profiles  []Member  `json:"profiles"`
 	PINSet    bool      `json:"pinSet"`
 	Requests  []Request `json:"requests"`
 	OwnerName string    `json:"ownerName"`
@@ -66,7 +66,7 @@ type Family struct {
 type Request struct {
 	ID        string    `json:"id"`
 	ProfileID string    `json:"profileId"`
-	Member   string    `json:"profile"`
+	Member    string    `json:"profile"`
 	What      string    `json:"what"`
 	Link      string    `json:"link"`
 	Status    string    `json:"status"`

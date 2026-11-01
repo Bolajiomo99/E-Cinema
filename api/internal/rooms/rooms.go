@@ -177,6 +177,7 @@ type Pass struct {
 	Country    string // two-letter home country, for the room's "N countries" count
 	Lang       string // the viewer's reading language, for translated chat
 	PartyID    string // the party room this viewer belongs to at this premiere, if any
+	Quiet      bool   // a kids profile with chat off: reactions only, no messages
 }
 
 // Passes signs and checks room passes with a key only the API knows.
@@ -184,8 +185,11 @@ type Passes struct{ Key []byte }
 
 func (p Passes) Issue(pass Pass) string {
 	fields := []string{pass.AccountID, pass.ShowtimeID, strconv.FormatInt(pass.Expires.Unix(), 10), pass.Name}
-	if pass.Country != "" || pass.Lang != "" || pass.PartyID != "" {
+	if pass.Country != "" || pass.Lang != "" || pass.PartyID != "" || pass.Quiet {
 		fields = append(fields, pass.Country, pass.Lang, pass.PartyID)
+	}
+	if pass.Quiet {
+		fields = append(fields, "q")
 	}
 	payload := strings.Join(fields, "\x1f")
 	enc := base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -205,18 +209,18 @@ func (p Passes) Check(token, showtimeID string, now time.Time) (Pass, error) {
 	if err != nil {
 		return Pass{}, ErrBadPass
 	}
-	parts := strings.SplitN(string(raw), "\x1f", 7)
+	parts := strings.SplitN(string(raw), "\x1f", 8)
 	if len(parts) < 4 {
 		return Pass{}, ErrBadPass
 	}
-	for len(parts) < 7 {
+	for len(parts) < 8 {
 		parts = append(parts, "")
 	}
 	exp, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil || now.Unix() > exp || parts[1] != showtimeID {
 		return Pass{}, ErrBadPass
 	}
-	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: parts[4], Lang: parts[5], PartyID: parts[6]}, nil
+	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: parts[4], Lang: parts[5], PartyID: parts[6], Quiet: parts[7] == "q"}, nil
 }
 
 func (p Passes) sign(s string) []byte {

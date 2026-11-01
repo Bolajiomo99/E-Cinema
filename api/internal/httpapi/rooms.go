@@ -40,8 +40,24 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, out)
 	}))
-	mux.HandleFunc("POST /v1/rooms/{id}/pass", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+	mux.HandleFunc("POST /v1/rooms/{id}/pass", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		id := r.PathValue("id")
+		prof, err := s.Accounts.Active(r.Context(), a.ID, sid)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if prof.Kind == "kids" {
+			var adult bool
+			if err := s.Accounts.DB.QueryRow(r.Context(), `SELECT adult FROM showtimes WHERE id = $1`, id).Scan(&adult); err == nil && adult {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "This film is not for kids profiles."})
+				return
+			}
+			if err := accounts.CanWatch(prof, time.Now()); err != nil {
+				fail(w, err)
+				return
+			}
+		}
 		ok, err := s.Tickets.HasTicket(r.Context(), id, a.ID)
 		if err != nil {
 			fail(w, err)
@@ -52,6 +68,9 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			return
 		}
 		name := a.Name
+		if prof.Kind != "owner" {
+			name = prof.Name
+		}
 		if name == "" {
 			name = "Guest"
 		}
@@ -67,7 +86,7 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			partyID = p.ID
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country, Lang: lang, PartyID: partyID}),
+			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country, Lang: lang, PartyID: partyID, Quiet: prof.Kind == "kids" && !prof.Chat}),
 			"expiresAt": exp.UTC(),
 		})
 	}))

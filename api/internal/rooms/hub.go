@@ -309,6 +309,10 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 			}
 			switch in.Type {
 			case "msg":
+				if pass.Quiet {
+					say(ErrQuiet)
+					continue
+				}
 				party := ""
 				if in.Scope == "room" {
 					if c.partyID == "" {

@@ -14,6 +14,7 @@ var (
 	ErrBadPoll    = errors.New("invalid input: a poll needs a question and 2 to 4 answers")
 	ErrNoParty    = errors.New("join or start a party to use the room")
 	ErrTalkUsedUp = errors.New("your free talk time for this premiere is used up")
+	ErrQuiet      = errors.New("chat is off for this profile; reactions still work")
 )
 
 // FreeTalkSeconds is how much voice a free member gets per premiere.

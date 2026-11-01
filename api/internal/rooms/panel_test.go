@@ -189,3 +189,16 @@ func TestRoomPanel(t *testing.T) {
 		t.Fatal("block not listed")
 	}
 }
+
+func TestQuietPass(t *testing.T) {
+	p := rooms.Passes{Key: []byte("k")}
+	now := time.Now()
+	got, err := p.Check(p.Issue(rooms.Pass{AccountID: "a", ShowtimeID: "s", Name: "Ada", Expires: now.Add(time.Minute), Quiet: true}), "s", now)
+	if err != nil || !got.Quiet || got.Name != "Ada" {
+		t.Fatalf("quiet pass = %+v, %v", got, err)
+	}
+	got, _ = p.Check(p.Issue(rooms.Pass{AccountID: "a", ShowtimeID: "s", Name: "Tolu", Expires: now.Add(time.Minute)}), "s", now)
+	if got.Quiet {
+		t.Fatal("plain pass came back quiet")
+	}
+}
