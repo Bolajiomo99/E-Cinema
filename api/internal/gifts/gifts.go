@@ -348,3 +348,51 @@ func (st Store) RefundCredit(ctx context.Context, accountID, holdID string) (int
 	})
 	return cents, err
 }
+
+// QuizResult is the viewer's one try at a premiere's pre-show quiz.
+type QuizResult struct {
+	Score      int  `json:"score"`
+	PrizeCents int  `json:"prizeCents"`
+	Already    bool `json:"already"` // an earlier try stands
+}
+
+// QuizTry records the first try only; a perfect first try adds the prize as credit.
+// The web server checks the answers and the ticket, so it hands in the score.
+func (st Store) QuizTry(ctx context.Context, accountID, showtimeID string, score, prizeCents int) (QuizResult, error) {
+	if score < 0 || score > 5 || prizeCents < 0 || prizeCents > 5000 {
+		return QuizResult{}, fmt.Errorf("%w: bad quiz score", ErrBadInput)
+	}
+	prize := 0
+	if score == 5 {
+		prize = prizeCents
+	}
+	var out QuizResult
+	err := pgx.BeginFunc(ctx, st.DB, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `INSERT INTO quiz_attempts (account_id, showtime_id, score, prize_cents) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+			accountID, showtimeID, score, prize)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			out.Already = true
+			return tx.QueryRow(ctx, `SELECT score, prize_cents FROM quiz_attempts WHERE account_id = $1 AND showtime_id = $2`, accountID, showtimeID).Scan(&out.Score, &out.PrizeCents)
+		}
+		out.Score, out.PrizeCents = score, prize
+		if prize > 0 {
+			_, err = tx.Exec(ctx, `INSERT INTO credits (account_id, delta_cents, reason, ref) VALUES ($1, $2, 'quiz', $3)`, accountID, prize, "quiz:"+showtimeID+":"+accountID)
+		}
+		return err
+	})
+	return out, err
+}
+
+// QuizDone returns the viewer's earlier try, if any.
+func (st Store) QuizDone(ctx context.Context, accountID, showtimeID string) (*QuizResult, error) {
+	var out QuizResult
+	err := st.DB.QueryRow(ctx, `SELECT score, prize_cents FROM quiz_attempts WHERE account_id = $1 AND showtime_id = $2`, accountID, showtimeID).Scan(&out.Score, &out.PrizeCents)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	out.Already = true
+	return &out, err
+}

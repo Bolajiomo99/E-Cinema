@@ -46,6 +46,7 @@ func TestGifts(t *testing.T) {
 	clean := func() {
 		s.DB.Exec(ctx, `DELETE FROM credits WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE 'gift-%@example.com')`)
 		s.DB.Exec(ctx, `DELETE FROM gifts WHERE giver_id IN (SELECT id FROM accounts WHERE email LIKE 'gift-%@example.com')`)
+		s.DB.Exec(ctx, `DELETE FROM quiz_attempts WHERE showtime_id = 'gift-test'`)
 		s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'gift-test'`)
 	}
 	clean()
@@ -123,6 +124,22 @@ func TestGifts(t *testing.T) {
 	if st != "refunded" {
 		t.Fatalf("hold after credit refund = %s", st)
 	}
+
+	// Pre-show quiz: one try per premiere; a perfect try adds credit once.
+	s.DB.Exec(ctx, `DELETE FROM quiz_attempts WHERE showtime_id = 'gift-test'`)
+	if q, err := s.QuizTry(ctx, ada, "gift-test", 5, 499); err != nil || q.PrizeCents != 499 || q.Already {
+		t.Fatalf("quiz = %+v, %v", q, err)
+	}
+	if q, _ := s.QuizTry(ctx, ada, "gift-test", 5, 499); !q.Already || q.PrizeCents != 499 {
+		t.Fatalf("second try = %+v", q)
+	}
+	if q, _ := s.QuizTry(ctx, payer, "gift-test", 4, 499); q.PrizeCents != 0 {
+		t.Fatalf("four right won %d", q.PrizeCents)
+	}
+	if bal, _ := s.Balance(ctx, ada); bal != 1499 {
+		t.Fatalf("balance after quiz = %d", bal)
+	}
+	s.DB.Exec(ctx, `DELETE FROM credits WHERE reason = 'quiz' AND account_id = $1`, ada)
 
 	// A seat gift: the hold is bought without an owner and handed over on redeem.
 	var gh string

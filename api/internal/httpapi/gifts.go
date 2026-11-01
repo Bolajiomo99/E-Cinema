@@ -94,4 +94,28 @@ func (s *Server) giftRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"cents": cents})
 	}))
+	// Pre-show quiz: the web server checks the answers and the ticket, then records the one try here.
+	mux.HandleFunc("POST /v1/internal/quiz", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			AccountID, ShowtimeID string
+			Score, PrizeCents     int
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		out, err := s.Gifts.QuizTry(r.Context(), b.AccountID, b.ShowtimeID, b.Score, b.PrizeCents)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
+	mux.HandleFunc("GET /v1/me/quiz/{showtime}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		out, err := s.Gifts.QuizDone(r.Context(), a.ID, r.PathValue("showtime"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"done": out})
+	}))
 }
