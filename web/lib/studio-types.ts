@@ -86,7 +86,10 @@ export type UploadFile = {
   id: string; kind: "master" | "stems" | "subtitles" | "trailer" | "package"; name: string; size: number; contentType: string;
   key: string; mpId: string; status: "uploading" | "uploaded" | "failed"; info: string; checks: UploadCheck[]; updatedAt: string;
 };
-export type Upload = { id: string; title: string; status: "draft" | "submitted"; createdAt: string; updatedAt: string; files: UploadFile[] };
+export type Upload = {
+  id: string; title: string; logline: string; genres: string; ageRating: string; castCrew: string; languages: string; posterKey: string;
+  status: "draft" | "submitted"; createdAt: string; updatedAt: string; files: UploadFile[];
+};
 
 export const UPLOAD_ACCEPT = ".mov,.mp4,.m4v,.mxf,.xml,.wav,.aif,.aiff,.flac,.srt,.vtt,.ttml";
 const MIB = 1024 * 1024;
