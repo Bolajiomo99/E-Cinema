@@ -1,0 +1,63 @@
+"use client";
+import Link from "next/link";
+import { useState } from "react";
+import { money, type Film } from "@/lib/studio-types";
+
+// Figma "Studio / Films" (34:458): every premiere of the studio's films, filtered by state.
+export type FilmRow = Film & { kind: string; dubs: number };
+const POSTERS = ["#1d1440", "#3d0f2e", "#0f3324", "#2b2f36", "#0c2a3a", "#3b2a0a"];
+
+// Built by hand so the server and the browser print exactly the same text.
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function premiere(iso: string, now: number) {
+  const lagos = (ms: number) => new Date(ms + 60 * 60 * 1000); // Lagos is UTC+1 all year
+  const d = lagos(Date.parse(iso)), n = lagos(now);
+  if (d.toISOString().slice(0, 10) === n.toISOString().slice(0, 10)) return `Today ${d.toISOString().slice(11, 16)}`;
+  const date = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  return d > n ? `${DAYS[d.getUTCDay()]} ${date}` : date;
+}
+
+export default function StudioFilms({ films, now }: { films: FilmRow[]; now: number }) {
+  const [tab, setTab] = useState<"all" | Film["state"]>("all");
+  const count = (s: Film["state"]) => films.filter((f) => f.state === s).length;
+  const titles = new Set(films.map((f) => f.film)).size;
+  const shown = tab === "all" ? films : films.filter((f) => f.state === tab);
+  return (
+    <div className="pt-body">
+      <header className="bp-head">
+        <div>
+          <h1>Films</h1>
+          <p>{titles} {titles === 1 ? "title" : "titles"} · {count("upcoming")} upcoming · {count("live")} live</p>
+        </div>
+        <span className="vf-btn red stu-soon" aria-disabled="true">Upload a film <em className="soon-tag">Soon</em></span>
+      </header>
+      <div className="bp-chips" role="tablist" aria-label="Filter films">
+        {([["all", `All ${films.length}`], ["live", `Live ${count("live")}`], ["upcoming", `Upcoming ${count("upcoming")}`], ["ended", `Ended ${count("ended")}`]] as const).map(([k, t]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{t}</button>
+        ))}
+      </div>
+      {shown.length ? (
+        <div className="stu-films" role="table" aria-label="Your films">
+          <div className="stu-fr hdr" role="row"><span role="columnheader">Title</span><span role="columnheader">Status</span><span role="columnheader">Premiere</span><span role="columnheader">Languages</span><span role="columnheader">Tickets</span><span role="columnheader">Gross</span><span /></div>
+          {shown.map((f, i) => (
+            <div key={f.showtimeId} className="stu-fr" role="row">
+              <span className="stu-ft" role="cell">
+                <i className="stu-poster sm" style={{ background: `linear-gradient(180deg, ${POSTERS[i % POSTERS.length]}, #000)` }} aria-hidden />
+                <span><b>{f.film.toUpperCase()}</b><small>{f.kind}</small></span>
+              </span>
+              <span role="cell">
+                {f.state === "live" ? <span className="stu-badge"><i />LIVE</span> : f.state === "upcoming" ? <span className="stu-tag white">ON SALE</span> : <span className="stu-tag">{f.payout === "sent" ? "PAID OUT" : "ENDED"}</span>}
+              </span>
+              <span role="cell" className="stu-mut">{premiere(f.startsAt, now)}</span>
+              <span role="cell" className="stu-mut">{f.dubs ? `${f.dubs + 1} audio` : "Original audio"}</span>
+              <span role="cell"><b>{f.seats ? f.seats.toLocaleString("en-GB") : "—"}</b></span>
+              <span role="cell"><b>{f.grossCents ? money(f.grossCents, f.currency, true) : "—"}</b></span>
+              <span role="cell"><Link className="vf-btn sm" href={`/film/${f.showtimeId}`}>View</Link></span>
+            </div>
+          ))}
+        </div>
+      ) : <p className="pt-empty">{films.length ? "No films in this view." : "Your films show here once their first premiere is booked."}</p>}
+    </div>
+  );
+}

@@ -2,17 +2,17 @@ import type { Share } from "@/lib/licensing-types";
 
 // Small SVG charts for the partner portal, drawn from real numbers.
 
-export function LineChart({ points, labels }: { points: number[]; labels: string[] }) {
+export function LineChart({ points, labels, color = "#e3182d", label = "Sales by day" }: { points: number[]; labels: string[]; color?: string; label?: string }) {
   const W = 600, H = 180, max = Math.max(1, ...points);
   const xy = points.map((v, i) => [points.length > 1 ? (i * W) / (points.length - 1) : W / 2, H - 14 - (v / max) * (H - 34)]);
   const line = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
   return (
     <div className="pc-line">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Sales by day">
-        <defs><linearGradient id="pcg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#e3182d" stopOpacity=".35" /><stop offset="1" stopColor="#e3182d" stopOpacity="0" /></linearGradient></defs>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
+        <defs><linearGradient id={`pcg${color.slice(1)}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".35" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
         {[0.25, 0.5, 0.75].map((f) => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="#26262e" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
-        {xy.length > 1 && <path d={`${line} L${W} ${H} L0 ${H} Z`} fill="url(#pcg)" />}
-        <path d={line} fill="none" stroke="#e3182d" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {xy.length > 1 && <path d={`${line} L${W} ${H} L0 ${H} Z`} fill={`url(#pcg${color.slice(1)})`} />}
+        <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="pc-x">{labels.map((l, i) => <span key={i}>{l}</span>)}</div>
     </div>
