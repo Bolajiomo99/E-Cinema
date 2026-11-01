@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/shop"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -54,6 +55,8 @@ type Server struct {
 	ChatHub *chat.Hub
 	// Community runs groups, posts and follows.
 	Community community.Store
+	// Shop is the E-Cinema store: cart, orders and delivery tracking.
+	Shop shop.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -142,6 +145,16 @@ func (s *Server) Routes() http.Handler {
 			fail(w, err)
 			return
 		}
+		// A shop order: placed once paid, and the buyer's open pages hear about it.
+		if o, err := s.Shop.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil || o != nil {
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			s.orderChanged(*o)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		// A keep order buys a film for the viewer's Library; it has no seat.
 		if kept, err := s.Library.MarkKeepPaid(r.Context(), body.OrderID, body.CaptureID); err != nil || kept {
 			if err != nil {
@@ -228,6 +241,7 @@ func (s *Server) Routes() http.Handler {
 	}
 	s.chatRoutes(mux)
 	s.communityRoutes(mux)
+	s.shopRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -352,6 +366,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, shop.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, shop.ErrBadInput), errors.Is(err, shop.ErrEmptyCart), errors.Is(err, shop.ErrNoAddress):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, shop.ErrCantShip), errors.Is(err, shop.ErrNotLagos), errors.Is(err, shop.ErrTooLate), errors.Is(err, shop.ErrPriceMoved):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": readable(err)})
+	case errors.Is(err, shop.ErrNotBuyer):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, community.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, community.ErrNotMember), errors.Is(err, community.ErrForbidden):
@@ -396,7 +418,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // readable drops the "invalid input: " prefix from wrapped input errors, so people read only the advice.
 func readable(err error) string {
-	m := strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": ")
+	m := strings.TrimPrefix(strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": "), shop.ErrBadInput.Error()+": ")
 	if m == "" {
 		return m
 	}

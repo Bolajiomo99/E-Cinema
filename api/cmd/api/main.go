@@ -16,6 +16,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/shop"
 	"log/slog"
 	"net/http"
 	"os"
@@ -105,6 +106,7 @@ func run() error {
 		Notify:         notify.Store{DB: pool},
 		Chat:           chat.Store{DB: pool},
 		Community:      community.Store{DB: pool},
+		Shop:           shop.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}

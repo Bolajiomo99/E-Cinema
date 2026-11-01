@@ -23,6 +23,8 @@ type Event struct {
 	// call: a voice or video call signal (ring, accept, decline, end, offer, answer, ice)
 	// relayed as is between the two people in a direct chat.
 	Call json.RawMessage `json:"call,omitempty"`
+	// order: a shop order changed (placed, packed, rider on the way, delivered).
+	Order json.RawMessage `json:"order,omitempty"`
 }
 
 type client struct {
