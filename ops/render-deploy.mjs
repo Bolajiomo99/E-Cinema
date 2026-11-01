@@ -130,9 +130,10 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
   // Let the web app read media with CORS, so the watch room can boost volume past 100%
   // through Web Audio. Reads and writes still need a signed link; this only adds the headers.
   if (account) {
+    // The R2 token can change bucket settings; the general Cloudflare token cannot.
     const cors = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/e-cinema-media/cors`, {
       method: "PUT",
-      headers: { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${process.env.R2_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN}`, "content-type": "application/json" },
       body: JSON.stringify({
         rules: [{
           // PUT lets studios send film parts straight to storage with signed links (Figma 35:290);
