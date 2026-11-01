@@ -31,7 +31,7 @@ export default async function AboutPage() {
       </Section>
       <Section title="Leadership">
         <div className="cp-people">
-          <Person initials="BJ" name="Bolaji Jimoh" role="Founder and CEO" />
+          <Person initials="BJ" name="Bolaji Jimoh Adigun" role="Founder and CEO" />
           <Person initials="CF" name="Chief Financial Officer" role="We are hiring" href="/careers" />
           <Person initials="CT" name="Chief Technology Officer" role="We are hiring" href="/careers" />
         </div>
