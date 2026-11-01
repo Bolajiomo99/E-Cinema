@@ -290,6 +290,12 @@ jobs:
           curl -fsS -b "$jar" "$web/room/iron-delta-2026-12-14/vr" | grep -q "Get a VR seat" || { echo "vr gate"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/iron-delta-2026-12-14/film")" = 403 ] || { echo "vr film not 403"; exit 1; }
           echo "vr ok"
+          # Studio portal (Figma 34:49): a new account gets onboarding, the desk is staff only.
+          curl -fsS -b "$jar" "$web/api/studio" | jq -e '.studio == null' >/dev/null || { echo "studio api"; exit 1; }
+          curl -fsS -b "$jar" "$web/studio" | grep -q "Set up your studio" || { echo "studio onboarding"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/desk")" = 403 ] || { echo "studio desk not 403"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/studio")" = 401 ] || { echo "studio api open signed out"; exit 1; }
+          echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
           ps=$(curl -s -b "$jar" -H "Origin: $web" -H 'Content-Type: application/json' -d "{\"showtimeId\":\"$film\"}" "$web/api/pay/paystack")
