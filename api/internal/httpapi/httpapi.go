@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/brand"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
@@ -57,6 +58,8 @@ type Server struct {
 	Community community.Store
 	// Shop is the E-Cinema store: cart, orders and delivery tracking.
 	Shop shop.Store
+	// Brand protects the E-Cinema name: licensed merch codes and fake-seller reports.
+	Brand brand.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -242,6 +245,7 @@ func (s *Server) Routes() http.Handler {
 	s.chatRoutes(mux)
 	s.communityRoutes(mux)
 	s.shopRoutes(mux)
+	s.brandRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -366,6 +370,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, brand.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, brand.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, brand.ErrDecided):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, brand.ErrTooMany):
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
 	case errors.Is(err, shop.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, shop.ErrBadInput), errors.Is(err, shop.ErrEmptyCart), errors.Is(err, shop.ErrNoAddress):
@@ -419,6 +431,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // readable drops the "invalid input: " prefix from wrapped input errors, so people read only the advice.
 func readable(err error) string {
 	m := strings.TrimPrefix(strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": "), shop.ErrBadInput.Error()+": ")
+	m = strings.TrimPrefix(m, brand.ErrBadInput.Error()+": ")
 	if m == "" {
 		return m
 	}
