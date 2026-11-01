@@ -184,6 +184,11 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"device":"smokesmokesmoke01","quality":"sd"}' "$web/api/downloads/red-earth-2026-11-02")" = 402 ]
           curl -fsS "$web/sw.js" | grep -q "ec-offline-v1"
           echo "downloads ok"
+          # Insights: the page renders, a heartbeat for a real film counts, a bogus one is refused.
+          curl -fsS -b "$jar" "$web/insights" | grep -q "Your insights"
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"room","seconds":5}' "$web/api/insights/beat" | grep -q '"counted"'
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"cinema","seconds":5}' "$web/api/insights/beat")" = 400 ]
+          echo "insights ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")

@@ -162,3 +162,10 @@ const T: Record<string, Partial<Record<Key, string>>> = {
 export function dict(lang: string): Record<Key, string> {
   return { ...EN, ...(T[lang] ?? {}) };
 }
+
+// "Yorùbá (AI dub)", "Hindi subtitles", "Original audio" for the Insights languages card.
+export function trackLabel(code: string, kind: "audio" | "subs"): string {
+  if (!code) return "Original audio";
+  const name = LANGS.find(([c]) => c === code.split("-")[0])?.[1] ?? code.toUpperCase();
+  return kind === "audio" ? `${name} (AI dub)` : `${name} subtitles`;
+}
