@@ -2824,7 +2824,7 @@ p.cm-text { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #f4f4f6; 
 .pf-page > .tn { position: relative; height: 72px; padding: 0 48px; }
 .pf-cover { position: relative; height: 240px; overflow: hidden; background: linear-gradient(90deg, #3a0d12 0%, #1d1440 100%); }
 .pf-cover i { position: absolute; left: 55.5%; top: -200px; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(closest-side, rgba(227,24,45,.45), transparent); }
-.pf-head { display: flex; align-items: flex-end; gap: 24px; padding: 0 48px; margin-top: -76px; position: relative; max-width: 1440px; margin-left: auto; margin-right: auto; }
+.pf-head { display: flex; align-items: flex-end; gap: 24px; padding: 0 48px; position: relative; max-width: 1440px; margin-left: auto; margin-right: auto; }
 .pf-av { flex: none; width: 136px; height: 136px; border-radius: 50%; border: 6px solid #0a0a0c; display: flex; align-items: center; justify-content: center; font: 400 48px/44px "Bebas Neue", Impact, sans-serif; letter-spacing: .5px; color: #f4f4f6; box-sizing: border-box; }
 .pf-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
 .pf-n { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -2890,6 +2890,7 @@ p.cm-text { margin: 0; font: 500 15px/22px Manrope, sans-serif; color: #f4f4f6; 
   .pf-cover { height: 140px; }
   .pf-cover i { left: 40%; top: -150px; width: 300px; height: 300px; }
   .pf-head { flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; padding: 0 16px; margin-top: -48px; }
+  .pf-cover { margin-bottom: 0; }
   .pf-av { width: 96px; height: 96px; font-size: 36px; border-width: 4px; }
   .pf-t { flex-basis: 100%; order: 2; padding-bottom: 0; }
   .pf-n h1 { font-size: 24px; line-height: 32px; }

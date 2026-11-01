@@ -213,6 +213,12 @@ jobs:
           curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{}' "$web/api/community/posts/$pid/delete" -o /dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/community/posts?before=abc")" = 400 ]
           echo "community ok"
+          # Profile: my page renders, editing works, an unknown person is a 404.
+          curl -fsS -b "$jar" "$web/u/me" | grep -q "avg snack score"
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"city":"Lagos","interests":"Thrillers, zobo","spoken":["English"]}' "$web/api/community/profile" | grep -q '"ok":true'
+          curl -fsS -b "$jar" "$web/u/me" | grep -q "Thrillers, zobo"
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/u/nobody.here.x")" = 404 ]
+          echo "profile ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")

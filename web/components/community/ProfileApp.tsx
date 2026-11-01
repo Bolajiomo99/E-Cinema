@@ -57,7 +57,7 @@ export default function ProfileApp({ page: initial, posts: firstPosts, more: fir
         </div>
         <div className="pf-b">
           {p.me ? <button type="button" className="pf-btn sec" onClick={() => setEditing(true)}>Edit profile</button>
-            : <FollowButton id={p.id} following={p.following} say={say} />}
+            : <FollowButton id={p.id} following={p.following} say={say} onChange={(on) => setP((x) => ({ ...x, following: on, followers: x.followers + (on ? 1 : -1) }))} />}
           <button type="button" className="pf-btn ghost" onClick={share}>Share</button>
         </div>
       </header>

@@ -11,7 +11,7 @@ import { call } from "./PostCard";
 
 type Me = { id: string; name: string; lang: string };
 
-export function FollowButton({ id, following: initial, say }: { id: string; following: boolean; say: (m: string) => void }) {
+export function FollowButton({ id, following: initial, say, onChange }: { id: string; following: boolean; say: (m: string) => void; onChange?: (on: boolean) => void }) {
   const [on, setOn] = useState(initial);
   const [busy, setBusy] = useState(false);
   return (
@@ -19,7 +19,7 @@ export function FollowButton({ id, following: initial, say }: { id: string; foll
       setBusy(true);
       const r = await call<{ error?: string }>("follow", { id, on: !on });
       setBusy(false);
-      if (r.ok) setOn(!on);
+      if (r.ok) { setOn(!on); onChange?.(!on); }
       else say(r.data.error ?? "Please try again");
     }}>{on ? "Following" : "Follow"}</button>
   );
