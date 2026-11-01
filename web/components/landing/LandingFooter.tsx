@@ -4,7 +4,7 @@ import Logo from "@/components/landing/Logo";
 export const FOOTER: [string, [string, string][]][] = [
   ["Watch", [["Premieres", "/#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
   ["Account", [["Plans", "/plans"], ["Student offer", "/student"], ["Gift a seat", "/gift"]]],
-  ["Company", [["About", "/terms"], ["Studios and distributors", "mailto:admin@e-cinema.net?subject=Studios"], ["Careers", "mailto:admin@e-cinema.net?subject=Careers"]]],
+  ["Company", [["About", "/about"], ["Studios and distributors", "/for-studios"], ["Careers", "/careers"], ["For business", "/business"]]],
   ["Help", [["Help centre", "/concierge"], ["Verify a product", "/verify"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
 ];
 

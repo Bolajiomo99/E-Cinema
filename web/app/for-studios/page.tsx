@@ -27,20 +27,20 @@ export default function ForStudiosPage() {
       lead="Sell tickets worldwide, in every local currency, with AI dubbing, piracy protection and analytics that show every viewer. You keep 70% of every ticket."
       actions={[["Apply as a studio", "mailto:admin@e-cinema.net?subject=Studio%20application"], ["Read studio terms", "/legal/studios"]]}>
       <Section title="How it works">
-        <ol className="co-steps">
-          {STEPS.map(([t, d], i) => <li key={t}><span className="co-num">{i + 1}</span><b>{t}</b><p>{d}</p></li>)}
+        <ol className="cp-steps">
+          {STEPS.map(([t, d], i) => <li key={t}><span className="cp-num">{i + 1}</span><b>{t}</b><p>{d}</p></li>)}
         </ol>
       </Section>
       <Section title="What you get">
-        <div className="co-grid">
-          {GETS.map(([t, d]) => <div key={t} className="co-tile"><b>{t}</b><p>{d}</p></div>)}
+        <div className="cp-grid">
+          {GETS.map(([t, d]) => <div key={t} className="cp-tile"><b>{t}</b><p>{d}</p></div>)}
         </div>
       </Section>
       <Section title="Studios already premiering">
-        <div className="co-people">
+        <div className="cp-people">
           {top.map(([s, n]) => <Person key={s} initials={initials(s)} name={s} role={`${n} premiere${n === 1 ? "" : "s"} scheduled`} />)}
         </div>
-        <p className="co-fine">Studio names are examples while our first partners sign.</p>
+        <p className="cp-fine">Studio names are examples while our first partners sign.</p>
       </Section>
     </CompanyLayout>
   );

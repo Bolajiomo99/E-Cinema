@@ -18,27 +18,27 @@ export default async function AboutPage() {
       lead="We bring new films to everyone on opening night, in their own language and currency, and let friends watch together from anywhere on Earth."
       actions={[["Join free", "/join"], ["For studios", "/for-studios"]]}>
       <Section title="E-Cinema in numbers">
-        <div className="co-stats">
+        <div className="cp-stats">
           <div><b>{live ? n(live.countries) : "–"}</b><span>{live?.countries === 1 ? "country" : "countries"} our members join from</span></div>
           <div><b>{DUB_LANGUAGES}</b><span>languages, dubbed by AI</span></div>
           <div><b>{studios}</b><span>studios on the schedule</span></div>
           <div><b>{live ? n(live.members) : "–"}</b><span>members</span></div>
         </div>
-        <p className="co-fine">Counted live from our own records and refreshed every few minutes.</p>
+        <p className="cp-fine">Counted live from our own records and refreshed every few minutes.</p>
       </Section>
       <Section title="Why we built it">
-        <p className="co-p">In much of the world a new film reaches cinemas months late, costs too much, or never arrives. Pirated copies fill the gap and studios lose. E‑Cinema gives every country the same premiere night at a fair local price, and pays studios 70% of every ticket.</p>
+        <p className="cp-p">In much of the world a new film reaches cinemas months late, costs too much, or never arrives. Pirated copies fill the gap and studios lose. E‑Cinema gives every country the same premiere night at a fair local price, and pays studios 70% of every ticket.</p>
       </Section>
       <Section title="Leadership">
-        <div className="co-people">
+        <div className="cp-people">
           <Person initials="BJ" name="Bolaji Jimoh" role="Founder and CEO" />
           <Person initials="CF" name="Chief Financial Officer" role="We are hiring" href="/careers" />
           <Person initials="CT" name="Chief Technology Officer" role="We are hiring" href="/careers" />
         </div>
       </Section>
       <Section title="Press and partnerships">
-        <p className="co-p"><a href="mailto:admin@e-cinema.net?subject=Press">Press enquiries</a> · <a href="mailto:admin@e-cinema.net?subject=Partnerships">Partnerships</a></p>
-        <p className="co-fine">Online Cinema Ltd, trading as E-Cinema. Registered in Nigeria, RC 9947766.</p>
+        <p className="cp-p"><a href="mailto:admin@e-cinema.net?subject=Press">Press enquiries</a> · <a href="mailto:admin@e-cinema.net?subject=Partnerships">Partnerships</a></p>
+        <p className="cp-fine">Online Cinema Ltd, trading as E-Cinema. Registered in Nigeria, RC 9947766.</p>
       </Section>
     </CompanyLayout>
   );

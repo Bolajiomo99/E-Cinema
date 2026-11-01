@@ -13,21 +13,21 @@ export default async function CompanyLayout({ kicker, title, lead, actions, chil
 }) {
   const [me, loc] = await Promise.all([currentAccount(), readLocale()]);
   const body = (
-    <div className="lp co">
+    <div className="lp cpg">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <header className="co-hero">
-        <div className="co-copy">
-          <p className="co-kicker">{kicker}</p>
+      <header className="cp-hero">
+        <div className="cp-copy">
+          <p className="cp-kicker">{kicker}</p>
           <h1>{title}</h1>
-          <p className="co-lead">{lead}</p>
-          <div className="co-btns">
+          <p className="cp-lead">{lead}</p>
+          <div className="cp-btns">
             {actions.map(([t, href], i) => href.startsWith("/")
               ? <Link key={t} className={`vf-btn ${i === 0 ? "red" : "ghost"}`} href={href}>{t}</Link>
               : <a key={t} className={`vf-btn ${i === 0 ? "red" : "ghost"}`} href={href}>{t}</a>)}
           </div>
         </div>
       </header>
-      <main className="co-main">{children}</main>
+      <main className="cp-main">{children}</main>
       <LandingFooter />
     </div>
   );
@@ -35,10 +35,10 @@ export default async function CompanyLayout({ kicker, title, lead, actions, chil
 }
 
 export function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
-  return <section className="co-sec" id={id}><h2>{title}</h2>{children}</section>;
+  return <section className="cp-sec" id={id}><h2>{title}</h2>{children}</section>;
 }
 
 export function Person({ initials, name, role, href }: { initials: string; name: string; role: string; href?: string }) {
-  const inner = <><span className="co-av" aria-hidden>{initials}</span><span><b>{name}</b><small>{role}</small></span></>;
-  return href ? <Link className="co-person" href={href}>{inner}</Link> : <div className="co-person">{inner}</div>;
+  const inner = <><span className="cp-av" aria-hidden>{initials}</span><span><b>{name}</b><small>{role}</small></span></>;
+  return href ? <Link className="cp-person" href={href}>{inner}</Link> : <div className="cp-person">{inner}</div>;
 }
