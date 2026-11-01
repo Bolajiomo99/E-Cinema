@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { readLocale } from "@/lib/locale";
 import { paypalError, paypalOrders, paypalPayments } from "@/lib/paypal";
+import { kidsGate } from "@/lib/family";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { chargeFor, isStaff, myQuote } from "@/lib/store";
 import type { Order, Quote } from "@/lib/store-types";
@@ -83,7 +84,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const country = (await readLocale()).country ?? "";
 
-  if (p[0] === "checkout") return checkout(session, country, body);
+  if (p[0] === "checkout") {
+    const gate = await kidsGate(session);
+    if (gate) return gate;
+    return checkout(session, country, body);
+  }
 
   if (p[0] === "orders" && UUID.test(p[1] ?? "")) {
     if (p[2] === "cancel") {

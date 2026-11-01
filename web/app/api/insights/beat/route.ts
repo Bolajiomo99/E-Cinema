@@ -9,5 +9,8 @@ export async function POST(req: Request) {
   if (!session) return json(401, { error: "Sign in first" });
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const r = await accountApi("POST", "/v1/me/watch-beats", { showtimeId: b.showtimeId, mode: b.mode, audio: b.audio ?? "", subs: b.subs ?? "", seconds: b.seconds }, session);
-  return json(r.status, r.body ?? {});
+  // Kids screen time and bedtime: the player stops when this says so.
+  const p = await accountApi("POST", "/v1/me/profile/watch", { seconds: b.seconds }, session);
+  const st = p.status === 200 ? (p.body as { blocked?: string; message?: string }) : {};
+  return json(r.status, { ...((r.body as object) ?? {}), blocked: st.blocked ?? "", message: st.message ?? "" });
 }

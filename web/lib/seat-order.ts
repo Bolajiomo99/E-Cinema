@@ -8,12 +8,15 @@ import { paypalError, paypalOrders } from "@/lib/paypal";
 import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 import { accountApi } from "@/lib/auth";
 import { quote } from "@/lib/ticket-quote";
+import { kidsGate } from "@/lib/family";
 
 // Creates a PayPal order for one seat. The price always comes from the server catalog.
 // Used by checkout and, for adult titles, by stage 4 of the unlock.
 export async function createSeatOrder(showtime: Showtime, session: string | undefined, quality?: string) {
   // Tickets belong to an account (one person, one seat), so buyers sign in first.
   if (apiEnabled && !session) return NextResponse.json({ error: "Sign in to buy a seat", signIn: true }, { status: 401 });
+  const gate = await kidsGate(session, showtime.adult ? "18+" : (showtime.rating ?? ""));
+  if (gate) return gate;
 
   // Member discount and VAT follow the buyer's plan and home country.
   const prof = session ? await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null) : null;

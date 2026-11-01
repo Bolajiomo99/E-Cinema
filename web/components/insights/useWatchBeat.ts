@@ -13,7 +13,13 @@ export function useWatchBeat(showtimeId: string, mode: "room" | "replay" | "offl
       const secs = Math.round((Date.now() - last.current) / 1000);
       last.current = Date.now();
       if (document.hidden || !navigator.onLine) return;
-      fetch("/api/insights/beat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ showtimeId, mode, audio, subs, seconds: Math.min(60, secs) }), keepalive: true }).catch(() => undefined);
+      fetch("/api/insights/beat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ showtimeId, mode, audio, subs, seconds: Math.min(60, secs) }), keepalive: true })
+        .then((r) => r.json())
+        .then((b: { blocked?: string; message?: string }) => {
+          // A kids profile reached bedtime or its daily limit: KidsGuard pauses the film.
+          if (b?.blocked) window.dispatchEvent(new CustomEvent("ec-profile-blocked", { detail: { blocked: b.blocked, message: b.message } }));
+        })
+        .catch(() => undefined);
     }, 60_000);
     return () => clearInterval(t);
   }, [showtimeId, mode, playing, audio, subs]);

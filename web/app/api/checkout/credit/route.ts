@@ -5,6 +5,7 @@ import { holdSeats, myTickets, releaseHold, SoldOutError, AdultOnlyError } from 
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
 import { quote, salesOver } from "@/lib/ticket-quote";
+import { kidsGate } from "@/lib/family";
 
 // Pays a seat from gift credit instead of PayPal. The price comes from the server catalog, as at checkout.
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest) {
   const b = (await req.json().catch(() => ({}))) as { showtimeId?: string; quality?: string };
   const s = findShowtime(b.showtimeId ?? "");
   if (!s || s.adult) return NextResponse.json({ error: "This premiere cannot be paid with credit" }, { status: 400 });
+  const gate = await kidsGate(session, s.rating ?? "");
+  if (gate) return gate;
   const prof = await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null);
   const q = quote(s, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined, Date.now(), b.quality);
   if (salesOver(q.phase)) return NextResponse.json({ error: q.phase === "ended" ? "This premiere has ended" : "Doors have closed for this premiere" }, { status: 410 });
