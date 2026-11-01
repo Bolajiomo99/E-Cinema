@@ -281,7 +281,11 @@ function PlanStep({ country, current, onBack, onFree, onPaid }: { country?: stri
       <label className="su-promo">Promo or gift code
         <span>
           <input value={promo} onChange={(e) => { setPromo(e.target.value.toUpperCase()); setPromoNote(""); }} placeholder="E.g. UNILAG2026" maxLength={24} />
-          <button type="button" className="su-sm ghost" onClick={() => setPromoNote(promo ? "That code is not valid. Check the spelling or try another." : "Enter a code first.")}>Apply</button>
+          <button type="button" className="su-sm ghost" onClick={() => {
+            // Gift codes (ECG-XXXX-XXXX) open the gift page, where the gift is claimed for this account.
+            if (/^ECG-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(promo.trim())) return window.location.assign(`/gift/redeem/${promo.trim()}`);
+            setPromoNote(promo ? "That code is not valid. Check the spelling or try another." : "Enter a code first.");
+          }}>Apply</button>
         </span>
       </label>
       {promoNote && <p className="pp-note pp-err" role="alert">{promoNote}</p>}
