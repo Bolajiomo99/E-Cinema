@@ -160,8 +160,13 @@ func TestShop(t *testing.T) {
 	if out.Rider == nil || out.Rider.Name != "Musa" || out.OutAt == nil {
 		t.Fatalf("out = %+v", out)
 	}
-	if open, _ := st.Open(ctx); len(open) == 0 || open[0].Buyer == "" {
-		t.Fatalf("open orders = %+v", open)
+	open, _ := st.Open(ctx)
+	found := false
+	for _, o := range open {
+		found = found || (o.ID == paid.ID && o.Buyer == "shop-pro@example.com")
+	}
+	if !found {
+		t.Fatalf("open orders = %d", len(open))
 	}
 
 	// Reviews only from people who received the item.

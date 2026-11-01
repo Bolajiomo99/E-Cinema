@@ -304,6 +304,10 @@ func (s Store) PurgeDeleted(ctx context.Context) (int, error) {
 	if _, err := tx.Exec(ctx, `UPDATE holds SET account_id = NULL WHERE account_id IN (SELECT id FROM accounts WHERE delete_after < now())`); err != nil {
 		return 0, err
 	}
+	if _, err := tx.Exec(ctx, `UPDATE shop_orders SET address = jsonb_build_object('city', address->>'city', 'country', address->>'country'), rider = NULL
+	  WHERE account_id IN (SELECT id FROM accounts WHERE delete_after < now())`); err != nil {
+		return 0, err
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM room_messages WHERE account_id IN (SELECT id FROM accounts WHERE delete_after < now())`); err != nil {
 		return 0, err
 	}

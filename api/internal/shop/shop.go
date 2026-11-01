@@ -505,7 +505,7 @@ func (st Store) Place(ctx context.Context, accountID string, p Placing) (Order, 
 func (st Store) MarkPaid(ctx context.Context, paypalOrderID, captureID string) (*Order, error) {
 	var id, acct string
 	err := st.DB.QueryRow(ctx, `UPDATE shop_orders SET status = 'placed', placed_at = coalesce(placed_at, now()), paypal_capture_id = $2
-	  WHERE paypal_order_id = $1 AND (status = 'pending' OR paypal_capture_id = $2) RETURNING id, account_id`, paypalOrderID, captureID).Scan(&id, &acct)
+	  WHERE paypal_order_id = $1 AND (status = 'pending' OR paypal_capture_id = $2) RETURNING id, coalesce(account_id::text, '')`, paypalOrderID, captureID).Scan(&id, &acct)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -521,7 +521,7 @@ func (st Store) MarkPaid(ctx context.Context, paypalOrderID, captureID string) (
 	return &o, err
 }
 
-const orderCols = `o.id, o.number, o.account_id, o.status, o.method, o.items_ngn, o.discount_ngn, o.bundle_ngn, o.delivery_ngn, o.vat_ngn, o.total_ngn,
+const orderCols = `o.id, o.number, coalesce(o.account_id::text, ''), o.status, o.method, o.items_ngn, o.discount_ngn, o.bundle_ngn, o.delivery_ngn, o.vat_ngn, o.total_ngn,
   o.charge_currency, o.charge_cents, o.address, o.rider, coalesce(o.return_reason, ''), coalesce(o.paypal_capture_id, ''), o.created_at,
   o.placed_at, o.packed_at, o.out_at, o.delivered_at, o.cancelled_at, o.return_at, o.returned_at`
 
@@ -716,7 +716,7 @@ func (st Store) Reviewable(ctx context.Context, accountID string) ([]string, err
 
 // Open lists orders the delivery team still has to move, oldest first.
 func (st Store) Open(ctx context.Context) ([]Order, error) {
-	rows, err := st.DB.Query(ctx, `SELECT `+orderCols+`, coalesce(a.email, '') FROM shop_orders o JOIN accounts a ON a.id = o.account_id
+	rows, err := st.DB.Query(ctx, `SELECT `+orderCols+`, coalesce(a.email, '') FROM shop_orders o LEFT JOIN accounts a ON a.id = o.account_id
 	  WHERE o.status IN ('placed', 'packed', 'out', 'returning') ORDER BY o.placed_at NULLS LAST, o.created_at LIMIT 200`)
 	if err != nil {
 		return nil, err
