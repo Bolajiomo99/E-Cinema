@@ -16,6 +16,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
@@ -38,6 +39,8 @@ type Server struct {
 	// Gifts are seats, plans and credit bought for someone else.
 	Gifts   gifts.Store
 	Reviews reviews.Store
+	// Library is the viewer's shelf: replays, kept films, collections, requested classics.
+	Library library.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -126,6 +129,15 @@ func (s *Server) Routes() http.Handler {
 			fail(w, err)
 			return
 		}
+		// A keep order buys a film for the viewer's Library; it has no seat.
+		if kept, err := s.Library.MarkKeepPaid(r.Context(), body.OrderID, body.CaptureID); err != nil || kept {
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if err := s.Tickets.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil && !(gift && errors.Is(err, tickets.ErrNoHold)) {
 			fail(w, err)
 			return
@@ -190,6 +202,7 @@ func (s *Server) Routes() http.Handler {
 	s.roomRoutes(mux)
 	s.roomPanelRoutes(mux)
 	s.reviewRoutes(mux)
+	s.libraryRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -306,6 +319,16 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, rooms.ErrBadReason):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, library.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrNoSeat), errors.Is(err, library.ErrNotOwner), errors.Is(err, library.ErrReplayGone):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, library.ErrNoFriend):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, tickets.ErrNoStudio):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
@@ -95,6 +96,7 @@ func run() error {
 		Classics:       classics.Store{DB: pool},
 		Gifts:          gifts.Store{DB: pool},
 		Reviews:        reviews.Store{DB: pool},
+		Library:        library.Store{DB: pool},
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
 	// Accounts whose 30-day deletion grace has ended are removed hourly.
