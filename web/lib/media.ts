@@ -110,3 +110,18 @@ export async function putRoomObject(key: string, body: Buffer, contentType: stri
 export async function roomObjectLink(key: string) {
   return getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: LINK_SECONDS });
 }
+
+// The film's bytes for an encrypted download, streamed through our server so the browser
+// never holds a reusable link. Until studios upload their own films this is the stand-in.
+export async function filmFile(quality: "sd" | "hd"): Promise<{ body: ReadableStream; size: number; credit: string } | null> {
+  try {
+    const info = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: `${STAND_IN}/info.json` }));
+    const i = JSON.parse(await info.Body!.transformToString()) as { title: string; credit: string; license: string };
+    const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: `${STAND_IN}/feature-${quality === "hd" ? "720p" : "360p"}.mp4` }));
+    if (!obj.Body) return null;
+    return { body: obj.Body.transformToWebStream(), size: Number(obj.ContentLength ?? 0), credit: `Stand-in film: ${i.title} ${i.credit} · ${i.license}` };
+  } catch (err) {
+    if ((err as { name?: string }).name === "NoSuchKey") return null;
+    throw err;
+  }
+}
