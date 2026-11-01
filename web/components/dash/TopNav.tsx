@@ -9,7 +9,7 @@ import type { dict } from "@/lib/i18n";
 // Pages that are not built yet stay visible but marked "soon", never linked to a fake page.
 type Me = { name: string; email: string } | null;
 
-export default function TopNav({ me, active, t, country, lang }: { me: Me; active?: "home" | "coming" | "live" | "clips"; t: ReturnType<typeof dict>; country?: string; lang: string }) {
+export default function TopNav({ me, active, t, country, lang }: { me: Me; active?: "home" | "coming" | "live" | "clips" | "community"; t: ReturnType<typeof dict>; country?: string; lang: string }) {
   const cls = (k: string) => (active === k ? "on" : undefined);
   return (
     <nav className="lp-nav hm-nav tn">
@@ -19,8 +19,9 @@ export default function TopNav({ me, active, t, country, lang }: { me: Me; activ
           <Link href={me ? "/home" : "/"} className={cls("home")}>{t.home}</Link>
           <Link href="/coming-soon" className={cls("coming")}>{t.comingSoon}</Link>
           <Link href={me ? "/home#live" : "/#live"} className={cls("live")}>{t.live}</Link>
+          {me ? <Link href="/community" className={cls("community")}>Community</Link> : <Link href="/signin?next=/community">Community</Link>}
           <Link href={me ? "/home#hm-clips" : "/browse"} className={cls("clips")}>Clips</Link>
-          {["Community", "Shop", ...(me ? [] : ["Library"])].map((l) => (
+          {["Shop", ...(me ? [] : ["Library"])].map((l) => (
             <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
           ))}
           {me && <Link href="/library">Library</Link>}
