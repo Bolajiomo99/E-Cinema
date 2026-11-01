@@ -381,6 +381,11 @@ func (st Store) SaveDetails(ctx context.Context, acct, email, id string, d Detai
 	if tag.RowsAffected() == 0 {
 		return Upload{}, ErrNotFound
 	}
+	// A published film keeps its listing in step with the details.
+	if _, err := st.DB.Exec(ctx, `UPDATE showtimes SET film = $2, adult = $3 WHERE id = (SELECT showtime_id FROM studio_premieres WHERE upload = $1)`,
+		id, d.Title, strings.HasPrefix(clip(d.AgeRating, 60), "18")); err != nil {
+		return Upload{}, err
+	}
 	return st.upload(ctx, s.Name, id)
 }
 
@@ -412,7 +417,8 @@ func (st Store) DeleteUpload(ctx context.Context, acct, email, id string) error 
 	if !uuidRe.MatchString(id) {
 		return ErrNotFound
 	}
-	tag, err := st.DB.Exec(ctx, `DELETE FROM studio_uploads WHERE id = $1 AND studio = $2 AND status = 'draft'`, id, s.Name)
+	tag, err := st.DB.Exec(ctx, `DELETE FROM studio_uploads WHERE id = $1 AND studio = $2 AND status = 'draft'
+	  AND NOT EXISTS (SELECT 1 FROM studio_premieres p WHERE p.upload = $1 AND p.showtime_id IS NOT NULL)`, id, s.Name)
 	if err == nil && tag.RowsAffected() == 0 {
 		err = ErrNotFound
 	}

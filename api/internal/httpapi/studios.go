@@ -22,6 +22,16 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, map[string]any{"studio": st, "steps": st.Steps(), "identityOk": a.IDVerified && a.FaceVerified})
 	}
 
+	// Published studio premieres, for the web app's catalog. Public facts only.
+	mux.HandleFunc("GET /v1/studio-films", func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.Studios.LiveFilms(r.Context())
+		reply(w, map[string]any{"films": list}, err)
+	})
+	mux.HandleFunc("GET /v1/studio-films/{upload}/poster", func(w http.ResponseWriter, r *http.Request) {
+		key, err := s.Studios.LivePosterKey(r.Context(), r.PathValue("upload"))
+		reply(w, map[string]string{"key": key}, err)
+	})
+
 	mux.HandleFunc("GET /v1/me/studio", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		st, err := s.Studios.Mine(r.Context(), a.ID, a.Email)
 		if err == studios.ErrNotFound {
@@ -149,6 +159,17 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		if decodeN(w, r, 1<<10, &b) {
 			u, err := s.Studios.SetPoster(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Key)
 			reply(w, map[string]any{"upload": u}, err)
+		}
+	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/premiere", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Studios.Premiere(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]any{"premiere": p}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/premiere", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in studios.PremiereInput
+		if decodeN(w, r, 64<<10, &in) {
+			p, err := s.Studios.SavePremiere(r.Context(), a.ID, a.Email, r.PathValue("id"), in, time.Now())
+			reply(w, map[string]any{"premiere": p}, err)
 		}
 	}))
 	mux.HandleFunc("DELETE /v1/me/studio/uploads/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
