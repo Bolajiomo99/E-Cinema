@@ -118,7 +118,7 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
         setOnline(true);
       };
       ws.onmessage = (e) => {
-        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string; poll?: Poll; online?: string[] };
+        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string; poll?: Poll; online?: string[]; ids?: number[] };
         if (ev.type === "msg" && ev.message) {
           const m = ev.message;
           const add = (list: RoomMessage[]) => (list.some((x) => x.id === m.id) ? list : [...list.slice(-199), m]);
@@ -134,6 +134,13 @@ function useRoomChannel(wsBase: string, showtimeId: string, initial: RoomMessage
           });
         } else if (ev.type === "friends") {
           setOnlineNames(ev.online ?? []);
+        } else if ((ev.type === "hide" || ev.type === "blocked") && ev.ids?.length) {
+          const gone = new Set(ev.ids);
+          setMessages((list) => list.filter((m) => !gone.has(m.id)));
+          setRoomMessages((list) => list.filter((m) => !gone.has(m.id)));
+        } else if (ev.type === "reported") {
+          setNotice("Thanks. Your report was sent privately.");
+          setTimeout(() => setNotice(""), 3500);
         } else if (ev.type === "presence" && typeof ev.count === "number") {
           setWatching(ev.count);
         } else if (ev.type === "react" && ev.emoji) {

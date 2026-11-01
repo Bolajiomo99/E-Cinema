@@ -55,6 +55,7 @@ export default function SidePanel(props: {
   const [spoilers, setSpoilers] = useState<Set<number>>(new Set());
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [paused, setPaused] = useState(false);
+  const [reporting, setReporting] = useState<ChatMessage | null>(null);
   const asked = useRef<Set<number>>(new Set());
   const listRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -192,7 +193,7 @@ export default function SidePanel(props: {
               const tr = tab === "world" && base(m.lang) !== base(lang) ? translations[m.id] : undefined;
               return (
                 <Msg key={m.id} m={m} showtimeId={showtimeId} world={tab === "world"} translated={tr} hidden={hidden}
-                  onReveal={() => setRevealed((s) => new Set(s).add(m.id))} />
+                  onReveal={() => setRevealed((s) => new Set(s).add(m.id))} onReport={() => setReporting(m)} />
               );
             })}
           </>
@@ -235,6 +236,13 @@ export default function SidePanel(props: {
       )}
 
       {(err || props.notice) && <p className="room-notice">{err || props.notice}</p>}
+      {reporting && (
+        <ReportDialog name={reporting.name} onClose={() => setReporting(null)}
+          onSend={(reason, block) => {
+            if (props.send({ type: "report", message: reporting.id, reason, block })) setReporting(null);
+            else flash("Not connected yet. Try again in a moment.");
+          }} />
+      )}
 
       <form className="rp-compose" onSubmit={sendText}>
         <button type="button" className="rp-icon" onClick={() => fileRef.current?.click()} disabled={busy || (tab === "room" && !party)} aria-label="Share a photo or PDF">
@@ -277,8 +285,8 @@ function NoParty({ showtimeId }: { showtimeId: string }) {
   );
 }
 
-function Msg({ m, showtimeId, world, translated, hidden, onReveal }: {
-  m: ChatMessage; showtimeId: string; world: boolean; translated?: string; hidden: boolean; onReveal: () => void;
+function Msg({ m, showtimeId, world, translated, hidden, onReveal, onReport }: {
+  m: ChatMessage; showtimeId: string; world: boolean; translated?: string; hidden: boolean; onReveal: () => void; onReport: () => void;
 }) {
   const kind = m.kind ?? "text";
   const src = m.media ? `/api/rooms/${showtimeId}/media?key=${encodeURIComponent(m.media.key)}` : "";
@@ -291,6 +299,11 @@ function Msg({ m, showtimeId, world, translated, hidden, onReveal }: {
         <div className="rp-meta">
           <b>{world && place ? `${name} · ${place}` : name}</b>
           {world && m.lang ? <span className="rp-lang">{base(m.lang).toUpperCase()}</span> : !world && place ? <small>{place}</small> : null}
+          {!m.mine && (
+            <button type="button" className="rp-more" onClick={onReport} aria-label={`Report or block ${m.name}`} title="Report or block">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+            </button>
+          )}
         </div>
         {hidden ? (
           <button type="button" className="rp-spoiler" onClick={onReveal}>Spoiler hidden · tap to show</button>
@@ -468,6 +481,50 @@ function Polls({ polls, party, send, onError }: { polls: Poll[]; party: Party | 
       ) : (
         <p className="rp-empty">Start a party to run polls with your friends. Everyone can vote in the world poll.</p>
       )}
+    </div>
+  );
+}
+
+const REASONS: [string, string][] = [
+  ["harassment", "Harassment or bullying"], ["hate", "Hate speech"], ["spoilers", "Spoilers in world chat"], ["spam", "Selling or spam"],
+  ["recording", "Recording the screen"], ["under13", "Someone under 13"], ["other", "Something else"],
+];
+
+// Report and block (Figma 96:1378).
+function ReportDialog({ name, onClose, onSend }: { name: string; onClose: () => void; onSend: (reason: string, block: boolean) => void }) {
+  const [reason, setReason] = useState("harassment");
+  const [block, setBlock] = useState(true);
+  const first = name.split(/\s+/)[0] || name;
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onClose]);
+  return (
+    <div className="rd-back" role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form className="rd" role="dialog" aria-modal="true" aria-labelledby="rd-title" onSubmit={(e) => { e.preventDefault(); onSend(reason, block); }}>
+        <span className="rd-icon" aria-hidden>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M5 21V4m0 0h11l-2 4 2 4H5" /></svg>
+        </span>
+        <h2 id="rd-title">Report {first}?</h2>
+        <p>Reports are private. {first} will not know it was you.</p>
+        <div className="rd-list" role="radiogroup" aria-label="Reason">
+          {REASONS.map(([k, label]) => (
+            <button key={k} type="button" role="radio" aria-checked={reason === k} className={reason === k ? "on" : ""} onClick={() => setReason(k)}>
+              <span>{label}</span>
+              {reason === k && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>}
+            </button>
+          ))}
+        </div>
+        <label className="rd-block">
+          <span><b>Also block {first}</b><small>You will not see their messages or rooms</small></span>
+          <input type="checkbox" role="switch" checked={block} onChange={(e) => setBlock(e.target.checked)} />
+        </label>
+        <div className="rd-actions">
+          <button className="rd-send">Send report</button>
+          <button type="button" className="rd-cancel" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
     </div>
   );
 }
