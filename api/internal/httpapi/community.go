@@ -299,6 +299,86 @@ func (s *Server) communityRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, p)
 	}))
+	// The profile page (Figma 32:1060) and its tabs. {id} is an account id or a username.
+	person := func(w http.ResponseWriter, r *http.Request, a accounts.Account) (community.Page, bool) {
+		p, err := s.Community.ProfilePage(r.Context(), a.ID, r.PathValue("id"))
+		if err != nil {
+			fail(w, err)
+			return p, false
+		}
+		return p, true
+	}
+	mux.HandleFunc("GET /v1/me/people/{id}/page", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		if p, ok := person(w, r, a); ok {
+			writeJSON(w, http.StatusOK, p)
+		}
+	}))
+	mux.HandleFunc("GET /v1/me/people/{id}/watched", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, ok := person(w, r, a)
+		if !ok {
+			return
+		}
+		list, err := s.Community.WatchedList(r.Context(), p.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"watched": list})
+	}))
+	mux.HandleFunc("GET /v1/me/people/{id}/reviews", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, ok := person(w, r, a)
+		if !ok {
+			return
+		}
+		list, err := s.Community.ReviewsOf(r.Context(), a.ID, p.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"reviews": list, "hidden": !p.Me && !p.ShowsReviews})
+	}))
+	mux.HandleFunc("PUT /v1/me/people/{id}/reviews/{showtime}/like", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ On bool }
+		if !decode(w, r, &b) {
+			return
+		}
+		p, ok := person(w, r, a)
+		if !ok {
+			return
+		}
+		changed, n, err := s.Community.LikeReview(r.Context(), a.ID, p.ID, r.PathValue("showtime"), b.On)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if b.On && changed {
+			note(p.ID, notify.New{Kind: "like", Title: a.Name + " liked your review", Link: "/u/" + p.ID + "?tab=reviews", Dedupe: "review-like:" + r.PathValue("showtime") + ":" + a.ID})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"liked": b.On, "likes": n})
+	}))
+	mux.HandleFunc("GET /v1/me/people/{id}/badges", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		p, ok := person(w, r, a)
+		if !ok {
+			return
+		}
+		list, err := s.Community.Badges(r.Context(), p.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"badges": list})
+	}))
+	mux.HandleFunc("PUT /v1/me/public-profile", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b community.ProfileChange
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Community.EditProfile(r.Context(), a.ID, b); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}))
 	mux.HandleFunc("PUT /v1/me/follows/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		var b struct{ On bool }
 		if !decode(w, r, &b) {
