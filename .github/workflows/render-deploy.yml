@@ -148,6 +148,10 @@ jobs:
           # Payment failed page is for signed-in buyers: signed out it sends you to sign in.
           curl -s -o /dev/null -w '%{redirect_url}' "$web/checkout/failed?film=iron-delta-2026-12-14" | grep -q "/signin"
           echo "payment failed page ok"
+          # 18+ titles unlock in four stages instead of a plain seat.
+          curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -q "Unlock in 4 stages"
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -q "/signin"
+          echo "18+ unlock ok"
           curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
           curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
