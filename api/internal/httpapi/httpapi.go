@@ -22,6 +22,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
@@ -60,6 +61,8 @@ type Server struct {
 	Shop shop.Store
 	// Brand protects the E-Cinema name: licensed merch codes and fake-seller reports.
 	Brand brand.Store
+	// Licensing runs the licensed merch partners and their portal.
+	Licensing licensing.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -146,6 +149,16 @@ func (s *Server) Routes() http.Handler {
 		gift, err := s.Gifts.MarkPaid(r.Context(), body.OrderID, body.CaptureID)
 		if err != nil {
 			fail(w, err)
+			return
+		}
+		// A licence fee: the licence starts and the new partner hears about it.
+		if app, err := s.Licensing.MarkPaid(r.Context(), body.OrderID); err != nil || app != nil {
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			s.note(app.Account, notify.New{Kind: "payment", Title: "Your E-Cinema licence is active", Body: "Licence " + *app.Licence + ". Open your partner dashboard to add products.", Link: "/partner", Dedupe: "licence:" + app.ID})
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		// A shop order: placed once paid, and the buyer's open pages hear about it.
@@ -246,6 +259,7 @@ func (s *Server) Routes() http.Handler {
 	s.communityRoutes(mux)
 	s.shopRoutes(mux)
 	s.brandRoutes(mux)
+	s.licensingRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -370,6 +384,14 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, library.ErrNotEnded), errors.Is(err, library.ErrOwned), errors.Is(err, library.ErrTooMany), errors.Is(err, library.ErrShareSelf):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+	case errors.Is(err, licensing.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, licensing.ErrBadInput), errors.Is(err, licensing.ErrLimit):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": readable(err)})
+	case errors.Is(err, licensing.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, licensing.ErrState):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, brand.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, brand.ErrBadInput):
@@ -432,6 +454,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func readable(err error) string {
 	m := strings.TrimPrefix(strings.TrimPrefix(err.Error(), accounts.ErrBadInput.Error()+": "), shop.ErrBadInput.Error()+": ")
 	m = strings.TrimPrefix(m, brand.ErrBadInput.Error()+": ")
+	m = strings.TrimPrefix(strings.TrimPrefix(m, licensing.ErrBadInput.Error()+": "), licensing.ErrLimit.Error()+": ")
 	if m == "" {
 		return m
 	}

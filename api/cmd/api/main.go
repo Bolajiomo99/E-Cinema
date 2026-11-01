@@ -13,6 +13,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
@@ -109,6 +110,7 @@ func run() error {
 		Community:      community.Store{DB: pool},
 		Shop:           shop.Store{DB: pool},
 		Brand:          brand.Store{DB: pool},
+		Licensing:      licensing.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}

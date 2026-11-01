@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -25,6 +26,9 @@ var orderNote = map[string][2]string{
 
 // orderChanged tells the buyer's open pages over the live socket and adds a notification.
 func (s *Server) orderChanged(o shop.Order) {
+	if o.AccountID == "" {
+		return // the buyer deleted their account
+	}
 	if s.ChatHub != nil {
 		if raw, err := json.Marshal(o); err == nil {
 			s.ChatHub.Send([]string{o.AccountID}, chat.Event{Type: "order", Order: raw})
@@ -112,6 +116,11 @@ func (s *Server) shopRoutes(mux *http.ServeMux) {
 			return
 		}
 		if o.Status == "placed" {
+			if o.Status == "delivered" {
+				if err := s.Licensing.RecordShopSales(r.Context(), o.ID); err != nil {
+					slog.Error("partner shop sales", "err", err)
+				}
+			}
 			s.orderChanged(o)
 		}
 		writeJSON(w, http.StatusCreated, o)
