@@ -20,7 +20,7 @@ export const ITEMS: Item[] = [
   { label: "Library", href: "/library", icon: I(<><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><path d="M7.5 3.5v17M16.5 3.5v17M3.5 8h4M3.5 12h17M3.5 16h4M16.5 8h4M16.5 16h4" /></>) },
   { label: "Downloads", href: "/downloads", icon: I(<><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" /></>) },
   { label: "Messages", icon: I(<path d="M20.5 11.5a8 8 0 0 1-11.8 7l-4.2 1.2 1.2-4A8 8 0 1 1 20.5 11.5z" />) },
-  { label: "Notifications", icon: I(<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>) },
+  { label: "Notifications", href: "/notifications", icon: I(<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>) },
   { label: "Insights", href: "/insights", icon: I(<path d="M4 4v16h16M8.5 16v-4M12.5 16V8M16.5 16v-6" />) },
   { label: "Watch parties", href: "/parties", icon: I(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.4a6.5 6.5 0 0 1 3 5.6" /></>) },
   { label: "Settings", href: "/settings/account", icon: I(<><circle cx="12" cy="12" r="3" /><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" /></>) },
@@ -29,9 +29,30 @@ export const ITEMS: Item[] = [
 const Ctx = createContext<{ open: boolean; toggle: () => void }>({ open: false, toggle: () => {} });
 const KEY = "ec.sidebar";
 
+// Unread notifications for the sidebar badge, checked every 30 seconds while the tab is visible.
+function useUnread(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let stop = false;
+    const check = async () => {
+      if (stop || document.visibilityState !== "visible") return;
+      const r = await fetch("/api/notifications/unread", { cache: "no-store" }).catch(() => null);
+      if (r?.status === 401) stop = true;
+      if (r?.ok) setN(((await r.json()) as { unread?: number }).unread ?? 0);
+    };
+    check();
+    const t = setInterval(check, 30000);
+    window.addEventListener("ec:notifications", check);
+    document.addEventListener("visibilitychange", check);
+    return () => { clearInterval(t); window.removeEventListener("ec:notifications", check); document.removeEventListener("visibilitychange", check); };
+  }, []);
+  return n;
+}
+
 export function DashShell({ children, defaultOpen = false }: { children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const path = usePathname();
+  const unread = useUnread();
 
   useEffect(() => {
     try {
@@ -75,6 +96,7 @@ export function DashShell({ children, defaultOpen = false }: { children: ReactNo
               return it.href ? (
                 <Link key={it.label} href={it.href} className={`dash-item${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>
                   {it.icon}<span>{it.label}</span>
+                  {it.href === "/notifications" && unread > 0 && <b aria-label={`${unread} unread`}>{unread > 99 ? "99+" : unread}</b>}
                 </Link>
               ) : (
                 <span key={it.label} className="dash-item soon" aria-disabled="true" title={`${it.label} is coming soon`}>
