@@ -52,9 +52,10 @@ before(async () => {
   sql(`INSERT INTO studio_payouts (showtime_id, studio, paid_seats, gross_cents, studio_cents, currency, status)
        SELECT s.id, st.name, 0, 0, 0, s.currency, 'nothing_due' FROM showtimes s JOIN studios st ON st.name = s.studio
        WHERE s.starts_at + make_interval(mins => s.duration_min) < now() ON CONFLICT DO NOTHING`);
-  sql(`DELETE FROM showtimes s WHERE s.starts_at + make_interval(mins => s.duration_min) < now()
-       AND NOT EXISTS (SELECT 1 FROM studio_payouts p WHERE p.showtime_id = s.id)
-       AND NOT EXISTS (SELECT 1 FROM holds h WHERE h.showtime_id = s.id)`);
+  // Ended screenings of studios not on file (other packages' test rows) move out of the way;
+  // deleting them would break the rows other tables keep pointing at them.
+  sql(`UPDATE showtimes s SET starts_at = now() + interval '30 days' WHERE s.starts_at + make_interval(mins => s.duration_min) < now()
+       AND s.id <> 'wf-ended' AND NOT EXISTS (SELECT 1 FROM studio_payouts p WHERE p.showtime_id = s.id AND p.status IN ('sent', 'nothing_due'))`);
   sql(`DELETE FROM studio_payouts WHERE showtime_id = 'wf-ended'; DELETE FROM holds WHERE showtime_id = 'wf-ended';
        DELETE FROM showtimes WHERE id = 'wf-ended';
        INSERT INTO showtimes VALUES ('wf-ended', 'Night Market', 'Lagoon Gate Pictures', now() - interval '4 hours', 120, 100, 699, 'USD');
