@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/exec"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/shop"
@@ -67,6 +68,8 @@ type Server struct {
 	Licensing licensing.Store
 	// Studios runs the studio portal.
 	Studios studios.Store
+	// Exec serves the executive dashboards.
+	Exec exec.Store
 	// Careers runs the jobs board, applications and group screening quotes.
 	Careers careers.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
@@ -296,6 +299,7 @@ func (s *Server) Routes() http.Handler {
 	s.careersRoutes(mux)
 	s.familyRoutes(mux)
 	s.studioRoutes(mux)
+	s.execRoutes(mux)
 	s.partyRoutes(mux)
 	s.classicRoutes(mux)
 	s.adultRoutes(mux)
@@ -358,6 +362,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, exec.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Executives only"})
 	case errors.Is(err, studios.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrBadInput):

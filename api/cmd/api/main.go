@@ -11,6 +11,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/chat"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/classics"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/community"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/exec"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/gifts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
@@ -114,6 +115,7 @@ func run() error {
 		Brand:          brand.Store{DB: pool},
 		Licensing:      licensing.Store{DB: pool},
 		Studios:        studios.Store{DB: pool},
+		Exec:           exec.Store{DB: pool, CEOs: ceoEmails()},
 		Careers:        careers.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
@@ -174,4 +176,19 @@ func env(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// ceoEmails is who has full executive access: CEO_EMAILS, comma-separated, or the company mailbox.
+func ceoEmails() []string {
+	v := os.Getenv("CEO_EMAILS")
+	if strings.TrimSpace(v) == "" {
+		v = "admin@e-cinema.net"
+	}
+	out := []string{}
+	for _, e := range strings.Split(v, ",") {
+		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
+			out = append(out, e)
+		}
+	}
+	return out
 }
