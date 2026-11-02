@@ -102,3 +102,15 @@ export async function execGrowth(s: string, days: number, country: string): Prom
   const r = await accountApi("GET", `/v1/me/exec/growth?days=${days}&country=${encodeURIComponent(country)}`, undefined, s);
   return r.status === 200 ? (r.body as GrowthData) : null;
 }
+
+export type ContentData = {
+  screening: number; countries: number; studios: number; studiosWaiting: number; comingSoon: number; preSales: number; rating: number; reviews: number;
+  films: { film: string; studio: string; showtime: string; genres: string; starts: string; ends: string; countries: number; seats: number; state: "screening" | "presale" | "ended" | "waiting" }[];
+  pending: { name: string; slug: string; city: string; country: string; docsOk: boolean; hasDocs: boolean; hasBank: boolean; rights: boolean; since: string }[];
+  dubs: { lang: string; total: number; approved: number; working: number; failed: number }[];
+};
+
+export async function execContent(s: string): Promise<ContentData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/content", undefined, s);
+  return r.status === 200 ? (r.body as ContentData) : null;
+}

@@ -12,7 +12,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Command center", href: "/executive", roles: CAB, icon: "crown", lock: true },
   { label: "Money", href: "/executive/money", roles: ["cfo"], money: true, icon: "money" },
   { label: "Growth and users", href: "/executive/growth", roles: ["cfo", "cmo", "coo"], icon: "trend" },
-  { label: "Content and studios", roles: ["coo", "cmo"], icon: "film" },
+  { label: "Content and studios", href: "/executive/content", roles: ["coo", "cmo"], icon: "film" },
   { label: "Live operations", roles: ["coo", "cto"], icon: "live" },
   { label: "Shop and merch", roles: ["coo", "cfo"], icon: "bag" },
   { label: "Rooms and VR halls", roles: ["coo", "cfo"], icon: "door" },

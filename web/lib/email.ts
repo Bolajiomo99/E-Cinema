@@ -306,3 +306,22 @@ export async function sendExecInvite(to: string, name: string, role: string, by:
     `${by} gave you ${role} access to E-Cinema. Sign in with ${to} at ${link}${ends ? `. Access ends ${ends}.` : "."}`,
   );
 }
+
+export async function sendStudioInvite(to: string, studio: string, by: string, note: string) {
+  const link = `${site()}/studio`;
+  await send(
+    to,
+    `${by} invited ${studio || "your studio"} to premiere on E-Cinema`,
+    layout("Premiere your films to watch-together audiences", "Bring your films to E-Cinema",
+      p(`${esc(by)} from E-Cinema would like ${studio ? `<b>${esc(studio)}</b>` : "your studio"} to premiere films on E-Cinema, where audiences around the world watch new releases together, live, with AI dubbing into their own language.`) +
+      (note ? note_(note) : "") +
+      facts([["Your share of ticket sales", "70%"], ["Payouts", "After each screening ends"], ["Set up", "Self-serve, about 15 minutes"]]) +
+      button(link, "Set up your studio") +
+      p("You will need your company registration, a document showing you hold the rights, and where to send your money."),
+      "STUDIOS",
+      "You got this email because someone at E-Cinema invited your studio. We will not email you again unless you set up a studio."),
+    `${by} invited ${studio || "your studio"} to premiere films on E-Cinema. Studios keep 70% of ticket sales. Set up: ${link}`,
+    "E-Cinema Studios <studios@e-cinema.net>",
+  );
+}
+const note_ = (t: string) => note(`“${esc(t)}”`);
