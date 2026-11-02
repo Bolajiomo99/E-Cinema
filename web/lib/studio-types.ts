@@ -51,7 +51,7 @@ export const STUDIO_NAV: { label: string; href?: string; icon: string }[] = [
   { label: "Live control room", href: "/studio/control", icon: "live" },
   { label: "Analytics", href: "/studio/analytics", icon: "chart" },
   { label: "Revenue and payouts", href: "/studio/payouts", icon: "wallet" },
-  { label: "Piracy protection", icon: "shield" },
+  { label: "Piracy protection", href: "/studio/piracy", icon: "shield" },
   { label: "Marketing", icon: "megaphone" },
   { label: "Team", href: "/studio/team", icon: "team" },
   { label: "Settings", href: "/studio/settings", icon: "gear" },

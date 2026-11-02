@@ -6,6 +6,7 @@ import { scall } from "./scall";
 
 // Staff review of studio applications: papers, payout account, rights, then approve or send back.
 type Row = Studio & { doc?: string };
+type Ban = { id: string; studio: string; film: string; kind: string; place: string; link: string; what: string; code: string; createdAt: string; accountId: string; email: string; name: string; banned: boolean };
 const PILL: Record<string, string> = { submitted: "amber", verified: "teal", rejected: "red", draft: "grey" };
 
 export default function StudioDesk() {
@@ -13,12 +14,21 @@ export default function StudioDesk() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
-  const load = useCallback(() => scall<{ studios: Row[] }>("GET", "desk").then((r) => setRows(r.studios)).catch((e) => setErr((e as Error).message)), []);
+  const [bans, setBans] = useState<Ban[]>([]);
+  const load = useCallback(() => Promise.all([
+    scall<{ studios: Row[] }>("GET", "desk").then((r) => setRows(r.studios)),
+    scall<{ requests: Ban[] | null }>("GET", "desk/bans").then((r) => setBans(r.requests ?? [])),
+  ]).catch((e) => setErr((e as Error).message)), []);
   useEffect(() => { load(); }, [load]);
 
   async function review(slug: string, approve: boolean) {
     setBusy(slug); setErr("");
     try { await scall("POST", `desk/${slug}`, { approve, note: notes[slug] ?? "" }); await load(); } catch (e) { setErr((e as Error).message); } finally { setBusy(""); }
+  }
+
+  async function decide(id: string, approve: boolean) {
+    setBusy(id); setErr("");
+    try { await scall("POST", `desk/bans/${id}`, { approve }); await load(); } catch (e) { setErr((e as Error).message); } finally { setBusy(""); }
   }
 
   const waiting = rows?.filter((r) => r.status === "submitted") ?? [];
@@ -50,6 +60,26 @@ export default function StudioDesk() {
                 </div>
               </div>
             )) : <p className="pt-empty">Nothing waiting.</p>}
+          </section>
+          <section className="bp-panel">
+            <h2>Ban requests from studios ({bans.length})</h2>
+            {bans.length ? bans.map((b) => (
+              <div key={b.id} className="stu-desk">
+                <div className="stu-desk-h">
+                  <div><b>{b.name} · {b.email}</b><small>{b.studio} · {b.film || "film not given"} · viewer code {b.code} · reported {dayName(b.createdAt)}{b.banned ? " · already closed" : ""}</small></div>
+                  <span className="bp-pill amber">Requested</span>
+                </div>
+                <dl className="stu-dl">
+                  <div><dt>Copy</dt><dd><a href={b.link} target="_blank" rel="noopener noreferrer nofollow">{b.link}</a></dd></div>
+                  <div><dt>What</dt><dd>{b.kind}{b.what ? ` · ${b.what}` : ""} · {b.place}</dd></div>
+                </dl>
+                <p className="pt-hint">Open the copy and check the code in the picture reads {b.code} before closing the account.</p>
+                <div className="pt-inline">
+                  <button className="vf-btn ghost" disabled={busy === b.id} onClick={() => decide(b.id, false)}>Decline</button>
+                  <button className="vf-btn red" disabled={busy === b.id} onClick={() => decide(b.id, true)}>Close account</button>
+                </div>
+              </div>
+            )) : <p className="pt-empty">No ban requests.</p>}
           </section>
           <section className="bp-panel">
             <h2>Drafts and sent back</h2>
