@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/exec"
 )
 
 // Executive dashboards (Figma page "07 Executive").
@@ -16,6 +17,26 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/me/exec", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		role, err := s.Exec.Role(r.Context(), a.Email)
 		reply(w, map[string]string{"role": role}, err)
+	}))
+	// Access and roles (Figma 49:1307): the CEO's list of people, grant or change, and remove.
+	mux.HandleFunc("GET /v1/me/exec/people", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Exec.People(r.Context(), a.Email)
+		reply(w, map[string]any{"people": p, "scopes": exec.Scopes}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/people", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var g exec.Grant
+		if !decode(w, r, &g) {
+			return
+		}
+		added, err := s.Exec.Grant(r.Context(), a.Email, a.ID, g, time.Now())
+		reply(w, map[string]bool{"added": added}, err)
+	}))
+	mux.HandleFunc("DELETE /v1/me/exec/people/{email}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.Revoke(r.Context(), a.Email, r.PathValue("email")); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {

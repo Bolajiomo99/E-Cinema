@@ -362,6 +362,10 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, exec.ErrBadInput):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Check the email, role and end date"})
+	case errors.Is(err, exec.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "That person has no executive access"})
 	case errors.Is(err, exec.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Executives only"})
 	case errors.Is(err, studios.ErrForbidden):
