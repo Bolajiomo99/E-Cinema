@@ -12,6 +12,7 @@ import { marketOf, type Premiere } from "@/lib/premiere-types";
 import { suggestPrices } from "@/lib/price-ai";
 import { syncDubs } from "@/lib/dub-worker";
 import { readMood } from "@/lib/control-ai";
+import { pickClips } from "@/lib/clip-ai";
 
 // Film uploads (Figma 35:290). The browser asks here for signed links and sends each part of
 // a file straight to private storage; this route opens, resumes, finishes and checks files.
@@ -65,6 +66,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (p.length === 2 && p[1] === "premiere") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s));
   // Live control room (Figma 37:1272).
   if (p.length === 2 && p[1] === "control") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s));
+  // Marketing (Figma 39:779): the clip moments Studio AI picked.
+  if (p.length === 2 && p[1] === "clips") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/clips`, undefined, s));
   if (p.length === 2 && p[1] === "poster") {
     const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s);
     if (r.status !== 200) return pass(r);
@@ -123,6 +126,31 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const body = await req.json().catch(() => ({}));
     const out = p[2] === "announce" ? { text: String(body.text ?? "").slice(0, 400) } : { messageId: Math.trunc(Number(body.messageId) || 0), hide: body.hide === true };
     return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/control/${p[2]}`, out, s));
+  }
+  if (p.length === 3 && p[1] === "clips" && p[2] === "approve") {
+    const body = await req.json().catch(() => ({}));
+    const idx = Array.isArray(body.idx) ? (body.idx as unknown[]).slice(0, 12).map((x) => Math.trunc(Number(x) || 0)) : [];
+    return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/clips/approve`, { idx }, s));
+  }
+  // Studio AI picks new moments; saving them needs the marketing role, checked by the API.
+  if (p.length === 3 && p[1] === "clips" && p[2] === "generate") {
+    if (limited(`c:${s}`, 4)) return json(429, { error: "Slow down: try again in a minute" });
+    const body = await req.json().catch(() => ({}));
+    const cutoffMs = Math.max(60_000, Math.min(6 * 3600_000, Math.round(Number(body.cutoffMs) || 3_000_000)));
+    const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s);
+    if (r.status !== 200) return pass(r);
+    const u = (r.body as { upload: Upload }).upload;
+    const probe = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/clips`, { cutoffMs, clips: [] }, s);
+    if (probe.status !== 200) return pass(probe);
+    try {
+      const clips = await pickClips(u.title, u.logline ?? "", u.files, cutoffMs);
+      return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/clips`, { cutoffMs, clips }, s));
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (m === "off") return json(503, { error: "Studio AI is not switched on yet." });
+      console.error("clip picks", m);
+      return json(m.length < 160 && !/json|token|api/i.test(m) ? 400 : 502, { error: m.length < 160 && !/json|token|api/i.test(m) ? m : "Studio AI did not answer. Try again" });
+    }
   }
   if (p.length === 3 && p[1] === "control" && p[2] === "mood") {
     if (limited(`m:${s}`, 6)) return json(429, { error: "Slow down: try again in a minute" });
@@ -227,6 +255,17 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (p.length === 2 && p[1] === "details") {
     const str = (k: string) => String(body[k] ?? "");
     return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/details`, { title: str("title"), logline: str("logline"), genres: str("genres"), ageRating: str("ageRating"), castCrew: str("castCrew"), languages: str("languages") }, s));
+  }
+  // A new spoiler cutoff for the clip moments; the API refuses clips that end after it.
+  if (p.length === 2 && p[1] === "clips") {
+    const clips = Array.isArray(body.clips) ? (body.clips as Record<string, unknown>[]).slice(0, 12).map((c) => ({
+      startMs: Math.round(Number(c.startMs) || 0), endMs: Math.round(Number(c.endMs) || 0), title: String(c.title ?? ""), why: String(c.why ?? ""), format: String(c.format ?? ""),
+    })) : [];
+    const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/clips`, { cutoffMs: Math.round(Number(body.cutoffMs) || 0), clips }, s);
+    // Saving replaces the moments, so carry the approvals over.
+    const keep = Array.isArray(body.clips) ? (body.clips as Record<string, unknown>[]).map((c, i) => (c.approved === true ? i : -1)).filter((i) => i >= 0) : [];
+    if (r.status === 200 && keep.length) return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/clips/approve`, { idx: keep }, s));
+    return pass(r);
   }
   if (p.length === 2 && p[1] === "premiere") {
     const n = (k: string) => Math.round(Number(body[k]) || 0);

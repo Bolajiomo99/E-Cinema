@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf" };
 const KEY = /^studios\/[0-9a-f-]{36}\.(jpg|png|pdf)$/;
 const SLUG = /^[a-z0-9-]{1,90}$/;
-const PAGES = new Set(["overview", "films", "payouts", "team", "leaks"]);
+const PAGES = new Set(["overview", "films", "payouts", "team", "leaks", "campaigns"]);
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PLACES: Record<string, string> = { website: "a website", telegram: "a Telegram channel", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "an online service" };
 const KINDS: Record<string, string> = { clip: "a clip of the film", full: "the full film", screenshot: "a still from the film", other: "material from the film" };
@@ -68,6 +68,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
   if (!p.length) return pass(await accountApi("PUT", "/v1/me/studio", body, s));
   if (p.length === 1 && ["payout", "rights", "team"].includes(p[0])) return pass(await accountApi("PUT", `/v1/me/studio/${p[0]}`, body, s));
   if (p.length === 2 && p[0] === "leaks" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/leaks/${p[1]}`, body, s));
+  if (p.length === 2 && p[0] === "campaigns" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/campaigns/${p[1]}`, { costCents: Math.round(Number(body.costCents) || 0) }, s));
   return json(404, { error: "Not found" });
 }
 
@@ -112,6 +113,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   if (p.length === 1 && (p[0] === "terms" || p[0] === "submit")) return pass(await accountApi("POST", `/v1/me/studio/${p[0]}`, {}, s));
   const body = await req.json().catch(() => ({}));
   if (p[0] === "team" && p[1] === "remove") return pass(await accountApi("POST", "/v1/me/studio/team/remove", body, s));
+  if (p.length === 1 && p[0] === "campaigns") {
+    if (limited(s + ":cmp", 20)) return json(429, { error: "Slow down: too many campaigns in a minute" });
+    return pass(await accountApi("POST", "/v1/me/studio/campaigns", { showtimeId: String(body.showtimeId ?? ""), name: String(body.name ?? ""), channel: String(body.channel ?? ""), costCents: Math.round(Number(body.costCents) || 0) }, s));
+  }
   if (p.length === 1 && p[0] === "leaks") {
     if (limited(s + ":leak", 20)) return json(429, { error: "Slow down: too many reports in a minute" });
     return pass(await accountApi("POST", "/v1/me/studio/leaks", body, s));
@@ -148,5 +153,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
     return pass(await accountApi("POST", `/v1/studios/${p[1]}/review`, body));
   }
+  return json(404, { error: "Not found" });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ path?: string[] }> }) {
+  if (!sameOrigin(req)) return json(403, { error: "forbidden" });
+  const p = (await params).path ?? [];
+  const s = await session();
+  if (!s) return json(401, { error: "Sign in first", signIn: true });
+  if (p.length === 2 && p[0] === "campaigns" && ID.test(p[1])) return pass(await accountApi("DELETE", `/v1/me/studio/campaigns/${p[1]}`, undefined, s));
   return json(404, { error: "Not found" });
 }
