@@ -1,4 +1,5 @@
 import "server-only";
+import { cookies } from "next/headers";
 
 // Talks to the Go API (seat holds and the ticket ledger). Without API_URL the web app
 // still takes payments, but seats are not reserved, which is only acceptable in development.
@@ -29,7 +30,18 @@ export type Hold = { id: string; totalCents: number; currency: string; expiresAt
 // them into the watch room later.
 export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string, quality = "hd"): Promise<Hold | undefined> {
   if (!apiEnabled) return undefined;
-  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality }, session);
+  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality, campaign: await campaignCode() }, session);
+}
+
+// The studio campaign link (e-cinema.net/c/<code>) the buyer arrived through, so the studio can
+// see which campaign sold the seat. The API only counts it for the same screening.
+async function campaignCode(): Promise<string> {
+  try {
+    const c = (await cookies()).get("ec_cmp")?.value ?? "";
+    return /^[a-z0-9]{8}$/.test(c) ? c : "";
+  } catch {
+    return "";
+  }
 }
 
 // netCents: what the order charges for the seats before VAT, which the studio's share is worked out from.
