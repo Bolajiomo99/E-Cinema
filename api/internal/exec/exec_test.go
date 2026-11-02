@@ -427,6 +427,8 @@ func TestSafety(t *testing.T) {
 	}
 	clean := func() {
 		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'fx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM room_reports WHERE showtime_id = 'fx-show'`)
+		p.Exec(ctx, `DELETE FROM room_messages WHERE showtime_id = 'fx-show'`)
 		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'fx-%@example.com'`)
 		p.Exec(ctx, `DELETE FROM sign_in_failures WHERE email = 'fx-locked@example.com'`)
 	}
