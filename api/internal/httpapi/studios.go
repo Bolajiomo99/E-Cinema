@@ -363,10 +363,41 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		reply(w, map[string]bool{"ok": err == nil}, err)
 	}))
 
+	// Piracy protection (Figma 39:578).
+	mux.HandleFunc("GET /v1/me/studio/leaks", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		l, stats, err := s.Studios.Leaks(r.Context(), a.ID, a.Email, time.Now())
+		reply(w, map[string]any{"leaks": l, "stats": stats}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/leaks", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in studios.LeakInput
+		if decodeN(w, r, 4<<10, &in) {
+			l, err := s.Studios.ReportLeak(r.Context(), a.ID, a.Email, in, func(id string) string { return rooms.ViewerCode(s.Passes.Key, id) })
+			reply(w, l, err)
+		}
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/leaks/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var u studios.LeakUpdate
+		if decodeN(w, r, 16<<10, &u) {
+			l, err := s.Studios.UpdateLeak(r.Context(), a.ID, a.Email, r.PathValue("id"), u)
+			reply(w, l, err)
+		}
+	}))
+
 	// The studio desk, for E-Cinema staff (the web checks STAFF_EMAILS).
 	mux.HandleFunc("GET /v1/studios/applications", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		a, err := s.Studios.Applications(r.Context())
 		reply(w, map[string]any{"studios": a}, err)
+	}))
+	mux.HandleFunc("GET /v1/studios/bans", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		b, err := s.Studios.BanRequests(r.Context())
+		reply(w, map[string]any{"requests": b}, err)
+	}))
+	mux.HandleFunc("POST /v1/studios/bans/{id}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Approve bool }
+		if decodeN(w, r, 1<<10, &b) {
+			err := s.Studios.DecideBan(r.Context(), r.PathValue("id"), b.Approve, func(acct, reason string) error { return s.Accounts.Ban(r.Context(), acct, reason) })
+			reply(w, map[string]bool{"ok": err == nil}, err)
+		}
 	}))
 	mux.HandleFunc("POST /v1/studios/{slug}/review", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct {
