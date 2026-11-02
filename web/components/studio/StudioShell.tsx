@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Logo from "@/components/landing/Logo";
 import { STUDIO_NAV, type Studio } from "@/lib/studio-types";
 import { nameOf } from "@/lib/countries";
@@ -20,6 +20,7 @@ const P: Record<string, ReactNode> = {
   shield: <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" />,
   megaphone: <path d="M4 10v4h3l7 4V6L7 10zm14-1a4 4 0 0 1 0 6" />,
   team: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M21 20c0-2.6-1.6-4.8-4-5.6" /></>,
+  bell: <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0" />,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
 };
 
@@ -35,6 +36,14 @@ export default function StudioShell({ studio: s, children }: { studio: Studio; c
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const on = (href: string) => path === href || (href !== "/studio" && path.startsWith(href + "/"));
+  const [unread, setUnread] = useState(0);
+  // The bell's count, fetched again whenever the studio moves to another page.
+  useEffect(() => {
+    if (s.status !== "verified") return;
+    let live = true;
+    fetch("/api/studio/notices").then((r) => (r.ok ? r.json() : null)).then((j) => { if (live && j) setUnread(Number(j.unread) || 0); }).catch(() => {});
+    return () => { live = false; };
+  }, [path, s.status]);
   const place = [s.city || nameOf(s.regCountry), s.status === "verified" ? "Verified studio" : "Waiting for checks"].filter(Boolean).join(" · ");
   return (
     <div className={`pt stu ${open ? "open" : ""}`}>
@@ -42,6 +51,11 @@ export default function StudioShell({ studio: s, children }: { studio: Studio; c
         <div className="pt-brand">
           <Logo href="/home" />
           <b>STUDIO</b>
+          {s.status === "verified" && (
+            <Link href="/studio/notifications" className={`stu-bell${on("/studio/notifications") ? " on" : ""}`} onClick={() => setOpen(false)} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}>
+              <Icon name="bell" size={20} />{unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}
+            </Link>
+          )}
         </div>
         <div className="pt-who">
           <span>{initials(s.name)}</span>

@@ -4806,3 +4806,30 @@ a.cp-person:hover { border-color: #44444f; }
   .stcs .bp-head { flex-wrap: wrap; }
 }
 .stcs .bp-flash a, .stcs .pt-hint a { color: #8fb4ff; }
+
+/* Studio / Notifications (Figma 99:552) */
+.stu .pt-brand { position: relative; }
+.stu-bell { position: absolute; top: 2px; right: 4px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 18px; color: var(--text-secondary); }
+.stu-bell:hover, .stu-bell.on { background: #24242b; color: var(--text-primary); }
+.pt-brand .stu-bell b { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #e50914; color: #fff; font: 700 9px/16px Manrope, sans-serif; letter-spacing: 0; text-align: center; }
+.stnt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.stnt-list li { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--bg-surface); }
+.stnt-list li.new { border-color: #3a3a44; background: #18181e; }
+.stnt-list .dot { flex: none; width: 8px; height: 8px; border-radius: 4px; background: #6b6b75; }
+.stnt-list .dot.red { background: #e50914; }
+.stnt-list .dot.amber { background: #f5a524; }
+.stnt-list .dot.green { background: #22c55e; }
+.stnt-list .dot.teal { background: #2bb3a3; }
+.stnt-list .dot.purple { background: #8b7cf6; }
+.stnt-list .dot.blue { background: #3b82f6; }
+.stnt-list .txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.stnt-list .txt b { color: var(--text-primary); font: 600 14px/20px Manrope, sans-serif; overflow-wrap: anywhere; }
+.stnt-list .txt small { color: var(--text-muted); font: 500 12px/18px Manrope, sans-serif; overflow-wrap: anywhere; }
+.stnt-list .when { flex: none; color: var(--text-muted); font: 500 12px/18px Manrope, sans-serif; }
+.stnt-open { flex: none; color: var(--text-muted); font: 600 20px/1 Manrope, sans-serif; text-decoration: none; padding: 0 4px; }
+.stnt .bp-chips { margin-bottom: 4px; }
+@media (max-width: 700px) {
+  .stnt-list li { flex-wrap: wrap; }
+  .stnt-list .txt { flex-basis: calc(100% - 80px); }
+  .stnt .bp-head { flex-wrap: wrap; }
+}
