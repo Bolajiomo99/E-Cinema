@@ -4775,3 +4775,34 @@ a.cp-person:hover { border-color: #44444f; }
   .stai-msg { max-width: 92%; }
 }
 .stu-ai:hover, .stu-ai.on { background: rgba(212,162,58,.16); }
+
+/* Studio / Post a coming-soon film (Figma 53:1512) */
+.stcs-grid { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 16px; align-items: start; }
+.stcs-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stcs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stcs-two input, .stcs-two select { width: 100%; min-width: 0; background: none; border: 0; color: var(--text-primary); font: 500 14px/20px Manrope, sans-serif; color-scheme: dark; }
+.stcs-two select option { background: #1a1a20; }
+.stcs-type, .stcs-date { display: flex; align-items: center; gap: 8px; }
+.stcs-type span { color: var(--text-muted); }
+.stcs-date input[type=time] { width: 92px; flex: none; }
+.stcs-note { display: block; margin-top: 4px; color: var(--text-muted); font: 500 11px/16px Manrope, sans-serif; }
+.stcs-up { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px; border: 1px solid rgba(231, 169, 58, .45); border-radius: 8px; background: rgba(231, 169, 58, .05); color: var(--text-secondary); font: 500 13px/20px Manrope, sans-serif; }
+.stcs-up span:not(.pt-hint) { flex: 1; min-width: 0; }
+.stcs-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.stcs-chip { padding: 6px 12px; border: 0; border-radius: 16px; background: #24242b; color: var(--text-secondary); font: 600 12px/18px Manrope, sans-serif; cursor: pointer; }
+.stcs-chip.on { background: #f2f2f2; color: #111; }
+.stcs-chip.off { cursor: default; opacity: .7; }
+.stcs-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 12px; }
+.stcs-tile { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 8px; background: #1f1f26; }
+.stcs-tile small { color: var(--text-muted); font: 600 10px/14px Manrope, sans-serif; letter-spacing: .04em; }
+.stcs-tile b { color: var(--text-primary); font: 700 18px/24px Manrope, sans-serif; }
+.stcs-tile span { color: var(--text-muted); font: 500 11px/16px Manrope, sans-serif; }
+.stcs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font: 500 13px/20px Manrope, sans-serif; }
+.stcs-list li::before { content: "· "; }
+@media (max-width: 1100px) { .stcs-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .stcs-two { grid-template-columns: 1fr; }
+  .stcs-up { flex-wrap: wrap; }
+  .stcs .bp-head { flex-wrap: wrap; }
+}
+.stcs .bp-flash a, .stcs .pt-hint a { color: #8fb4ff; }

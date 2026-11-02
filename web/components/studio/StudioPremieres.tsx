@@ -120,6 +120,7 @@ export default function StudioPremieres({ films, upload: u, premiere: p0, canEdi
         </div>
         {canEdit && (
           <div className="pt-btns">
+            <Link className="vf-btn ghost" href={`/studio/premieres/coming-soon?film=${u.id}`}>Coming-soon post</Link>
             <button className="vf-btn ghost" disabled={Boolean(busy)} onClick={() => save(false)}>{busy === "save" ? "Saving" : "Save"}</button>
             <button className="vf-btn red" disabled={Boolean(busy) || blockers.length > 0} onClick={() => save(true)}>{busy === "publish" ? "Publishing" : "Publish changes"}</button>
           </div>

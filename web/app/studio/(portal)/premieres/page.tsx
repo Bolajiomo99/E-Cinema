@@ -19,7 +19,7 @@ export default async function StudioPremieresPage({ searchParams }: { searchPara
     return (
       <div className="pt-body">
         <header className="bp-head"><div><h1>Premieres and pricing</h1><p>Book a premiere and set ticket prices once a film is uploaded.</p></div></header>
-        <section className="bp-panel"><p className="pt-hint">No films yet. <Link href="/studio/upload">Upload a film</Link> to book its premiere.</p></section>
+        <section className="bp-panel"><p className="pt-hint">No films yet. <Link href="/studio/upload">Upload a film</Link> to book its premiere, or <Link href="/studio/premieres/coming-soon">post a coming-soon film</Link> before the full film is ready.</p></section>
       </div>
     );
   }
