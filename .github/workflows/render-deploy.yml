@@ -313,6 +313,10 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/studio/dubs/00000000-0000-4000-8000-000000000000")" = 401 ] || { echo "dubs open signed out"; exit 1; }
           curl -fsS "$web/studio/dubs" -b "$jar" -o /dev/null -w '' || { echo "dubs page failed"; exit 1; }
           echo "dubs ok"
+          # Live control room (Figma 37:1272): only the film's studio sees its room.
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/uploads/00000000-0000-4000-8000-000000000000/control")" = 404 ] || { echo "control room open to a non-studio account"; exit 1; }
+          curl -fsS "$web/studio/control" -b "$jar" -o /dev/null -w '' || { echo "control room page failed"; exit 1; }
+          echo "control room ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
