@@ -178,7 +178,7 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
           </label>
           {tab === "audience" && <button type="button" className={`stan-pill${compare ? "" : " off"}`} aria-pressed={compare} onClick={() => setCompare(!compare)}>Compare: previous {d.days}</button>}
           <button type="button" className="vf-btn ghost" onClick={exportCsv}>Export</button>
-          <button type="button" className="vf-btn red" disabled title="Coming soon">Ask Studio AI <em className="soon-tag">Soon</em></button>
+          <Link className="vf-btn red" href={`/studio/ai?q=${encodeURIComponent(`What stands out in my audience over the last ${d.days} days?`)}`}>Ask Studio AI</Link>
         </div>
       </header>
 

@@ -56,10 +56,10 @@ export default function StudioShell({ studio: s, children }: { studio: Studio; c
             <span key={n.label} className="pt-item off" aria-disabled="true"><Icon name={n.icon} />{n.label}<em className="soon-tag">Soon</em></span>
           ))}
         </nav>
-        <div className="stu-ai">
-          <b><svg viewBox="0 0 24 24" width="14" height="14" fill="#d4a23a" aria-hidden><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" /></svg>Studio AI <em className="soon-tag">Soon</em></b>
+        <Link href="/studio/ai" className={`stu-ai${on("/studio/ai") ? " on" : ""}`} onClick={() => setOpen(false)}>
+          <b><svg viewBox="0 0 24 24" width="14" height="14" fill="#d4a23a" aria-hidden><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" /></svg>Studio AI</b>
           <p>Ask anything about your films, audience or money.</p>
-        </div>
+        </Link>
       </aside>
       {open && <button className="pt-scrim" aria-label="Close menu" onClick={() => setOpen(false)} />}
       <main className="pt-main">
