@@ -2,7 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { randomBytes } from "node:crypto";
 import { dropUpload, dubLanguages, mediaEnabled, objectBytes, putRoomObject } from "@/lib/media";
-import { langName } from "@/lib/i18n";
+import { dubName as langName } from "@/lib/dub-types";
 
 // AI dubbing (Figma 35:871). The studio's subtitle file is the script: Claude translates it
 // line by line and flags what a person should check, ElevenLabs voices each approved line,

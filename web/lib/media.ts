@@ -200,3 +200,14 @@ export async function objectRange(key: string, start: number, end: number): Prom
   const obj = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: `bytes=${start}-${end}` }));
   return Buffer.from(await obj.Body!.transformToByteArray());
 }
+
+// Deletes every object under a prefix (a removed dub language's voiced lines), 1,000 at a time.
+export async function dropPrefix(prefix: string) {
+  for (let i = 0; i < 50; i++) {
+    const res = await s3().send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix, MaxKeys: 1000 }));
+    const keys = (res.Contents ?? []).map((c) => c.Key!).filter(Boolean);
+    if (!keys.length) return;
+    for (let j = 0; j < keys.length; j += 20) await Promise.all(keys.slice(j, j + 20).map((k) => s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: k })).catch(() => {})));
+    if (!res.IsTruncated) return;
+  }
+}

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { accountApi } from "@/lib/auth";
 import { session } from "@/lib/licensing";
-import { dropUpload, mediaEnabled } from "@/lib/media";
+import { dropPrefix, dropUpload, mediaEnabled, roomObjectLink } from "@/lib/media";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { regenerateLine, sweepDubs, syncDubs, type Line } from "@/lib/dub-worker";
 
@@ -40,6 +40,14 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   const { p, s, base } = g;
   if (!p.length) return pass(await accountApi("GET", base, undefined, s));
   if (p.length === 1) return pass(await accountApi("GET", `${base}/${p[0]}`, undefined, s));
+  // A voiced line, for "Play dub": a short-lived link, only for people on the studio.
+  if (p.length === 4 && p[1] === "lines" && /^\d{1,4}$/.test(p[2]) && p[3] === "audio") {
+    const d = await accountApi("GET", `${base}/${p[0]}`, undefined, s);
+    if (d.status !== 200) return pass(d);
+    const line = (d.body as { lines: Line[] }).lines.find((l) => l.idx === Number(p[2]));
+    if (!line?.audioKey || !mediaEnabled || !line.audioKey.startsWith(`studio-dubs/${g.u}/${p[0]}/`)) return json(404, { error: "This line has no voice yet" });
+    return json(200, { url: await roomObjectLink(line.audioKey) });
+  }
   return json(404, { error: "Not found" });
 }
 
@@ -126,6 +134,8 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   if (r.status === 200 && mediaEnabled) {
     const keys = ((r.body as { keys?: string[] }).keys ?? []).filter((k) => k.startsWith(`studio-dubs/${u}/${p[0]}/`));
     for (let i = 0; i < keys.length; i += 20) await Promise.all(keys.slice(i, i + 20).map((k) => dropUpload(k, "", true)));
+    // Lines that were edited after voicing left older clips behind; clear the whole folder.
+    await dropPrefix(`studio-dubs/${u}/${p[0]}/`).catch(() => {});
     await syncDubs(u).catch(() => {});
   }
   return pass(r.status === 200 ? { status: 200, body: { ok: true } } : r);
