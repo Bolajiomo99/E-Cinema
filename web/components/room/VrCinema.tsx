@@ -11,12 +11,15 @@ import type { Party } from "@/components/room/SidePanel";
 
 type Showtime = { id: string; film: string; studio: string; startsAt: string; durationMin: number };
 type Env = "hall" | "rooftop" | "living" | "space";
-const ENVS: { id: Env; name: string }[] = [
-  { id: "hall", name: "Cinema hall" },
-  { id: "rooftop", name: "Rooftop Lagos" },
-  { id: "living", name: "Living room (AR)" },
-  { id: "space", name: "Space dome" },
+export type Hall = { id: string; name: string; kind: string; scene: string; avatars: boolean };
+// The halls before any were published from the executive Rooms and VR halls page.
+const DEFAULT_HALLS: Hall[] = [
+  { id: "cinema-hall", name: "Cinema hall", kind: "vr", scene: "hall", avatars: true },
+  { id: "rooftop-lagos", name: "Rooftop Lagos", kind: "vr", scene: "rooftop", avatars: true },
+  { id: "living-room", name: "Living room", kind: "ar", scene: "living", avatars: true },
+  { id: "space-dome", name: "Space dome", kind: "vr", scene: "space", avatars: true },
 ];
+const SCENES = new Set<string>(["hall", "rooftop", "living", "space"]);
 const REACTIONS = ["🔥", "😂", "😮", "❤️", "👏", "😭"];
 const ROWS = ["A", "B", "C", "D", "E", "F"];
 const SEATS_PER_ROW = 14;
@@ -31,17 +34,21 @@ function defaultSeat(code: string) {
 }
 
 export default function VrCinema({
-  showtime, viewerCode, initialWatching, party, wsBase, film,
+  showtime, viewerCode, initialWatching, party, wsBase, film, halls: given,
 }: {
   showtime: Showtime; viewerCode: string; initialWatching: number; party: Party | null; wsBase: string;
-  film: { durationSec: number; credit: string } | null;
+  film: { durationSec: number; credit: string } | null; halls?: Hall[];
 }) {
+  const halls = (given ?? []).filter((h) => SCENES.has(h.scene));
+  const ENVS = halls.length ? halls : DEFAULT_HALLS;
   const { phase, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, [], initialWatching, [], []);
   const startMs = Date.parse(showtime.startsAt);
-  const friendsHere = (party?.members ?? []).filter((m) => !m.me && (room.onlineNames ? room.onlineNames.includes(m.name) : m.online));
   const video = useRef<HTMLVideoElement>(null);
-  const [env, setEnv] = useState<Env>("hall");
+  const [hallId, setHallId] = useState(() => (ENVS.find((h) => h.scene !== "living") ?? ENVS[0]).id);
+  const current = ENVS.find((h) => h.id === hallId) ?? ENVS[0];
+  const env = current.scene as Env;
+  const friendsHere = current.avatars ? (party?.members ?? []).filter((m) => !m.me && (room.onlineNames ? room.onlineNames.includes(m.name) : m.online)) : [];
   const [size, setSize] = useState(71);
   const [seat, setSeat] = useState(() => defaultSeat(viewerCode));
   const [joined, setJoined] = useState(false);
@@ -118,13 +125,13 @@ export default function VrCinema({
     }
   };
 
-  const pickEnv = (e: Env) => {
-    if (e === "living") {
+  const pickEnv = (h: Hall) => {
+    if (h.scene === "living") {
       if (xr.ar) enter("immersive-ar");
       else { setNote("Living room mode needs a headset with passthrough, such as Quest 3 or Vision Pro."); setTimeout(() => setNote(""), 4000); }
       return;
     }
-    setEnv(e);
+    setHallId(h.id);
   };
 
   const live = phase === "playing";
@@ -190,7 +197,7 @@ export default function VrCinema({
         <h2>Your seat</h2>
         <div className="vr-chips">
           {ENVS.map((e) => (
-            <button key={e.id} type="button" className={env === e.id ? "on" : ""} aria-pressed={env === e.id} onClick={() => pickEnv(e.id)}>{e.name}</button>
+            <button key={e.id} type="button" className={hallId === e.id ? "on" : ""} aria-pressed={hallId === e.id} onClick={() => pickEnv(e)}>{e.name}{e.kind === "ar" ? " (AR)" : ""}</button>
           ))}
         </div>
         <label className="vr-size">

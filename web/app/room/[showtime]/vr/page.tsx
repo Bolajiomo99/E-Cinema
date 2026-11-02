@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import VrCinema from "@/components/room/VrCinema";
+import VrCinema, { type Hall } from "@/components/room/VrCinema";
 import type { Party } from "@/components/room/SidePanel";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { myTickets } from "@/lib/api";
@@ -60,6 +60,9 @@ export default async function VrPage({ params }: { params: Promise<{ showtime: s
   const endsAt = new Date(new Date(room.showtime.startsAt).getTime() + room.showtime.durationMin * 60000);
   const stream = mediaEnabled ? await filmStream(endsAt) : null;
   const wsBase = (process.env.API_URL ?? "").replace(/^http/, "ws");
+  // The halls published on the executive Rooms and VR halls page that this viewer may enter.
+  const hr = await accountApi("GET", "/v1/me/rooms?kinds=vr,ar", undefined, session).catch(() => null);
+  const halls = hr?.status === 200 ? (hr.body as Hall[]) : undefined;
 
   return (
     <VrCinema
@@ -68,6 +71,7 @@ export default async function VrPage({ params }: { params: Promise<{ showtime: s
       initialWatching={room.watching ?? 0}
       party={room.party ?? null}
       wsBase={wsBase}
+      halls={halls}
       film={stream ? { durationSec: stream.durationSec, credit: `Stand-in film: ${stream.title} ${stream.credit} · ${stream.license}` } : null}
     />
   );
