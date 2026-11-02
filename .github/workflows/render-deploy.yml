@@ -79,7 +79,7 @@ jobs:
           for i in $(seq 1 30); do
             body=$(curl -s "$SMOKE_WEB/api/dubs/red-earth-sample" || true)
             echo "dubs $body"
-            echo "$body" | grep -q '"fr"' && break
+            echo "$body" | grep -c '"fr"' >/dev/null && break
             [ "$i" = 30 ] && exit 1
             sleep 10
           done
@@ -97,18 +97,18 @@ jobs:
           email="smoke+$(date +%s)@e-cinema.net"
           curl -fsS -c "$jar" -H "content-type: application/json" -H "origin: $web" \
             -d "{\"name\":\"Smoke Test\",\"email\":\"$email\",\"password\":\"smoke-$(openssl rand -hex 12)\",\"terms\":true}" \
-            "$web/api/auth/signup" | grep -q '"account"'
-          curl -fsS -b "$jar" "$web/api/auth/me" | grep -q "$email"
-          curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/identity/token" | grep -q '"token"'
+            "$web/api/auth/signup" | grep -c '"account"' >/dev/null
+          curl -fsS -b "$jar" "$web/api/auth/me" | grep -c "$email" >/dev/null
+          curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/identity/token" | grep -c '"token"' >/dev/null
           echo "face check token ok"
-          curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
+          curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -c '"challengeId"' >/dev/null
           echo "passkeys ok"
           # Google sign-in: once the client secrets exist, start must hand off to Google.
           if [ -n "$HAS_GOOGLE" ]; then
             loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://e-cinema.net/api/auth/google/start")
             echo "google start -> ${loc%%\?*}"
-            echo "$loc" | grep -q '^https://accounts.google.com/' || exit 1
-            echo "$loc" | grep -q 'redirect_uri=https%3A%2F%2Fe-cinema.net%2Fapi%2Fauth%2Fgoogle%2Fcallback' || exit 1
+            echo "$loc" | grep -c '^https://accounts.google.com/' >/dev/null || exit 1
+            echo "$loc" | grep -c 'redirect_uri=https%3A%2F%2Fe-cinema.net%2Fapi%2Fauth%2Fgoogle%2Fcallback' >/dev/null || exit 1
           fi
           # Legal pages Google links to.
           curl -fsS -o /dev/null https://e-cinema.net/privacy
@@ -117,26 +117,26 @@ jobs:
           # Pages and the watch room: a viewer without a ticket sees the gate and gets no room pass.
           curl -fsS -o /dev/null https://e-cinema.net/
           curl -fsS -o /dev/null https://e-cinema.net/releases
-          curl -fsS -b "$jar" "$web/room/red-earth-2026-11-02" | grep -q "for ticket holders"
+          curl -fsS -b "$jar" "$web/room/red-earth-2026-11-02" | grep -c "for ticket holders" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/rooms/red-earth-2026-11-02/pass")" = 403 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$SMOKE_API/v1/rooms/red-earth-2026-11-02/live?t=forged.pass")" = 401 ]
           echo "home, releases and watch room gate ok"
           # Signed-in home: guests are sent to sign in, the viewer sees their home and seats.
-          curl -s -o /dev/null -w '%{redirect_url}' https://e-cinema.net/home | grep -q '/signin'
-          curl -fsS -b "$jar" "$web/home" | grep -q "Ask E-Cinema AI"
+          curl -s -o /dev/null -w '%{redirect_url}' https://e-cinema.net/home | grep -c '/signin' >/dev/null
+          curl -fsS -b "$jar" "$web/home" | grep -c "Ask E-Cinema AI" >/dev/null
           curl -fsS -o /dev/null -b "$jar" "$web/api/me/tickets"
-          curl -fsS "$web/api/calendar/the-last-harmattan-2026-11-01.ics" | grep -q "BEGIN:VCALENDAR"
+          curl -fsS "$web/api/calendar/the-last-harmattan-2026-11-01.ics" | grep -c "BEGIN:VCALENDAR" >/dev/null
           echo "my home, seats and calendar invite ok"
           # Plans: pick Pro, then PayPal must hand back a sandbox approval page for the subscription.
           curl -fsS -o /dev/null https://e-cinema.net/plans
           curl -fsS -b "$jar" -X PUT -H "content-type: application/json" -H "origin: $web" -d '{"plan":"pro"}' "$web/api/me/plan" >/dev/null
           sub=$(curl -sS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{"cycle":"month"}' "$web/api/paypal/subscriptions")
           echo "subscription -> $(echo "$sub" | grep -o '"approve":"https://[^/"]*' || echo "$sub")"
-          echo "$sub" | grep -q '"approve":"https://www.sandbox.paypal.com/' || exit 1
+          echo "$sub" | grep -c '"approve":"https://www.sandbox.paypal.com/' >/dev/null || exit 1
           echo "plans and PayPal subscription ok"
           # Checkout, live counts, watch parties and classic requests.
-          curl -fsS "$web/checkout?film=red-earth-2026-11-02" | grep -q "Order summary"
-          curl -fsS "$SMOKE_API/v1/live" | grep -q '^\['
+          curl -fsS "$web/checkout?film=red-earth-2026-11-02" | grep -c "Order summary" >/dev/null
+          curl -fsS "$SMOKE_API/v1/live" | grep -c '^\[' >/dev/null
           # Parties need a screening that has not started, so pick the next one from the live catalog.
           next=$(curl -fsS "$SMOKE_API/v1/showtimes" | jq -r '[.[] | select(.startsAt > (now | todate))] | sort_by(.startsAt) | .[0].id')
           echo "next screening -> $next"
@@ -145,35 +145,35 @@ jobs:
           code=$(echo "$party" | grep -o '"code":"[a-z0-9-]*"' | cut -d'"' -f4)
           echo "party -> $code"
           [ -n "$code" ]
-          curl -fsS "$web/p/$code" | grep -q "Smoke party"
+          curl -fsS "$web/p/$code" | grep -c "Smoke party" >/dev/null
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/parties/$code/end" >/dev/null
-          curl -fsS "$web/classics" | grep -q "Bring back a classic"
+          curl -fsS "$web/classics" | grep -c "Bring back a classic" >/dev/null
           echo "checkout, live, parties and classics ok"
           # World map: page renders and the per-country audience feeds answer.
-          curl -fsS "$web/map" | grep -q "Watching right now"
-          curl -fsS "$web/api/live" | grep -q '^\['
-          curl -fsS "$web/api/audience/tonight" | grep -q '^\['
+          curl -fsS "$web/map" | grep -c "Watching right now" >/dev/null
+          curl -fsS "$web/api/live" | grep -c '^\[' >/dev/null
+          curl -fsS "$web/api/audience/tonight" | grep -c '^\[' >/dev/null
           echo "world map ok"
           # Coming soon: pre-order prices render.
-          curl -fsS "$web/coming-soon" | grep -q "Pre-order seat"
-          curl -fsS "$web/preorder/iron-delta-2026-12-14" | grep -q "Choose how you watch"
+          curl -fsS "$web/coming-soon" | grep -c "Pre-order seat" >/dev/null
+          curl -fsS "$web/preorder/iron-delta-2026-12-14" | grep -c "Choose how you watch" >/dev/null
           echo "coming soon and pre-order ok"
           # Payment failed page is for signed-in buyers: signed out it sends you to sign in.
-          curl -s -o /dev/null -w '%{redirect_url}' "$web/checkout/failed?film=iron-delta-2026-12-14" | grep -q "/signin"
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/checkout/failed?film=iron-delta-2026-12-14" | grep -c "/signin" >/dev/null
           echo "payment failed page ok"
           # 18+ titles unlock in four stages instead of a plain seat.
-          curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -q "Unlock in 4 stages"
-          curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -q "/signin"
+          curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -c "Unlock in 4 stages" >/dev/null
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -c "/signin" >/dev/null
           echo "18+ unlock ok"
           # Sold-out page: a premiere with seats left sends you to checkout; the lottery API answers.
-          curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/lagos-lights-2026-11-04" | grep -q "/checkout"
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/lagos-lights-2026-11-04" | grep -c "/checkout" >/dev/null
           echo "sold-out lottery ok"
           # Gifts: the builder renders and an unknown gift code says so.
-          curl -fsS "$web/gift" | grep -q "Build your gift"
-          curl -fsS "$web/gift/redeem/ECG-0000-0000" | grep -q "could not find that gift"
+          curl -fsS "$web/gift" | grep -c "Build your gift" >/dev/null
+          curl -fsS "$web/gift/redeem/ECG-0000-0000" | grep -c "could not find that gift" >/dev/null
           echo "gifts ok"
           # Student offer: the page renders, and Student Pro is refused until the viewer is verified.
-          curl -fsS "$web/student" | grep -q "How to get it"
+          curl -fsS "$web/student" | grep -c "How to get it" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "content-type: application/json" -H "origin: $web" -d '{"plan":"student"}' "$web/api/me/plan")" = 403 ]
           echo "student offer ok"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/quiz")" = 403 ]
@@ -182,29 +182,29 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"ids":[1]}' "$web/api/rooms/red-earth-2026-11-02/translate")" = 403 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/media?key=rooms/other/x.pdf")" = 404 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/catchup")" = 403 ]
-          curl -fsS "$SMOKE_API/v1/showtimes/red-earth-2026-11-02/reviews" | grep -q '"count"'
+          curl -fsS "$SMOKE_API/v1/showtimes/red-earth-2026-11-02/reviews" | grep -c '"count"' >/dev/null
           echo "room panel ok"
           # Library: the empty shelf renders; keeping and rewatching need the film in the library; collections work.
-          curl -fsS -b "$jar" "$web/library" | grep -q "Your library"
+          curl -fsS -b "$jar" "$web/library" | grep -c "Your library" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"quality":"hd"}' "$web/api/library/red-earth-2026-11-02/keep")" = 403 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d "{\"showtimeId\":\"red-earth-2026-11-02\",\"startsAt\":\"$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)\"}" "$web/api/rewatch")" = 404 ]
           col=$(curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"name":"Smoke shelf"}' "$web/api/collections" | sed -n 's/.*"id":"\([0-9a-f-]*\)".*/\1/p')
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X DELETE "$web/api/collections/$col")" = 204 ]
           echo "library ok"
           # Downloads: the page renders and only kept films get a licence.
-          curl -fsS -b "$jar" "$web/downloads" | grep -q "Encrypted to this device"
-          curl -fsS -b "$jar" "$web/api/downloads" | grep -q '"downloads"'
+          curl -fsS -b "$jar" "$web/downloads" | grep -c "Encrypted to this device" >/dev/null
+          curl -fsS -b "$jar" "$web/api/downloads" | grep -c '"downloads"' >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"device":"smokesmokesmoke01","quality":"sd"}' "$web/api/downloads/red-earth-2026-11-02")" = 402 ]
-          curl -fsS "$web/sw.js" | grep -q "ec-offline-v1"
+          curl -fsS "$web/sw.js" | grep -c "ec-offline-v1" >/dev/null
           echo "downloads ok"
           # Insights: the page renders, a heartbeat for a real film counts, a bogus one is refused.
-          curl -fsS -b "$jar" "$web/insights" | grep -q "Your insights"
-          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"room","seconds":5}' "$web/api/insights/beat" | grep -q '"counted"'
+          curl -fsS -b "$jar" "$web/insights" | grep -c "Your insights" >/dev/null
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"room","seconds":5}' "$web/api/insights/beat" | grep -c '"counted"' >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"showtimeId":"red-earth-2026-11-02","mode":"cinema","seconds":5}' "$web/api/insights/beat")" = 400 ]
           echo "insights ok"
           # Notifications: the page and the unread count work, mark-all answers 204, a bad id is refused.
-          curl -fsS -b "$jar" "$web/notifications" | grep -q "Mark all read"
-          curl -fsS -b "$jar" "$web/api/notifications/unread" | grep -q '"unread"'
+          curl -fsS -b "$jar" "$web/notifications" | grep -c "Mark all read" >/dev/null
+          curl -fsS -b "$jar" "$web/api/notifications/unread" | grep -c '"unread"' >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/all/read")" = 204 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/notifications/abc/read")" = 404 ]
           echo "notifications ok"
@@ -213,96 +213,96 @@ jobs:
             code=$(curl -s -o /tmp/m.out -w '%{http_code}' -b "$jar" "$web$u"); echo "$u $code"
             [ "$code" = 200 ] || { head -c 300 /tmp/m.out; exit 1; }
           done
-          curl -fsS -b "$jar" "$web/api/chat/pass" | grep -q '"ws":"wss://'
-          curl -fsS -b "$jar" "$web/api/chat/ice" | grep -q 'stun:'
+          curl -fsS -b "$jar" "$web/api/chat/pass" | grep -c '"ws":"wss://' >/dev/null
+          curl -fsS -b "$jar" "$web/api/chat/ice" | grep -c 'stun:' >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/chat/media?key=chat/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000.png")" = 403 ]
           echo "messages ok"
           # Community: the feed and a starter group load, posting and liking work, a bad cursor is refused.
-          curl -fsS -b "$jar" "$web/community" | grep -q "Communities"
-          curl -fsS -b "$jar" "$web/community/nollywood-fans" | grep -q "About this group"
+          curl -fsS -b "$jar" "$web/community" | grep -c "Communities" >/dev/null
+          curl -fsS -b "$jar" "$web/community/nollywood-fans" | grep -c "About this group" >/dev/null
           curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"community":"","kind":"text","body":"Smoke test post, please ignore"}' "$web/api/community/posts" > /tmp/post.json
           pid=$(node -e 'console.log(require("/tmp/post.json").id)')
-          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"on":true}' "$web/api/community/posts/$pid/like" | grep -q '"likes":1'
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"on":true}' "$web/api/community/posts/$pid/like" | grep -c '"likes":1' >/dev/null
           curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{}' "$web/api/community/posts/$pid/delete" -o /dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/community/posts?before=abc")" = 400 ]
           echo "community ok"
           # Profile: my page renders, editing works, an unknown person is a 404.
-          curl -fsS -b "$jar" "$web/u/me" | grep -q "avg snack score"
-          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"city":"Lagos","interests":"Thrillers, zobo","spoken":["English"]}' "$web/api/community/profile" | grep -q '"ok":true'
-          curl -fsS -b "$jar" "$web/u/me" | grep -q "Thrillers, zobo"
+          curl -fsS -b "$jar" "$web/u/me" | grep -c "avg snack score" >/dev/null
+          curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" -X POST -d '{"city":"Lagos","interests":"Thrillers, zobo","spoken":["English"]}' "$web/api/community/profile" | grep -c '"ok":true' >/dev/null
+          curl -fsS -b "$jar" "$web/u/me" | grep -c "Thrillers, zobo" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/u/nobody.here.x")" = 404 ]
           echo "profile ok"
           # Shop the film: each tab answers with real products, an unknown film is refused.
           for tab in scene gifts; do
-            curl -fsS "$web/api/shop?showtime=red-earth-2026-11-02&tab=$tab" | grep -q '"url":"https://'
+            curl -fsS "$web/api/shop?showtime=red-earth-2026-11-02&tab=$tab" | grep -c '"url":"https://' >/dev/null
           done
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/shop?showtime=nope")" = 400 ]
-          curl -fsS "$web/concierge?ask=hello" | grep -q "concierge"
+          curl -fsS "$web/concierge?ask=hello" | grep -c "concierge" >/dev/null
           echo "shop ok"
           # E-Cinema store: catalog and product pages, cart, a Lagos address, a sandbox PayPal order,
           # then a pay-on-delivery order that is cancelled again; the order desk stays staff only.
-          curl -fsS "$web/shop" | grep -q "Shop E-Cinema"
-          curl -fsS "$web/shop/vr-headset" | grep -q "E-CINEMA VR HEADSET"
+          curl -fsS "$web/shop" | grep -c "Shop E-Cinema" >/dev/null
+          curl -fsS "$web/shop/vr-headset" | grep -c "E-CINEMA VR HEADSET" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/shop/no-such-product")" = 404 ]
           sj() { curl -fsS -b "$jar" -H "origin: $web" -H "content-type: application/json" "$@"; }
-          sj -X PUT -d '{"productId":"popcorn-box","variant":"Butter · Zobo","qty":1,"add":true}' "$web/api/store/cart" | grep -q '"count":1'
+          sj -X PUT -d '{"productId":"popcorn-box","variant":"Butter · Zobo","qty":1,"add":true}' "$web/api/store/cart" | grep -c '"count":1' >/dev/null
           sj -X PUT -d '{"name":"Smoke Test","phone":"+234 801 000 0000","line1":"14 Admiralty Way","area":"Lekki","city":"Lagos","state":"Lagos","country":"NG"}' "$web/api/store/address" > /tmp/cart.json
           grep -q '"cod":true' /tmp/cart.json
           total=$(node -e 'console.log(require("/tmp/cart.json").totalNgn)')
-          sj -X POST -d "{\"method\":\"paypal\",\"expectTotalNgn\":$total}" "$web/api/store/checkout" | grep -q '"orderId":"'
+          sj -X POST -d "{\"method\":\"paypal\",\"expectTotalNgn\":$total}" "$web/api/store/checkout" | grep -c '"orderId":"' >/dev/null
           sj -X POST -d "{\"method\":\"cod\",\"expectTotalNgn\":$total}" "$web/api/store/checkout" > /tmp/order.json
           oid=$(node -e 'const o=require("/tmp/order.json"); if(o.status!=="placed") process.exit(1); console.log(o.id)')
-          sj -X POST -d '{}' "$web/api/store/orders/$oid/cancel" | grep -q '"status":"cancelled"'
-          curl -fsS -b "$jar" "$web/shop/orders" | grep -q "Your orders"
+          sj -X POST -d '{}' "$web/api/store/orders/$oid/cancel" | grep -c '"status":"cancelled"' >/dev/null
+          curl -fsS -b "$jar" "$web/shop/orders" | grep -c "Your orders" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/shop/ops")" = 404 ]
           echo "store ok"
           # Brand protection: the checker answers (an unissued code is not genuine), the rewards
           # page and report form load, partner shops are recognised, and the desk stays staff only.
-          curl -fsS "$web/verify" | grep -q "VERIFY A PRODUCT"
-          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"EC-QR-SMOK-E000"}' "$web/api/brand/verify" | grep -q '"reason":"never"'
-          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"hello"}' "$web/api/brand/verify" | grep -q '"reason":"bad"'
-          curl -fsS -b "$jar" "$web/rewards" | grep -q "Community rewards"
-          curl -fsS -b "$jar" "$web/rewards/report" | grep -q "Report a fake seller"
-          sj -X POST -d '{"link":"https://lagosthreads.ng","photos":[]}' "$web/api/brand/check" | grep -q "licensed partner"
+          curl -fsS "$web/verify" | grep -c "VERIFY A PRODUCT" >/dev/null
+          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"EC-QR-SMOK-E000"}' "$web/api/brand/verify" | grep -c '"reason":"never"' >/dev/null
+          curl -fsS -H "origin: $web" -H "content-type: application/json" -X POST -d '{"code":"hello"}' "$web/api/brand/verify" | grep -c '"reason":"bad"' >/dev/null
+          curl -fsS -b "$jar" "$web/rewards" | grep -c "Community rewards" >/dev/null
+          curl -fsS -b "$jar" "$web/rewards/report" | grep -c "Report a fake seller" >/dev/null
+          sj -X POST -d '{"link":"https://lagosthreads.ng","photos":[]}' "$web/api/brand/check" | grep -c "licensed partner" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/rewards/desk")" = 404 ]
           echo "brand ok"
           # Licensing: plans and agreement load, the apply flow opens for a member, a member
           # without a licence is sent to apply, and the licensing desk stays staff only.
-          curl -fsS "$web/licensing" | grep -q "Choose Growth" || { echo "licensing page"; exit 1; }
-          curl -fsS "$web/licensing/agreement" | grep -q "Merch licence agreement" || { echo "agreement page"; exit 1; }
-          curl -fsSL -b "$jar" "$web/licensing/apply?plan=growth" | grep -q "Continue to plan" || { echo "apply page"; exit 1; }
-          curl -sL -o /dev/null -w '%{url_effective}' -b "$jar" "$web/partner" | grep -q "/licensing/apply" || { echo "partner redirect"; exit 1; }
+          curl -fsS "$web/licensing" | grep -c "Choose Growth" >/dev/null || { echo "licensing page"; exit 1; }
+          curl -fsS "$web/licensing/agreement" | grep -c "Merch licence agreement" >/dev/null || { echo "agreement page"; exit 1; }
+          curl -fsSL -b "$jar" "$web/licensing/apply?plan=growth" | grep -c "Continue to plan" >/dev/null || { echo "apply page"; exit 1; }
+          curl -sL -o /dev/null -w '%{url_effective}' -b "$jar" "$web/partner" | grep -c "/licensing/apply" >/dev/null || { echo "partner redirect"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/licensing/desk")" = 404 ] || { echo "desk not 404"; exit 1; }
           echo "licensing ok"
           # Legal pages and cookie choices (Figma 92:841 to 92:1350).
           for pg in terms privacy cookies refunds legal/kids legal/studios legal/community; do
-            curl -fsS "$web/$pg" | grep -q 'class="lp lg"' || { echo "legal $pg"; exit 1; }
+            curl -fsS "$web/$pg" | grep -c 'class="lp lg"' >/dev/null || { echo "legal $pg"; exit 1; }
           done
-          curl -fsS "$web/cookies" | grep -q "Reject all extras" || { echo "cookie choices"; exit 1; }
+          curl -fsS "$web/cookies" | grep -c "Reject all extras" >/dev/null || { echo "cookie choices"; exit 1; }
           echo "legal ok"
           # Company pages, careers and business quotes (Figma 94:947 to 94:1239, 114:1273 to 114:1531).
-          curl -fsS "$web/about" | grep -q "PREMIERES, TOGETHER." || { echo "about"; exit 1; }
-          curl -fsS "$web/for-studios" | grep -q "How it works" || { echo "for studios"; exit 1; }
-          curl -fsS "$web/careers" | grep -q "Open roles" || { echo "careers"; exit 1; }
-          curl -fsS "$web/careers/jobs" | grep -q "How roles are shared" || { echo "jobs board"; exit 1; }
-          curl -fsS "$web/business" | grep -q "Get a quote" || { echo "business"; exit 1; }
-          curl -fsS "$api/v1/jobs" | grep -q '"ngShare"' || { echo "jobs api"; exit 1; }
-          curl -fsS "$api/v1/about" | grep -q '"members"' || { echo "about api"; exit 1; }
+          curl -fsS "$web/about" | grep -c "PREMIERES, TOGETHER." >/dev/null || { echo "about"; exit 1; }
+          curl -fsS "$web/for-studios" | grep -c "How it works" >/dev/null || { echo "for studios"; exit 1; }
+          curl -fsS "$web/careers" | grep -c "Open roles" >/dev/null || { echo "careers"; exit 1; }
+          curl -fsS "$web/careers/jobs" | grep -c "How roles are shared" >/dev/null || { echo "jobs board"; exit 1; }
+          curl -fsS "$web/business" | grep -c "Get a quote" >/dev/null || { echo "business"; exit 1; }
+          curl -fsS "$api/v1/jobs" | grep -c '"ngShare"' >/dev/null || { echo "jobs api"; exit 1; }
+          curl -fsS "$api/v1/about" | grep -c '"members"' >/dev/null || { echo "about api"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/careers/desk")" = 404 ] || { echo "hiring desk not 404"; exit 1; }
-          curl -fsS -b "$jar" "$web/help/refund" | grep -q "Request a refund" || { echo "refund page"; exit 1; }
+          curl -fsS -b "$jar" "$web/help/refund" | grep -c "Request a refund" >/dev/null || { echo "refund page"; exit 1; }
           echo "company ok"
           # Family and kids (Figma 89:1020).
-          curl -fsS -b "$jar" "$web/api/family" | grep -q '"pinSet"' || { echo "family api"; exit 1; }
-          curl -fsS -b "$jar" "$web/family" | grep -q "Family and kids" || { echo "family page"; exit 1; }
-          curl -fsS -b "$jar" "$web/kids" | grep -q "Moonlight Fox" || { echo "kids cinema"; exit 1; }
+          curl -fsS -b "$jar" "$web/api/family" | grep -c '"pinSet"' >/dev/null || { echo "family api"; exit 1; }
+          curl -fsS -b "$jar" "$web/family" | grep -c "Family and kids" >/dev/null || { echo "family page"; exit 1; }
+          curl -fsS -b "$jar" "$web/kids" | grep -c "Moonlight Fox" >/dev/null || { echo "kids cinema"; exit 1; }
           echo "family ok"
           # VR cinema (Figma 52:1122): gated to VR seat holders, film only for ticket holders.
-          curl -fsS -b "$jar" "$web/room/iron-delta-2026-12-14/vr" | grep -q "Get a VR seat" || { echo "vr gate"; exit 1; }
+          curl -fsS -b "$jar" "$web/room/iron-delta-2026-12-14/vr" | grep -c "Get a VR seat" >/dev/null || { echo "vr gate"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/iron-delta-2026-12-14/film")" = 403 ] || { echo "vr film not 403"; exit 1; }
           echo "vr ok"
           # Studio portal (Figma 34:49): a new account gets onboarding, the desk is staff only.
           curl -fsS -b "$jar" "$web/api/studio" | jq -e '.studio == null' >/dev/null || { echo "studio api"; exit 1; }
-          curl -fsS -b "$jar" "$web/studio" | grep -q "Set up your studio" || { echo "studio onboarding"; exit 1; }
+          curl -fsS -b "$jar" "$web/studio" | grep -c "Set up your studio" >/dev/null || { echo "studio onboarding"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/desk")" = 403 ] || { echo "studio desk not 403"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/studio")" = 401 ] || { echo "studio api open signed out"; exit 1; }
           # Film uploads (Figma 35:290): only a studio's team can open drafts.
@@ -322,44 +322,46 @@ jobs:
           curl -fsS "$web/studio/control" -b "$jar" -o /dev/null -w '' || { echo "control room page failed"; exit 1; }
           echo "control room ok"
           # Studio analytics (Figma 37:1652, 37:2861): a non-studio account is sent back to /studio.
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/analytics?tab=reach" | grep -q "/studio$" || { echo "analytics open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/analytics?tab=reach" | grep -c "/studio$" >/dev/null || { echo "analytics open to a non-studio account"; exit 1; }
           echo "analytics ok"
           # Piracy protection (Figma 39:578): leak reports belong to a studio; the ban desk is staff only.
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/leaks")" = 404 ] || { echo "leaks open to a non-studio account"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/desk/bans")" = 403 ] || { echo "ban desk open to a non-staff account"; exit 1; }
           echo "piracy ok"
           # Marketing (Figma 39:779): campaigns belong to a studio; an unknown campaign link goes home.
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/marketing" | grep -q "/studio$" || { echo "marketing open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/marketing" | grep -c "/studio$" >/dev/null || { echo "marketing open to a non-studio account"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/campaigns")" = 404 ] || { echo "campaigns open to a non-studio account"; exit 1; }
           curl -s -o /dev/null -w '%{redirect_url}' "$web/c/zzzzzzzz" | grep -qE "/$" || { echo "unknown campaign link did not go home"; exit 1; }
           echo "marketing ok"
           # Studio AI (Figma 39:1345): only members of a verified studio can ask.
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"messages":[{"role":"user","text":"hi"}]}' "$web/api/studio/ai")" = 404 ] || { echo "Studio AI open to a non-studio account"; exit 1; }
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/ai" | grep -q "/studio$" || { echo "Studio AI page open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/ai" | grep -c "/studio$" >/dev/null || { echo "Studio AI page open to a non-studio account"; exit 1; }
           echo "studio ai ok"
           # Coming-soon posts (Figma 53:1512): the page is for studio members only.
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/premieres/coming-soon" | grep -q "/studio$" || { echo "coming-soon post open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/premieres/coming-soon" | grep -c "/studio$" >/dev/null || { echo "coming-soon post open to a non-studio account"; exit 1; }
           echo "coming-soon post ok"
           # Notifications (Figma 99:552): a studio's own, never a stranger's.
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/notices")" = 404 ] || { echo "notifications open to a non-studio account"; exit 1; }
-          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/notifications" | grep -q "/studio$" || { echo "notifications page open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/notifications" | grep -c "/studio$" >/dev/null || { echo "notifications page open to a non-studio account"; exit 1; }
           echo "notifications ok"
           # Executive command center (Figma 49:1055): executives only, and the briefing too.
-          curl -fsS -b "$jar" "$web/executive" | grep -q "Executives only" || { echo "executive area open to a non-executive"; exit 1; }
+          curl -fsS -b "$jar" "$web/executive" | grep -c "Executives only" >/dev/null || { echo "executive area open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/executive/briefing")" = 403 ] || { echo "executive briefing open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/executive/people")" = 403 ] || { echo "executive access list open to a non-CEO"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -X PUT -d '{"email":"x@example.com","role":"cfo"}' "$web/api/executive/people")" = 403 ] || { echo "a non-CEO could grant access"; exit 1; }
-          curl -fsS -b "$jar" "$web/executive/money" | grep -q "Executives only" || { echo "money page open to a non-executive"; exit 1; }
-          curl -fsS -b "$jar" "$web/executive/growth" | grep -q "Executives only" || { echo "growth page open to a non-executive"; exit 1; }
-          curl -fsS -b "$jar" "$web/executive/content" | grep -q "Executives only" || { echo "content page open to a non-executive"; exit 1; }
+          curl -fsS -b "$jar" "$web/executive/money" | grep -c "Executives only" >/dev/null || { echo "money page open to a non-executive"; exit 1; }
+          curl -fsS -b "$jar" "$web/executive/growth" | grep -c "Executives only" >/dev/null || { echo "growth page open to a non-executive"; exit 1; }
+          curl -fsS -b "$jar" "$web/executive/content" | grep -c "Executives only" >/dev/null || { echo "content page open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/executive/studios/no-such-studio/approve")" = 403 ] || { echo "a non-executive could approve a studio"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/executive/live")" = 403 ] || { echo "live operations open to a non-executive"; exit 1; }
-          curl -fsS -b "$jar" "$web/executive/shop" | grep -q "Executives only"
+          curl -fsS -b "$jar" "$web/executive/shop" | grep -c "Executives only" >/dev/null
           code=$(curl -s -o /dev/null -w "%{http_code}" -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"name":"x"}' "$web/api/executive/products"); [ "$code" = 403 ] || { echo "product save open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"name":"x"}' "$web/api/executive/rooms")" = 403 ] || { echo "room types open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X POST -H "origin: $web" -H "content-type: application/json" -d '{"remove":true}' "$web/api/executive/safety/x/1")" = 403 ] || { echo "moderation open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"ngShare":10}' "$web/api/executive/hiring/share")" = 403 ] || { echo "hiring quota open to a non-executive"; exit 1; }
-          curl -s -b "$jar" "$web/executive/licensing" | grep -q "This page is for the CEO, the CMO and the CFO" || { echo "licensing book open to a non-executive"; exit 1; }
+          curl -s -b "$jar" "$web/executive/licensing" | grep -c "This page is for the CEO, the CMO and the CFO" >/dev/null || { echo "licensing book open to a non-executive"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"on":true}' "$web/api/executive/security/lockdown")" = 403 ] || { echo "lock down open to a non-executive"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X POST -H "origin: $web" -H "content-type: application/json" -d '{"title":"xxx","kind":"other","severity":"low"}' "$web/api/executive/security/incidents")" = 403 ] || { echo "incident log open to a non-executive"; exit 1; }
           echo "executive ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
@@ -370,11 +372,11 @@ jobs:
           echo "$fl" | jq -e '.url | test("^https://checkout(-v2)?\\.(dev-)?flutterwave\\.com/")' >/dev/null || { echo "flutterwave start: $(echo "$fl" | jq -c '{error, url}')"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'verif-hash: wrong' -d '{}' "$web/api/flutterwave/webhook")" = 401 ] || { echo "flutterwave webhook accepts a wrong hash"; exit 1; }
           echo "local pay ok"
-          curl -fsS "$web/browse?type=nollywood" | grep -q "Nollywood premieres"
-          curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -q "One screening, your local time"
+          curl -fsS "$web/browse?type=nollywood" | grep -c "Nollywood premieres" >/dev/null
+          curl -fsS "$web/film/orbit-zero-2026-11-01" | grep -c "One screening, your local time" >/dev/null
           found=$(curl -fsS "$web/api/search?q=space%20film%20dubbed%20in%20Hausa")
           echo "search -> $found" | head -c 400; echo
-          echo "$found" | grep -q '"hits":\[{"id"'
+          echo "$found" | grep -c '"hits":\[{"id"' >/dev/null
           echo "browse, film detail and search ok"
           curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/signout" >/dev/null
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/auth/me")" = 401 ]
