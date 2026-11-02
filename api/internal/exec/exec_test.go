@@ -281,3 +281,60 @@ func TestContent(t *testing.T) {
 		t.Fatalf("not ready: %v %v", ok, err)
 	}
 }
+
+func TestShop(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'sx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM shop_products WHERE id LIKE 'sx-test-%'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role, can_add) VALUES ('sx-coo@example.com', 'coo', true), ('sx-cfo@example.com', 'cfo', false)`)
+	st := exec.Store{DB: p, CEOs: []string{"sx-ceo@example.com"}}
+	in := exec.ProductInput{Name: "Sx Test Lamp", Sub: "Glows", Category: "gear", PriceNGN: 25000, Ships: "ng", ShipDays: 3, Active: false,
+		Options: []exec.Option{{Name: "Colour", Values: []string{" Red ", "", "Blue"}}}, Images: []string{"/api/shop/photo/0b7c6c1e-2f4a-4a3a-9a57-1a2b3c4d5e6f.jpg"}}
+	if _, err := st.SaveProduct(ctx, "sx-cfo@example.com", in); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	bad := in
+	bad.Images = []string{"https://evil.example/x.jpg"}
+	if _, err := st.SaveProduct(ctx, "sx-coo@example.com", bad); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad image: %v", err)
+	}
+	id, err := st.SaveProduct(ctx, "sx-coo@example.com", in)
+	if err != nil || id != "sx-test-lamp" {
+		t.Fatalf("add: %q %v", id, err)
+	}
+	id2, err := st.SaveProduct(ctx, "sx-ceo@example.com", in)
+	if err != nil || id2 != "sx-test-lamp-2" {
+		t.Fatalf("second: %q %v", id2, err)
+	}
+	in.ID, in.Active, in.PriceNGN = id, true, 30000
+	if _, err := st.SaveProduct(ctx, "sx-coo@example.com", in); err != nil {
+		t.Fatal(err)
+	}
+	var price int
+	var active bool
+	var opts string
+	p.QueryRow(ctx, `SELECT price_ngn, active, options::text FROM shop_products WHERE id = $1`, id).Scan(&price, &active, &opts)
+	if price != 30000 || !active || opts != `[{"name": "Colour", "values": ["Red", "Blue"]}]` {
+		t.Fatalf("saved: %d %v %s", price, active, opts)
+	}
+	sh, err := st.Shop(ctx, "sx-cfo@example.com", time.Now())
+	if err != nil || sh.CanAdd || len(sh.Products) < 2 {
+		t.Fatalf("shop: %+v %v", sh.CanAdd, err)
+	}
+}

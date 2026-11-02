@@ -122,6 +122,23 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Watching > list[j].Watching })
 		writeJSON(w, http.StatusOK, map[string]any{"playing": list})
 	}))
+	// Shop and merch (Figma 51:657) and Add a product (83:631).
+	mux.HandleFunc("GET /v1/me/exec/shop", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		sh, err := s.Exec.Shop(r.Context(), a.Email, time.Now())
+		reply(w, sh, err)
+	}))
+	mux.HandleFunc("GET /v1/me/exec/can-add", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		ok, err := s.Exec.CanAddProducts(r.Context(), a.Email)
+		reply(w, map[string]bool{"canAdd": ok}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/products", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in exec.ProductInput
+		if !decode(w, r, &in) {
+			return
+		}
+		id, err := s.Exec.SaveProduct(r.Context(), a.Email, in)
+		reply(w, map[string]string{"id": id}, err)
+	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		c, err := s.Exec.Command(r.Context(), a.Email, time.Now())
