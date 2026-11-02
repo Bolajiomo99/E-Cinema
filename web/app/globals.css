@@ -5054,3 +5054,19 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exn-note { min-height: 80px; padding: 10px 12px; border-radius: 8px; border: 1px solid #26262e; background: #1b1b21; color: #f4f4f6; font: 500 14px Manrope, sans-serif; resize: vertical; }
 @media (max-width: 1100px) { .exn-row { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .exn-th { display: none; } .exn-tr { grid-template-columns: 1fr 1fr; } .exn-pend { flex-direction: column; align-items: flex-start; } }
+
+/* Live operations (Figma 82:852) */
+.exl-live { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: #e3182d; color: #fff; font: 700 11px Manrope, sans-serif; letter-spacing: .5px; }
+.exl-live i { width: 6px; height: 6px; border-radius: 3px; background: #fff; animation: exl-pulse 1.4s infinite; }
+@keyframes exl-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .exl-live i { animation: none; } }
+.exl-war { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 8px; background: #26262e; color: #8a8a96; font: 600 13px Manrope, sans-serif; }
+.exl-card { margin-bottom: 14px; }
+.exl-g { grid-template-columns: 1.5fr .9fr .8fr 1.2fr .7fr 1.3fr !important; }
+.exl-studio { display: block; color: #6e6e7a; font-size: 11px; }
+.exl-soon { color: #6e6e7a; font-size: 12px; }
+.exl-act { display: flex; gap: 8px; justify-content: flex-end; }
+.exl-pause { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; background: #1f1f26; color: #6e6e7a; font: 600 13px Manrope, sans-serif; cursor: not-allowed; }
+.exl-reg > div { grid-template-columns: 90px 1fr 100px; }
+.exc-card h2 .soon-tag { vertical-align: 2px; }
+@media (max-width: 760px) { .exl-g { grid-template-columns: 1fr 1fr !important; } .exl-act { justify-content: flex-start; } }

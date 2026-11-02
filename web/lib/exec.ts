@@ -114,3 +114,10 @@ export async function execContent(s: string): Promise<ContentData | null> {
   const r = await accountApi("GET", "/v1/me/exec/content", undefined, s);
   return r.status === 200 ? (r.body as ContentData) : null;
 }
+
+export type LiveData = { playing: { id: string; film: string; studio: string; starts: string; ends: string; watching: number; peak: number; byCountry: Record<string, number> }[] };
+
+export async function execLive(s: string): Promise<LiveData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/live", undefined, s);
+  return r.status === 200 ? (r.body as LiveData) : null;
+}
