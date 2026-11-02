@@ -67,7 +67,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const q = quote(s, profile ? { ...profile, country } : { country: undefined }, Date.now(), quality);
   const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID), localReady());
   // Paystack and Flutterwave charge in naira at today's rate, rounded up to the whole naira.
-  const ngn = methods.some((m) => (m.id === "paystack" || m.id === "flutterwave") && m.ready) ? await convert(Number(q.total), q.currency, "NGN") : null;
+  // A studio's own naira price wins over today's rate (Figma 35:514); lib/local-seat.ts charges the same.
+  const ngLocal = s.local?.NG?.currency === "NGN" ? (s.local.NG.minor / 100) * (Number(q.total) / Number(s.price.value)) : 0;
+  const ngn = methods.some((m) => (m.id === "paystack" || m.id === "flutterwave") && m.ready) ? ngLocal || await convert(Number(q.total), q.currency, "NGN") : null;
   const naira = ngn ? `₦${Math.ceil(ngn).toLocaleString("en-NG")}` : "";
   const credit = me && session ? await creditBalance(session) : 0;
   const creditCovers = q.currency === "USD" && credit > 0 && credit >= Math.round(Number(q.total) * 100);

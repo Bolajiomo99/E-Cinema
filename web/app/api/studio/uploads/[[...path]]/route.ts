@@ -6,6 +6,10 @@ import { dropUpload, finishMultipart, mediaEnabled, objectRange, putRoomObject, 
 import { json, sameOrigin } from "@/lib/room-gate";
 import { partCount, type Upload, type UploadFile } from "@/lib/studio-types";
 import { inspect } from "@/lib/upload-checks";
+import { refreshLive } from "@/lib/live-catalog";
+import { usdRates } from "@/lib/fx";
+import { marketOf, type Premiere } from "@/lib/premiere-types";
+import { suggestPrices } from "@/lib/price-ai";
 
 // Film uploads (Figma 35:290). The browser asks here for signed links and sends each part of
 // a file straight to private storage; this route opens, resumes, finishes and checks files.
@@ -56,6 +60,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   const { p, s } = g;
   if (!p.length) return pass(await accountApi("GET", "/v1/me/studio/uploads", undefined, s));
   if (p.length === 1) return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s));
+  if (p.length === 2 && p[1] === "premiere") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s));
   if (p.length === 2 && p[1] === "poster") {
     const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s);
     if (r.status !== 200) return pass(r);
@@ -82,6 +87,33 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const g = await start(req, ctx, true);
   if (g.error) return g.error;
   const { p, s } = g;
+  // AI suggested prices (Figma 35:514), for the studio to review before publishing.
+  if (p.length === 2 && p[1] === "suggest-prices") {
+    if (limited(`ai:${s}`, 6)) return json(429, { error: "Slow down: try again in a minute" });
+    if (!(await mayWrite(s, p[0]))) return json(403, { error: "Your role on this studio cannot do that" });
+    const [u, pr] = await Promise.all([accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s), accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s)]);
+    if (u.status !== 200) return pass(u);
+    if (pr.status !== 200) return pass(pr);
+    const up = (u.body as { upload: Upload }).upload, pm = (pr.body as { premiere: Premiere }).premiere;
+    const body = await req.json().catch(() => ({})) as { rows?: { country: string; amountMinor: number | null }[]; priceCents?: number };
+    const rates = await usdRates();
+    const rows = (body.rows ?? []).slice(0, 60).flatMap((r) => {
+      const m = marketOf(String(r.country));
+      if (!m) return [];
+      const current = r.amountMinor ? r.amountMinor / 10 ** m.digits : null;
+      const rate = rates?.[m.currency];
+      return [{ country: m.country, currency: m.currency, current, usd: current && rate ? Math.round((current / rate) * 100) / 100 : null, sold: pm.prices.find((x) => x.country === m.country)?.sold ?? 0 }];
+    });
+    const master = up.files.find((f) => f.kind === "master" && f.status === "uploaded");
+    try {
+      const out = await suggestPrices({ title: up.title, genres: up.genres, languages: up.languages, runtime: master?.info.match(/(\d+h \d+m|\d+m \d+s)$/)?.[1] ?? "", baseUsd: Number(body.priceCents ?? pm.priceCents) / 100, seats: pm.seats, startsAt: pm.startsAt }, rows);
+      if (!out) return json(503, { error: "AI pricing is not available right now" });
+      return json(200, { suggestions: out });
+    } catch (e) {
+      console.error("price suggestions", e instanceof Error ? e.message : e);
+      return json(502, { error: "AI pricing did not answer. Try again." });
+    }
+  }
   // The poster: a still image, checked by its first bytes and stored privately.
   if (p.length === 2 && p[1] === "poster") {
     if (limited(`i:${s}`, 10)) return json(429, { error: "Slow down: too many uploads" });
@@ -172,6 +204,19 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (p.length === 2 && p[1] === "details") {
     const str = (k: string) => String(body[k] ?? "");
     return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/details`, { title: str("title"), logline: str("logline"), genres: str("genres"), ageRating: str("ageRating"), castCrew: str("castCrew"), languages: str("languages") }, s));
+  }
+  if (p.length === 2 && p[1] === "premiere") {
+    const n = (k: string) => Math.round(Number(body[k]) || 0);
+    const b = (k: string) => body[k] === true;
+    const prices = Array.isArray(body.prices) ? (body.prices as Record<string, unknown>[]).slice(0, 250).map((x) => ({ country: String(x.country ?? ""), currency: String(x.currency ?? ""), amountMinor: Math.round(Number(x.amountMinor) || 0), note: String(x.note ?? "") })) : [];
+    const startsAt = typeof body.startsAt === "string" && !Number.isNaN(Date.parse(body.startsAt)) ? new Date(body.startsAt).toISOString() : "0001-01-01T00:00:00Z";
+    const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/premiere`, {
+      mode: String(body.mode ?? "global"), startsAt, seats: n("seats"), encores: n("encores"), priceCents: n("priceCents"),
+      freeSeats: b("freeSeats"), freePlan: b("freePlan"), groupDiscounts: b("groupDiscounts"), studentPrice: b("studentPrice"), classicRequests: b("classicRequests"), downloads: b("downloads"),
+      durationMin: n("durationMin"), prices, publish: b("publish"),
+    }, s);
+    if (r.status === 200 && b("publish")) await refreshLive(true);
+    return pass(r);
   }
   return json(404, { error: "Not found" });
 }

@@ -30,3 +30,9 @@ export async function convert(amount: number, from: string, to: string): Promise
   if (!a || !b) return null;
   return (amount / a) * b;
 }
+
+// usdRates is how many units of each currency one US dollar buys, for showing ≈ USD next to
+// local prices. Null when the feed cannot be reached.
+export async function usdRates(): Promise<Record<string, number> | null> {
+  return rates();
+}

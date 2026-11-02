@@ -46,7 +46,7 @@ export const STUDIO_NAV: { label: string; href?: string; icon: string }[] = [
   { label: "Overview", href: "/studio", icon: "home" },
   { label: "Films", href: "/studio/films", icon: "film" },
   { label: "Upload", href: "/studio/upload", icon: "upload" },
-  { label: "Premieres and pricing", icon: "calendar" },
+  { label: "Premieres and pricing", href: "/studio/premieres", icon: "calendar" },
   { label: "AI dubbing", icon: "dub" },
   { label: "Live control room", icon: "live" },
   { label: "Analytics", icon: "chart" },

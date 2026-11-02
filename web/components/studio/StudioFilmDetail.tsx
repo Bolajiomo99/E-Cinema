@@ -94,7 +94,9 @@ export default function StudioFilmDetail({ upload: u0, canEdit, rightsDeclared }
       <nav className="bp-chips" aria-label="Film sections">
         <span className="on" aria-current="page">Details</span>
         <Link href={`/studio/upload/${u.id}`}>Media</Link>
-        {["Languages", "Pricing", "Rights", "Pre-sales"].map((c) => <span key={c} className="off" aria-disabled="true" title="Coming soon">{c}</span>)}
+        <span className="off" aria-disabled="true" title="Coming soon">Languages</span>
+        <Link href={`/studio/premieres?film=${u.id}`}>Pricing</Link>
+        {["Rights", "Pre-sales"].map((c) => <span key={c} className="off" aria-disabled="true" title="Coming soon">{c}</span>)}
       </nav>
 
       <div className="stfd-two">
