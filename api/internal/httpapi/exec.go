@@ -81,6 +81,47 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	// Live operations (Figma 82:852): what plays right now, from the watch-room hub.
+	mux.HandleFunc("GET /v1/me/exec/live", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.Allow(r.Context(), a.Email, "coo", "cto"); err != nil {
+			fail(w, err)
+			return
+		}
+		now := time.Now()
+		rows, err := s.Exec.DB.Query(r.Context(), `SELECT id, film, studio, starts_at, duration_min FROM showtimes
+		  WHERE starts_at <= $1 AND starts_at + make_interval(mins => duration_min) > $1 ORDER BY starts_at`, now)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		type playing struct {
+			ID        string         `json:"id"`
+			Film      string         `json:"film"`
+			Studio    string         `json:"studio"`
+			Starts    time.Time      `json:"starts"`
+			Ends      time.Time      `json:"ends"`
+			Watching  int            `json:"watching"`
+			Peak      int            `json:"peak"`
+			ByCountry map[string]int `json:"byCountry"`
+		}
+		list := []playing{}
+		for rows.Next() {
+			var p playing
+			var mins int
+			if err := rows.Scan(&p.ID, &p.Film, &p.Studio, &p.Starts, &mins); err != nil {
+				rows.Close()
+				fail(w, err)
+				return
+			}
+			p.Ends = p.Starts.Add(time.Duration(mins) * time.Minute)
+			st := s.Hub.StatOf(p.ID)
+			p.Watching, p.ByCountry, p.Peak = st.Watching, st.ByCountry, s.Hub.PeakOf(p.ID).Watching
+			list = append(list, p)
+		}
+		rows.Close()
+		sort.SliceStable(list, func(i, j int) bool { return list[i].Watching > list[j].Watching })
+		writeJSON(w, http.StatusOK, map[string]any{"playing": list})
+	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		c, err := s.Exec.Command(r.Context(), a.Email, time.Now())

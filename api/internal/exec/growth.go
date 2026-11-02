@@ -155,3 +155,8 @@ func (st Store) Growth(ctx context.Context, email string, days int, country stri
 	g.CountryList, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	return g, err
 }
+
+// Allow checks the caller is the CEO or holds one of the roles.
+func (st Store) Allow(ctx context.Context, email string, roles ...string) error {
+	return st.allowed(ctx, email, roles...)
+}
