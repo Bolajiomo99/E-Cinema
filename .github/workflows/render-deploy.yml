@@ -299,6 +299,10 @@ jobs:
           # Film uploads (Figma 35:290): only a studio's team can open drafts.
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/uploads")" = 404 ] || { echo "uploads open to a non-studio account"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$web/api/studio/uploads")" = 401 ] || { echo "uploads open signed out"; exit 1; }
+          # Premieres and pricing (Figma 35:514): the plan is the studio's own; the public list is open.
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/uploads/00000000-0000-4000-8000-000000000000/premiere")" = 404 ] || { echo "premiere open to a non-studio account"; exit 1; }
+          curl -fsS "$web/studio/premieres" -b "$jar" -o /dev/null -w '' || { echo "premieres page failed"; exit 1; }
+          echo "premieres ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
