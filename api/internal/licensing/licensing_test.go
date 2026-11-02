@@ -185,6 +185,19 @@ func TestLicensing(t *testing.T) {
 	if err != nil || o.SalesNGN != 105000 || o.Items != 16 || len(o.Daily) != 30 || len(o.Channels) != 3 || o.RoyaltyNGN != 6300 || len(o.Top) != 1 || o.Top[0].Tag != "Best seller" {
 		t.Fatalf("overview = %+v, %v", o, err)
 	}
+	bk, err := st.Book(ctx, now)
+	if err != nil || bk.Partners < 1 || bk.Plans["growth"] < 1 || bk.ByCountry["NG"] < 1 {
+		t.Fatalf("book = %+v, %v", bk, err)
+	}
+	found := false
+	for _, r := range bk.Rows {
+		if r.Licence == l.Licence {
+			found = r.Sales30NGN == 105000 && r.Plan == "growth" && r.Compliance > 0
+		}
+	}
+	if !found {
+		t.Fatalf("book rows = %+v", bk.Rows)
+	}
 	an, err := st.Analytics(ctx, l, now, licensing.Filter{Days: 90})
 	if err != nil || an.Orders != 3 || an.RepeatPct != 50 || len(an.ByCountry) != 2 || an.ByCountry[0].Name != "GH" || len(an.ByFilm) != 2 {
 		t.Fatalf("analytics = %+v, %v", an, err)

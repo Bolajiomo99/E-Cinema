@@ -189,6 +189,15 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Licensing (Figma 117:1481).
+	mux.HandleFunc("GET /v1/me/exec/licensing", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.CanLicensing(r.Context(), a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		b, err := s.Licensing.Book(r.Context(), time.Now())
+		reply(w, b, err)
+	}))
 	// Rooms and VR halls (Figma 83:831).
 	mux.HandleFunc("GET /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		rm, err := s.Exec.Rooms(r.Context(), a.Email, time.Now())

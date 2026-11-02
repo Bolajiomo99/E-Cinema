@@ -129,3 +129,8 @@ func (st Store) Brand(ctx context.Context, email string, now time.Time) (Brand, 
 	}
 	return b, nil
 }
+
+// CanLicensing lets the CMO and CFO read the licensing book (Figma 117:1481).
+func (st Store) CanLicensing(ctx context.Context, email string) error {
+	return st.allowed(ctx, email, "cmo", "cfo")
+}
