@@ -10,6 +10,7 @@ import { refreshLive } from "@/lib/live-catalog";
 import { usdRates } from "@/lib/fx";
 import { marketOf, type Premiere } from "@/lib/premiere-types";
 import { suggestPrices } from "@/lib/price-ai";
+import { syncDubs } from "@/lib/dub-worker";
 
 // Film uploads (Figma 35:290). The browser asks here for signed links and sends each part of
 // a file straight to private storage; this route opens, resumes, finishes and checks files.
@@ -215,7 +216,10 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       freeSeats: b("freeSeats"), freePlan: b("freePlan"), groupDiscounts: b("groupDiscounts"), studentPrice: b("studentPrice"), classicRequests: b("classicRequests"), downloads: b("downloads"),
       durationMin: n("durationMin"), prices, publish: b("publish"),
     }, s);
-    if (r.status === 200 && b("publish")) await refreshLive(true);
+    if (r.status === 200 && b("publish")) {
+      await refreshLive(true);
+      await syncDubs(p[0]).catch(() => {});
+    }
     return pass(r);
   }
   return json(404, { error: "Not found" });

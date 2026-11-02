@@ -49,9 +49,11 @@ export async function dubTrack(film: string, lang: string): Promise<DubClip[] | 
     throw err;
   }
   const prefix = `dubs/${film}/${lang}/`;
+  // Studio dubs (Figma 35:871) keep their voiced lines under studio-dubs/<upload>/<lang>/.
+  const studio = new RegExp(`^studio-dubs/[0-9a-f-]{36}/${lang}/[0-9]+-[0-9a-f]+\\.mp3$`);
   return Promise.all(
     manifest.clips
-      .filter((c) => c.key.startsWith(prefix)) // never sign anything outside this track
+      .filter((c) => c.key.startsWith(prefix) || studio.test(c.key)) // never sign anything outside a dub track
       .map(async (c) => ({
         start: c.start,
         end: c.end,
