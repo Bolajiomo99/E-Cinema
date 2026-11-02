@@ -94,6 +94,11 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		o, err := s.Studios.Overview(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, o, err)
 	}))
+	mux.HandleFunc("GET /v1/me/studio/analytics", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+		v, err := s.Studios.Analytics(r.Context(), a.ID, a.Email, days, time.Now())
+		reply(w, v, err)
+	}))
 	mux.HandleFunc("GET /v1/me/studio/films", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		f, err := s.Studios.Films(r.Context(), a.ID, a.Email)
 		reply(w, map[string]any{"films": f}, err)
