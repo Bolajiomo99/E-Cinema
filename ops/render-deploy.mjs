@@ -113,7 +113,7 @@ const apiSvc = await upsertService(
     // face and ID checks run through Sumsub.
     ...(rpId ? { WEBAUTHN_RP_ID: rpId, WEBAUTHN_ORIGINS: process.env.WEBAUTHN_ORIGINS || `https://${rpId}` } : {}),
     ...Object.fromEntries(
-      ["TERMII_API_KEY", "TERMII_SENDER_ID", "SUMSUB_APP_TOKEN", "SUMSUB_SECRET_KEY"].filter((k) => process.env[k]).map((k) => [k, process.env[k]]),
+      ["TERMII_API_KEY", "TERMII_SENDER_ID", "SUMSUB_APP_TOKEN", "SUMSUB_SECRET_KEY", "CEO_EMAILS"].filter((k) => process.env[k]).map((k) => [k, process.env[k]]),
     ),
   },
 );

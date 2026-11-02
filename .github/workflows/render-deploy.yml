@@ -42,6 +42,7 @@ jobs:
           R2_API_TOKEN: ${{ secrets.R2_ACCOUNT_TOKEN_VALUE }}
           TERMII_API_KEY: ${{ secrets.TERMII_API_KEY }}
           TERMII_SENDER_ID: ${{ secrets.TERMII_SENDER_ID }}
+          CEO_EMAILS: ${{ secrets.CEO_EMAILS }}
           SUMSUB_APP_TOKEN: ${{ secrets.SUMSUB_APP_TOKEN }}
           SUMSUB_SECRET_KEY: ${{ secrets.SUMSUB_SECRET_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}
@@ -343,6 +344,10 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/notices")" = 404 ] || { echo "notifications open to a non-studio account"; exit 1; }
           curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/notifications" | grep -q "/studio$" || { echo "notifications page open to a non-studio account"; exit 1; }
           echo "notifications ok"
+          # Executive command center (Figma 49:1055): executives only, and the briefing too.
+          curl -fsS -b "$jar" "$web/executive" | grep -q "Executives only" || { echo "executive area open to a non-executive"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/executive/briefing")" = 403 ] || { echo "executive briefing open to a non-executive"; exit 1; }
+          echo "executive ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
