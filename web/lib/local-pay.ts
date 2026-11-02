@@ -44,7 +44,7 @@ export async function startPayment(p: Provider, o: { reference: string; amountKo
     signal: AbortSignal.timeout(15000),
   });
   const j = (await r.json().catch(() => ({}))) as { status?: string; message?: string; data?: { link?: string } };
-  if (!r.ok || j.status !== "success" || !j.data?.link) throw new Error(j.message || "Flutterwave could not start the payment");
+  if (!r.ok || j.status !== "success" || !j.data?.link) throw new Error(j.message || `Flutterwave could not start the payment (${r.status})`);
   return { url: j.data.link, reference: o.reference };
 }
 
