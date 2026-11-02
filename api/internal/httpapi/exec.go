@@ -184,6 +184,11 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		}
 		reply(w, map[string]int{"ngShare": b.NGShare}, s.Careers.SetShare(r.Context(), b.NGShare))
 	}))
+	// Brand protection (Figma 117:1216).
+	mux.HandleFunc("GET /v1/me/exec/brand", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
+		reply(w, b, err)
+	}))
 	// Rooms and VR halls (Figma 83:831).
 	mux.HandleFunc("GET /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		rm, err := s.Exec.Rooms(r.Context(), a.Email, time.Now())

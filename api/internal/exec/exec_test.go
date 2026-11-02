@@ -524,3 +524,51 @@ func TestHiring(t *testing.T) {
 		t.Fatal("only the CEO sets the quota")
 	}
 }
+
+func TestBrand(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'bx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'bx-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('bx-cmo@example.com', 'cmo'), ('bx-cfo@example.com', 'cfo')`)
+	var a string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('bx-r@example.com', 'Bxada Okafor', '!') RETURNING id`).Scan(&a)
+	if _, err := p.Exec(ctx, `INSERT INTO brand_reports (account_id, country, place, link, selling, status, outcome, reward_ngn, decided_at) VALUES
+	  ($1, 'GH', 'market', 'Makola', 'Bx fake tees', 'confirmed', 'taken down', 10000, now()),
+	  ($1, 'GH', 'online', 'https://x.example', 'Bx fake caps', 'sent', '', 0, NULL)`, a); err != nil {
+		t.Fatal(err)
+	}
+	st := exec.Store{DB: p}
+	if _, err := st.Brand(ctx, "bx-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	b, err := st.Brand(ctx, "bx-cmo@example.com", time.Now())
+	if err != nil || b.Month < 2 || b.Confirmed < 1 || b.RewardsNGN < 10000 || b.Countries["GH"] < 2 || len(b.Weeks) != 12 || b.Weeks[11].Reports < 2 {
+		t.Fatalf("brand = %+v %v", b, err)
+	}
+	var queued, top bool
+	for _, q := range b.Queue {
+		queued = queued || q.Selling == "Bx fake caps"
+	}
+	for _, r := range b.TopReporter {
+		top = top || r.Name == "Bxada O."
+	}
+	if !queued || !top {
+		t.Fatalf("queue %+v top %+v", b.Queue, b.TopReporter)
+	}
+}
