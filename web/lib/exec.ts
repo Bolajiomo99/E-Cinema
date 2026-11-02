@@ -121,3 +121,19 @@ export async function execLive(s: string): Promise<LiveData | null> {
   const r = await accountApi("GET", "/v1/me/exec/live", undefined, s);
   return r.status === 200 ? (r.body as LiveData) : null;
 }
+
+export type ShopProduct = {
+  id: string; name: string; sub: string; blurb: string; category: string; priceNgn: number; options: { name: string; values: string[] }[] | null;
+  ships: string; shipDays: number; beforeShow: boolean; images: string[]; active: boolean; licence: string; sold: number; revenueNgn: number;
+};
+export type ShopData = { orders: number; ordersPrev: number; revenueNgn: number; delivered: number; onTime: number; destinations: Record<string, number>; products: ShopProduct[]; canAdd: boolean };
+
+export async function execShop(s: string): Promise<ShopData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/shop", undefined, s);
+  return r.status === 200 ? (r.body as ShopData) : null;
+}
+
+export async function execCanAdd(s: string): Promise<boolean> {
+  const r = await accountApi("GET", "/v1/me/exec/can-add", undefined, s);
+  return r.status === 200 && Boolean((r.body as { canAdd?: boolean }).canAdd);
+}
