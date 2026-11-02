@@ -4,6 +4,7 @@ import { accountApi, currentAccount } from "@/lib/auth";
 import { aiEnabled, readCertificate, session } from "@/lib/licensing";
 import { mediaEnabled, putRoomObject, roomObjectLink } from "@/lib/media";
 import { json, sameOrigin } from "@/lib/room-gate";
+import { draftNotice } from "@/lib/leak-notice";
 import { isStaff } from "@/lib/store";
 import type { Studio } from "@/lib/studio-types";
 
@@ -14,7 +15,10 @@ export const dynamic = "force-dynamic";
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf" };
 const KEY = /^studios\/[0-9a-f-]{36}\.(jpg|png|pdf)$/;
 const SLUG = /^[a-z0-9-]{1,90}$/;
-const PAGES = new Set(["overview", "films", "payouts", "team"]);
+const PAGES = new Set(["overview", "films", "payouts", "team", "leaks"]);
+const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const PLACES: Record<string, string> = { website: "a website", telegram: "a Telegram channel", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "an online service" };
+const KINDS: Record<string, string> = { clip: "a clip of the film", full: "the full film", screenshot: "a still from the film", other: "material from the film" };
 const pass = (r: { status: number; body: unknown }) => json(r.status, r.body ?? {});
 const recent = new Map<string, number[]>();
 
@@ -39,6 +43,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     if (!st?.docsKey || !KEY.test(st.docsKey) || !mediaEnabled) return json(404, { error: "No document yet" });
     return json(200, { url: await roomObjectLink(st.docsKey) });
   }
+  if (p[0] === "desk" && p[1] === "bans" && p.length === 2) {
+    const me = await currentAccount();
+    if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
+    return pass(await accountApi("GET", "/v1/studio-bans"));
+  }
   if (p[0] === "desk") {
     const me = await currentAccount();
     if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
@@ -58,6 +67,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
   const body = await req.json().catch(() => ({}));
   if (!p.length) return pass(await accountApi("PUT", "/v1/me/studio", body, s));
   if (p.length === 1 && ["payout", "rights", "team"].includes(p[0])) return pass(await accountApi("PUT", `/v1/me/studio/${p[0]}`, body, s));
+  if (p.length === 2 && p[0] === "leaks" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/leaks/${p[1]}`, body, s));
   return json(404, { error: "Not found" });
 }
 
@@ -102,6 +112,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   if (p.length === 1 && (p[0] === "terms" || p[0] === "submit")) return pass(await accountApi("POST", `/v1/me/studio/${p[0]}`, {}, s));
   const body = await req.json().catch(() => ({}));
   if (p[0] === "team" && p[1] === "remove") return pass(await accountApi("POST", "/v1/me/studio/team/remove", body, s));
+  if (p.length === 1 && p[0] === "leaks") {
+    if (limited(s + ":leak", 20)) return json(429, { error: "Slow down: too many reports in a minute" });
+    return pass(await accountApi("POST", "/v1/me/studio/leaks", body, s));
+  }
+  // Claude drafts a takedown notice; it is saved on the report for the studio to edit and send.
+  if (p.length === 3 && p[0] === "leaks" && ID.test(p[1]) && p[2] === "notice") {
+    if (limited(s + ":notice", 6)) return json(429, { error: "Slow down: try again in a minute" });
+    const [mine, list] = await Promise.all([accountApi("GET", "/v1/me/studio", undefined, s), accountApi("GET", "/v1/me/studio/leaks", undefined, s)]);
+    if (list.status !== 200) return pass(list);
+    const st = (mine.body as { studio: Studio | null }).studio;
+    const l = (list.body as { leaks: { id: string; film: string; link: string; place: string; kind: string; what: string; createdAt: string }[] }).leaks.find((x) => x.id === p[1]);
+    if (!st || !l) return json(404, { error: "No such leak report" });
+    let text: string | null = null;
+    try {
+      text = await draftNotice({
+        rightsHolder: st.legalName || st.name, country: st.regCountry, contact: st.payoutEmail || "[your email]", film: l.film || "[film title]", link: l.link,
+        place: PLACES[l.place] ?? l.place, kind: KINDS[l.kind] ?? l.kind, what: l.what, date: new Date().toISOString().slice(0, 10),
+      });
+    } catch (err) {
+      console.error("takedown notice failed", (err as Error).message);
+      return json(502, { error: "Studio AI could not write the notice just now. Try again." });
+    }
+    if (!text) return json(503, { error: "Studio AI is off right now. Write the notice yourself below." });
+    return pass(await accountApi("PUT", `/v1/me/studio/leaks/${p[1]}`, { notice: text }, s));
+  }
+  if (p.length === 3 && p[0] === "desk" && p[1] === "bans" && ID.test(p[2])) {
+    const me = await currentAccount();
+    if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
+    return pass(await accountApi("POST", `/v1/studio-bans/${p[2]}`, body));
+  }
 
   if (p[0] === "desk" && SLUG.test(p[1] ?? "")) {
     const me = await currentAccount();

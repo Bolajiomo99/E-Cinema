@@ -388,11 +388,11 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		a, err := s.Studios.Applications(r.Context())
 		reply(w, map[string]any{"studios": a}, err)
 	}))
-	mux.HandleFunc("GET /v1/studios/bans", s.internal(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/studio-bans", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		b, err := s.Studios.BanRequests(r.Context())
 		reply(w, map[string]any{"requests": b}, err)
 	}))
-	mux.HandleFunc("POST /v1/studios/bans/{id}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/studio-bans/{id}", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ Approve bool }
 		if decodeN(w, r, 1<<10, &b) {
 			err := s.Studios.DecideBan(r.Context(), r.PathValue("id"), b.Approve, func(acct, reason string) error { return s.Accounts.Ban(r.Context(), acct, reason) })

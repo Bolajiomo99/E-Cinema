@@ -26,7 +26,7 @@ var (
 	ErrEmailTaken     = errors.New("an account already uses this email, sign in instead")
 	ErrBadLogin       = errors.New("email or password is wrong")
 	ErrLocked         = errors.New("too many attempts, try again in 15 minutes")
-	ErrBanned         = errors.New("this account was closed for sharing films without permission; write to admin@e-cinema.net if you think this is wrong")
+	ErrBanned         = errors.New("This account was closed for sharing films without permission; write to admin@e-cinema.net if you think this is wrong")
 	ErrNoSession      = errors.New("not signed in")
 	ErrPhoneTaken     = errors.New("this phone number already has an E-Cinema account, sign in to that one instead")
 	ErrBadCode        = errors.New("that code is wrong or has expired")
