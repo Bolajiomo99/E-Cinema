@@ -227,3 +227,57 @@ func TestGrowth(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestContent(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'cx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM showtimes WHERE id LIKE 'test-cx-%'`)
+		p.Exec(ctx, `DELETE FROM studios WHERE slug LIKE 'test-cx-%'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('cx-coo@example.com', 'coo'), ('cx-cfo@example.com', 'cfo')`)
+	p.Exec(ctx, `INSERT INTO showtimes (id, film, studio, starts_at, duration_min, capacity, price_cents, currency) VALUES
+	  ('test-cx-1', 'Test Cx Live', 'Cx Studio', now() - interval '10 minutes', 100, 10, 500, 'USD'),
+	  ('test-cx-2', 'Test Cx Soon', 'Cx Studio', now() + interval '5 days', 100, 10, 500, 'USD')`)
+	if _, err := p.Exec(ctx, `INSERT INTO studios (name, slug, status, payout_email, docs_ok, rights_at) VALUES ('Cx Ready', 'test-cx-ready', 'submitted', 'a@example.com', true, now()), ('Cx Not', 'test-cx-not', 'submitted', 'b@example.com', false, NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	st := exec.Store{DB: p, CEOs: []string{"cx-ceo@example.com"}}
+	if _, err := st.Content(ctx, "cx-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	c, err := st.Content(ctx, "cx-coo@example.com", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := map[string]string{}
+	for _, f := range c.Films {
+		state[f.Film] = f.State
+	}
+	if state["Test Cx Live"] != "screening" || state["Test Cx Soon"] != "presale" || c.StudiosWaiting < 2 {
+		t.Fatalf("content: %+v %d", state, c.StudiosWaiting)
+	}
+	if err := st.CanDecideStudios(ctx, "cx-cfo@example.com"); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo decide: %v", err)
+	}
+	if ok, err := st.StudioReady(ctx, "test-cx-ready"); !ok || err != nil {
+		t.Fatalf("ready: %v %v", ok, err)
+	}
+	if ok, err := st.StudioReady(ctx, "test-cx-not"); ok || err != nil {
+		t.Fatalf("not ready: %v %v", ok, err)
+	}
+}

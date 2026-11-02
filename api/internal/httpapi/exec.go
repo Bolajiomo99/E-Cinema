@@ -56,6 +56,31 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		g, err := s.Exec.Growth(r.Context(), a.Email, days, r.URL.Query().Get("country"), time.Now())
 		reply(w, g, err)
 	}))
+	// Content and studios (Figma 82:633), and approving a ready studio from it.
+	mux.HandleFunc("GET /v1/me/exec/content", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		c, err := s.Exec.Content(r.Context(), a.Email, time.Now())
+		reply(w, c, err)
+	}))
+	mux.HandleFunc("POST /v1/me/exec/studios/{slug}/approve", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.CanDecideStudios(r.Context(), a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		ready, err := s.Exec.StudioReady(r.Context(), r.PathValue("slug"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if !ready {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "Check this studio's documents on the studio desk first"})
+			return
+		}
+		if err := s.Studios.Review(r.Context(), r.PathValue("slug"), true, "Approved by "+a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		c, err := s.Exec.Command(r.Context(), a.Email, time.Now())
