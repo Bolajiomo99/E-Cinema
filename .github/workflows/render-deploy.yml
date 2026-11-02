@@ -357,6 +357,7 @@ jobs:
           curl -fsS -b "$jar" "$web/executive/shop" | grep -q "Executives only"
           code=$(curl -s -o /dev/null -w "%{http_code}" -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"name":"x"}' "$web/api/executive/products"); [ "$code" = 403 ] || { echo "product save open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"name":"x"}' "$web/api/executive/rooms")" = 403 ] || { echo "room types open to a non-executive"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X POST -H "origin: $web" -H "content-type: application/json" -d '{"remove":true}' "$web/api/executive/safety/x/1")" = 403 ] || { echo "moderation open to a non-executive"; exit 1; }
           echo "executive ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
