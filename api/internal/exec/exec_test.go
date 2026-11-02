@@ -178,3 +178,52 @@ func TestMoney(t *testing.T) {
 		t.Fatalf("providers %+v", m.Providers)
 	}
 }
+
+func TestGrowth(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'gx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'gx-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('gx-cmo@example.com', 'cmo'), ('gx-cto@example.com', 'cto')`)
+	if _, err := p.Exec(ctx, `INSERT INTO accounts (email, name, password_hash, country, plan, created_at, face_verified_at, phone_verified_at) VALUES
+	  ('gx-a@example.com', 'A', '!', 'ZW', 'pro', now() - interval '3 days', now(), now()),
+	  ('gx-b@example.com', 'B', '!', 'ZW', 'free', now() - interval '40 days', NULL, NULL),
+	  ('gx-c@example.com', 'C', '!', 'ZW', 'free', now() - interval '2 days', NULL, NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	st := exec.Store{DB: p, CEOs: []string{"gx-ceo@example.com"}}
+	if _, err := st.Growth(ctx, "gx-cto@example.com", 30, "", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cto: %v", err)
+	}
+	g, err := st.Growth(ctx, "gx-cmo@example.com", 30, "zw", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Country != "ZW" || g.Members != 3 || g.MembersPrev != 1 || g.NewWeek != 2 || g.Paying != 1 || g.Funnel != [4]int{2, 1, 0, 1} || len(g.Months) != 12 || g.Months[11].GrossCents != 3 {
+		t.Fatalf("growth: %+v", g)
+	}
+	if len(g.Countries) != 1 || g.Countries[0].New != 2 || g.Countries[0].NewPrev != 1 || g.Plans["pro"] != 1 || g.Plans["free"] != 2 {
+		t.Fatalf("countries/plans: %+v %+v", g.Countries, g.Plans)
+	}
+	if len(g.Cohorts) == 0 || len(g.Cohorts[len(g.Cohorts)-1].Weeks) != 5 {
+		t.Fatalf("cohorts: %+v", g.Cohorts)
+	}
+	if _, err := st.Growth(ctx, "gx-ceo@example.com", 7, "", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+}

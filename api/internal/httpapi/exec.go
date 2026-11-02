@@ -50,6 +50,12 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		m, err := s.Exec.Money(r.Context(), a.Email, days, time.Now())
 		reply(w, m, err)
 	}))
+	// Growth and users (Figma 82:409).
+	mux.HandleFunc("GET /v1/me/exec/growth", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+		g, err := s.Exec.Growth(r.Context(), a.Email, days, r.URL.Query().Get("country"), time.Now())
+		reply(w, g, err)
+	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		c, err := s.Exec.Command(r.Context(), a.Email, time.Now())
