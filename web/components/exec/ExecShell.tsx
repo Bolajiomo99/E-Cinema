@@ -37,7 +37,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 export default function ExecShell({ name, role, money, children }: { name: string; role: string; money: boolean; children: ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const on = (href: string) => path === href;
+  const on = (href: string) => path === href || (href !== "/executive" && path.startsWith(href + "/"));
   const ini = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "EC";
   const first = name.trim().split(/\s+/)[0] || "Executive";
   return (
