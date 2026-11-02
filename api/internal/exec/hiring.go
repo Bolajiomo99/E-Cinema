@@ -87,7 +87,7 @@ func (st Store) Hiring(ctx context.Context, email string, now time.Time) (Hiring
 	      coalesce((SELECT max(`+fmt.Sprintf(stageRank, "e.stage")+`) FROM job_application_events e WHERE e.application_id = a.id), 1)) AS r
 	    FROM job_applications a)
 	  SELECT s.name, count(*) FILTER (WHERE reach.ng AND reach.r >= s.n)::int, count(*) FILTER (WHERE NOT reach.ng AND reach.r >= s.n)::int
-	  FROM (VALUES ('received', 1), ('chat', 2), ('task', 3), ('team', 4), ('offer', 5), ('hired', 6)) s(name, n) CROSS JOIN reach
+	  FROM (VALUES ('received', 1), ('chat', 2), ('task', 3), ('team', 4), ('offer', 5), ('hired', 6)) s(name, n) LEFT JOIN reach ON true
 	  GROUP BY s.name, s.n ORDER BY s.n`)
 	if err != nil {
 		return h, err
