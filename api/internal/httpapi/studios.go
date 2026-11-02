@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -171,6 +172,100 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			p, err := s.Studios.SavePremiere(r.Context(), a.ID, a.Email, r.PathValue("id"), in, time.Now())
 			reply(w, map[string]any{"premiere": p}, err)
 		}
+	}))
+	// AI dubbing (Figma 35:871).
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/dubs", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		d, err := s.Studios.Dubs(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]any{"dubs": d}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/dubs", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Lang string }
+		if decodeN(w, r, 1<<10, &b) {
+			d, err := s.Studios.StartDub(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Lang)
+			reply(w, map[string]any{"dub": d}, err)
+		}
+	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/dubs/{lang}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		d, lines, err := s.Studios.DubLines(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"))
+		reply(w, map[string]any{"dub": d, "lines": lines}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/dubs/{lang}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b studios.DubSettings
+		if decodeN(w, r, 1<<10, &b) {
+			d, err := s.Studios.SetDub(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"), b)
+			reply(w, map[string]any{"dub": d}, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/uploads/{id}/dubs/{lang}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		keys, err := s.Studios.RemoveDub(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"))
+		reply(w, map[string]any{"keys": keys}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/dubs/{lang}/lines/{idx}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Text      string
+			ClearFlag bool
+		}
+		idx, convErr := strconv.Atoi(r.PathValue("idx"))
+		if convErr != nil {
+			fail(w, studios.ErrNotFound)
+			return
+		}
+		if decodeN(w, r, 4<<10, &b) {
+			l, err := s.Studios.EditLine(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"), idx, b.Text, b.ClearFlag)
+			reply(w, map[string]any{"line": l}, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/dubs/{lang}/voice", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		d, err := s.Studios.Voice(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"))
+		reply(w, map[string]any{"dub": d}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/dubs/{lang}/approve", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		d, err := s.Studios.Approve(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"))
+		reply(w, map[string]any{"dub": d}, err)
+	}))
+	// The web app's dubbing worker.
+	mux.HandleFunc("GET /v1/studio-dubs/work", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		jobs, err := s.Studios.DubWork(r.Context())
+		reply(w, map[string]any{"jobs": jobs}, err)
+	}))
+	mux.HandleFunc("GET /v1/studio-dubs/{upload}/{lang}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		lines, err := s.Studios.DubJobLines(r.Context(), r.PathValue("upload"), r.PathValue("lang"))
+		reply(w, map[string]any{"lines": lines}, err)
+	}))
+	mux.HandleFunc("PUT /v1/studio-dubs/{upload}/{lang}/lines", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Lines []studios.DubLine }
+		if decodeN(w, r, 8<<20, &b) {
+			err := s.Studios.SetDubLines(r.Context(), r.PathValue("upload"), r.PathValue("lang"), b.Lines)
+			reply(w, map[string]bool{"ok": err == nil}, err)
+		}
+	}))
+	mux.HandleFunc("PUT /v1/studio-dubs/{upload}/{lang}/lines/{idx}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Text, Flag, AudioKey string }
+		idx, convErr := strconv.Atoi(r.PathValue("idx"))
+		if convErr != nil {
+			fail(w, studios.ErrNotFound)
+			return
+		}
+		if decodeN(w, r, 4<<10, &b) {
+			var err error
+			if b.AudioKey != "" {
+				err = s.Studios.SetLineAudio(r.Context(), r.PathValue("upload"), r.PathValue("lang"), idx, b.Text, b.AudioKey)
+			} else {
+				err = s.Studios.SetLineDraft(r.Context(), r.PathValue("upload"), r.PathValue("lang"), idx, b.Text, b.Flag)
+			}
+			reply(w, map[string]bool{"ok": err == nil}, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/studio-dubs/{upload}/{lang}/finish", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Error string }
+		if decodeN(w, r, 2<<10, &b) {
+			err := s.Studios.FinishDub(r.Context(), r.PathValue("upload"), r.PathValue("lang"), b.Error)
+			reply(w, map[string]bool{"ok": err == nil}, err)
+		}
+	}))
+	mux.HandleFunc("GET /v1/studio-dubs/{upload}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		sid, langs, err := s.Studios.ApprovedDubs(r.Context(), r.PathValue("upload"))
+		reply(w, map[string]any{"showtimeId": sid, "langs": langs}, err)
 	}))
 	mux.HandleFunc("DELETE /v1/me/studio/uploads/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		err := s.Studios.DeleteUpload(r.Context(), a.ID, a.Email, r.PathValue("id"))
