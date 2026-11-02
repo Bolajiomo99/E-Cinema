@@ -9,3 +9,6 @@ export const RULES: [string, string][] = [
   ["voice-notes", "Voice notes on"], ["spoiler-filter", "Spoiler filter on"], ["translate-chat", "Translate chat"], ["kids-safe", "Kids safe"],
 ];
 export const ruleLabel = (r: string) => RULES.find(([k]) => k === r)?.[1] ?? r;
+
+// Room types published on the executive "Rooms and VR halls" page.
+export type RoomOption = { id: string; name: string; kind: "vr" | "ar" | "party" | "private"; scene: string; seats: number; audience: string; voice: boolean; spatial: boolean; avatars: boolean };

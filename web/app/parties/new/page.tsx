@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import CreateParty from "@/components/parties/CreateParty";
 import LocalWhen from "@/components/dash/LocalWhen";
-import { currentAccount } from "@/lib/auth";
+import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
+import { cookies } from "next/headers";
+import type { RoomOption } from "@/lib/parties";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 
 // Figma "Web / Create watch party" (31:934): a dialog over the film's colours.
@@ -13,11 +15,14 @@ export default async function NewParty({ searchParams }: { searchParams: Promise
   const { film } = await searchParams;
   const me = await currentAccount();
   if (!me) redirect(`/signin?next=${encodeURIComponent(`/parties/new${film ? `?film=${film}` : ""}`)}`);
-  const open = showtimes.filter((s) => endsAt(s) > Date.now());
+  const open = showtimes.filter((s) => endsAt(s) > nowMs());
   const s = (film && findShowtime(film)) || open[0];
-  if (!s || endsAt(s) < Date.now()) redirect("/home");
+  if (!s || endsAt(s) < nowMs()) redirect("/home");
   const p = s.poster ?? { from: "#0c2a3a", via: "#06121a", to: "#000", glow: "rgba(70,150,255,.45)" };
   const first = me.name.split(" ")[0] || "My";
+  const session = (await cookies()).get(SESSION_COOKIE)?.value;
+  const rr = await accountApi("GET", "/v1/me/rooms?kinds=party,private", undefined, session).catch(() => null);
+  const rooms = rr?.status === 200 ? (rr.body as RoomOption[]) : [];
 
   return (
     <main className="wp" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
@@ -45,8 +50,12 @@ export default async function NewParty({ searchParams }: { searchParams: Promise
             </form>
           )}
         </div>
-        <CreateParty showtimeId={s.id} defaultName={`${first}'s party`} />
+        <CreateParty showtimeId={s.id} defaultName={`${first}'s party`} rooms={rooms} />
       </section>
     </main>
   );
+}
+
+function nowMs() {
+  return Date.now();
 }

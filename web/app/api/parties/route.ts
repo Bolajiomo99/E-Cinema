@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     visibility: b.visibility === "invite" ? "invite" : "link",
     rules: Array.isArray(b.rules) ? b.rules.map(String).slice(0, 8) : [],
     invite: Array.isArray(b.invite) ? b.invite.map(String).slice(0, 50) : [],
+    room: typeof b.room === "string" ? b.room.slice(0, 48) : "",
   }, session);
   if (r.status === 201) {
     const me = await currentAccount();

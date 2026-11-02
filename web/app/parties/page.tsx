@@ -16,7 +16,7 @@ export default async function PartiesPage() {
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   const r = await accountApi("GET", "/v1/me/parties", undefined, session).catch(() => null);
   const list = r?.status === 200 && Array.isArray(r.body) ? (r.body as Party[]) : [];
-  const next = showtimes.find((s) => endsAt(s) > Date.now()) ?? showtimes[0];
+  const next = showtimes.find((s) => endsAt(s) > nowMs()) ?? showtimes[0];
   return (
     <DashShell defaultOpen>
       <main className="cl">
@@ -25,4 +25,8 @@ export default async function PartiesPage() {
       </main>
     </DashShell>
   );
+}
+
+function nowMs() {
+  return Date.now();
 }
