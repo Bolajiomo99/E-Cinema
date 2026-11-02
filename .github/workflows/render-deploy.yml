@@ -136,8 +136,11 @@ jobs:
           # Checkout, live counts, watch parties and classic requests.
           curl -fsS "$web/checkout?film=red-earth-2026-11-02" | grep -q "Order summary"
           curl -fsS "$SMOKE_API/v1/live" | grep -q '^\['
+          # Parties need a screening that has not started, so pick the next one from the live catalog.
+          next=$(curl -fsS "$SMOKE_API/v1/showtimes" | jq -r '[.[] | select(.startsAt > (now | todate))] | sort_by(.startsAt) | .[0].id')
+          echo "next screening -> $next"
           party=$(curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" \
-            -d '{"showtimeId":"red-earth-2026-11-02","name":"Smoke party","visibility":"link","rules":["spoiler-filter"]}' "$web/api/parties")
+            -d '{"showtimeId":"'"$next"'","name":"Smoke party","visibility":"link","rules":["spoiler-filter"]}' "$web/api/parties")
           code=$(echo "$party" | grep -o '"code":"[a-z0-9-]*"' | cut -d'"' -f4)
           echo "party -> $code"
           [ -n "$code" ]
@@ -324,6 +327,11 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/leaks")" = 404 ] || { echo "leaks open to a non-studio account"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/desk/bans")" = 403 ] || { echo "ban desk open to a non-staff account"; exit 1; }
           echo "piracy ok"
+          # Marketing (Figma 39:779): campaigns belong to a studio; an unknown campaign link goes home.
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/marketing" | grep -q "/studio$" || { echo "marketing open to a non-studio account"; exit 1; }
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/campaigns")" = 404 ] || { echo "campaigns open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/c/zzzzzzzz" | grep -qE "/$" || { echo "unknown campaign link did not go home"; exit 1; }
+          echo "marketing ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
