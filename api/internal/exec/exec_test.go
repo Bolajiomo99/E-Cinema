@@ -410,3 +410,62 @@ func TestRooms(t *testing.T) {
 		t.Fatalf("missing: %v", err)
 	}
 }
+
+func TestSafety(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'fx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'fx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM sign_in_failures WHERE email = 'fx-locked@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('fx-coo@example.com', 'coo'), ('fx-cfo@example.com', 'cfo')`)
+	p.Exec(ctx, `INSERT INTO showtimes VALUES ('fx-show', 'Fx Film', 'S', now() - interval '10 minutes', 90, 10, 500, 'USD') ON CONFLICT (id) DO NOTHING`)
+	var a, b, c string
+	for _, x := range []struct {
+		e string
+		v *string
+	}{{"fx-a@example.com", &a}, {"fx-b@example.com", &b}, {"fx-c@example.com", &c}} {
+		if err := p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ($1, 'Fx', '!') RETURNING id`, x.e).Scan(x.v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var msg int64
+	if err := p.QueryRow(ctx, `INSERT INTO room_messages (showtime_id, account_id, name, body, country) VALUES ('fx-show', $1, 'Fx', 'you are rubbish', 'NG') RETURNING id`, a).Scan(&msg); err != nil {
+		t.Fatal(err)
+	}
+	p.Exec(ctx, `INSERT INTO room_reports (reporter_id, reported_id, message_id, showtime_id, reason) VALUES ($1, $3, $4, 'fx-show', 'harassment'), ($2, $3, $4, 'fx-show', 'hate')`, b, c, a, msg)
+	for i := 0; i < 10; i++ {
+		p.Exec(ctx, `INSERT INTO sign_in_failures (email) VALUES ('fx-locked@example.com')`)
+	}
+	st := exec.Store{DB: p, CEOs: []string{"fx-ceo@example.com"}}
+	if _, err := st.Safety(ctx, "fx-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	s, err := st.Safety(ctx, "fx-coo@example.com", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, q := range s.Queue {
+		if q.MessageID == msg {
+			found = q.Reporters == 2 && q.Film == "Fx Film" && q.Country == "NG" && q.Body == "you are rubbish"
+		}
+	}
+	if !found || s.ReportsToday < 2 || s.Lockouts < 1 {
+		t.Fatalf("safety = %+v", s)
+	}
+}

@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"net/http"
 	"sort"
 	"strconv"
@@ -121,6 +123,34 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		rows.Close()
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Watching > list[j].Watching })
 		writeJSON(w, http.StatusOK, map[string]any{"playing": list})
+	}))
+	// Safety and trust (Figma 82:1075). Keep or remove a reported world-chat message.
+	mux.HandleFunc("GET /v1/me/exec/safety", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		sf, err := s.Exec.Safety(r.Context(), a.Email, time.Now())
+		reply(w, sf, err)
+	}))
+	mux.HandleFunc("POST /v1/me/exec/safety/{showtime}/{message}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.CanModerate(r.Context(), a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		var b struct {
+			Remove bool `json:"remove"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		id, err := strconv.ParseInt(r.PathValue("message"), 10, 64)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad message"})
+			return
+		}
+		hidden, err := s.Rooms.Moderate(r.Context(), r.PathValue("showtime"), id, b.Remove)
+		if errors.Is(err, rooms.ErrNoMessage) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "That report was already settled"})
+			return
+		}
+		reply(w, map[string]bool{"hidden": hidden}, err)
 	}))
 	// Rooms and VR halls (Figma 83:831).
 	mux.HandleFunc("GET /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
