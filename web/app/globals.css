@@ -5193,3 +5193,25 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exh-dialog { max-width: 640px; width: calc(100vw - 32px); max-height: calc(100vh - 48px); overflow-y: auto; }
 @media (max-width: 980px) { .exh-row { grid-template-columns: 1fr; } }
 .epf-hint a, .exm-note a { color: #f4f4f6; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Executive · Brand protection (117:1216) */
+.exb-row { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+.exb-g { grid-template-columns: minmax(150px, 1.6fr) 1.1fr minmax(90px, 1fr) 1fr 70px; }
+.exb-sell { font-weight: 600; overflow-wrap: anywhere; }
+.exb-ai { color: #b4b4be; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exb-st { font-style: normal; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: #1f1f26; color: #b4b4be; white-space: nowrap; }
+.exb-st.new { background: #3a1016; color: #ff7a85; }
+.exb-st.chk { background: #2e2410; color: #e8b34b; }
+.exb-chart-h { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.exb-chart-h span { color: #b4b4be; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.exb-chart-h .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 8px; }
+.exb-chart-h .dot.r { background: #e3182d; }
+.exb-chart-h .dot.g { background: #2bb3a3; }
+.exb-chart { width: 100%; height: auto; display: block; margin-top: 8px; }
+.exb-who { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+.exb-who b { flex: 1; font-size: 14px; font-weight: 600; }
+.exb-who small { color: #8a8a96; font-size: 12px; }
+.exb-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: #b5101f; flex: none; }
+.exb-av.a1 { background: #2bb3a3; }
+.exb-av.a2 { background: #8b7cf6; }
+@media (max-width: 980px) { .exb-row { grid-template-columns: 1fr; } }

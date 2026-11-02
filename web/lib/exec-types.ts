@@ -18,7 +18,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Rooms and VR halls", href: "/executive/rooms", roles: ["coo", "cfo"], icon: "door" },
   { label: "Safety and trust", href: "/executive/safety", roles: ["coo"], icon: "shield" },
   { label: "Hiring and jobs", href: "/executive/hiring", roles: ["coo"], icon: "case" },
-  { label: "Brand protection", roles: ["cmo"], icon: "badge" },
+  { label: "Brand protection", href: "/executive/brand", roles: ["cmo"], icon: "badge" },
   { label: "Licensing", roles: ["cmo", "cfo"], icon: "tag" },
   { label: "Security operations", roles: ["cto"], icon: "lock" },
   { label: "Infrastructure", roles: ["cto"], icon: "server" },

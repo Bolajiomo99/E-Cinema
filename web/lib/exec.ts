@@ -214,3 +214,16 @@ export async function execHiring(s: string): Promise<HiringData | null> {
   const r = await accountApi("GET", "/v1/me/exec/hiring", undefined, s);
   return r.status === 200 ? (r.body as HiringData) : null;
 }
+
+// Brand protection (Figma 117:1216).
+export type BrandData = {
+  month: number; prevMonth: number; confirmed: number; decided: number; takenDown: number; avgDays: number; rewardsNgn: number; rewarded: number;
+  queue: { id: string; selling: string; place: string; country: string; aiNote: string; status: string; at: string }[];
+  countries: Record<string, number>; online: number; total: number;
+  weeks: { week: string; reports: number; confirmed: number }[]; topReporters: { name: string; confirmed: number }[];
+};
+
+export async function execBrand(s: string): Promise<BrandData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/brand", undefined, s);
+  return r.status === 200 ? (r.body as BrandData) : null;
+}
