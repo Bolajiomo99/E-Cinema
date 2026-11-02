@@ -227,3 +227,14 @@ export async function execBrand(s: string): Promise<BrandData | null> {
   const r = await accountApi("GET", "/v1/me/exec/brand", undefined, s);
   return r.status === 200 ? (r.body as BrandData) : null;
 }
+
+// Licensing (Figma 117:1481).
+export type LicensingRow = { licence: string; name: string; country: string; plan: string; status: string; sales30Ngn: number; compliance: number };
+export type LicensingData = {
+  partners: number; countries: number; feesYearNgn: number; feesPrevNgn: number; royaltyNgn: number; salesNgn: number;
+  byCountry: Record<string, number>; plans: Record<string, number>; rows: LicensingRow[]; applications: number;
+};
+export async function execLicensing(s: string): Promise<LicensingData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/licensing", undefined, s);
+  return r.status === 200 ? (r.body as LicensingData) : null;
+}

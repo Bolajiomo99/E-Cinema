@@ -359,6 +359,7 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"name":"x"}' "$web/api/executive/rooms")" = 403 ] || { echo "room types open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X POST -H "origin: $web" -H "content-type: application/json" -d '{"remove":true}' "$web/api/executive/safety/x/1")" = 403 ] || { echo "moderation open to a non-executive"; exit 1; }
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -X PUT -H "origin: $web" -H "content-type: application/json" -d '{"ngShare":10}' "$web/api/executive/hiring/share")" = 403 ] || { echo "hiring quota open to a non-executive"; exit 1; }
+          curl -s -b "$jar" "$web/executive/licensing" | grep -q "This page is for the CEO, the CMO and the CFO" || { echo "licensing book open to a non-executive"; exit 1; }
           echo "executive ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
