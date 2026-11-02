@@ -183,6 +183,14 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"premiere": p}, err)
 		}
 	}))
+	// Notifications (Figma 99:552).
+	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
+		reply(w, n, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/notices/seen", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		reply(w, map[string]bool{"ok": true}, s.Studios.SeeNotices(r.Context(), a.ID, a.Email, time.Now()))
+	}))
 	// Coming-soon posts (Figma 53:1512).
 	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/coming-soon", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var in studios.ComingSoonInput
