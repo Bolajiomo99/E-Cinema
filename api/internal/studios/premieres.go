@@ -129,7 +129,13 @@ func (st Store) premiere(ctx context.Context, id string) (Premiere, error) {
 	return p, err
 }
 
-func bad(msg string) error { return fmt.Errorf("%w: %s", ErrBadInput, msg) }
+// badInput is ErrBadInput with a message the studio reads as is.
+type badInput string
+
+func (b badInput) Error() string { return string(b) }
+func (b badInput) Unwrap() error { return ErrBadInput }
+
+func bad(msg string) error { return badInput(strings.ToUpper(msg[:1]) + msg[1:] + ".") }
 
 // SavePremiere stores the plan and, with Publish, puts the film on sale.
 func (st Store) SavePremiere(ctx context.Context, acct, email, id string, in PremiereInput, now time.Time) (Premiere, error) {

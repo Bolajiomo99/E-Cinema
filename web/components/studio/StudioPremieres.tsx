@@ -55,7 +55,7 @@ export default function StudioPremieres({ films, upload: u, premiere: p0, canEdi
   const [encores, setEncores] = useState(p0.encores);
   const [base, setBase] = useState((p0.priceCents / 100).toFixed(2));
   const [rules, setRules] = useState<Rules>({ freeSeats: p0.freeSeats, freePlan: p0.freePlan, groupDiscounts: p0.groupDiscounts, studentPrice: p0.studentPrice, classicRequests: p0.classicRequests, downloads: p0.downloads });
-  const toRows = (list: PremierePrice[]): Row[] => list.flatMap((x) => { const m = marketOf(x.country); return m ? [{ country: x.country, text: showPrice(m, x.amountMinor), note: x.note, sold: x.sold }] : []; });
+  const toRows = (list: PremierePrice[]): Row[] => [...list].sort((a, b) => MARKETS.findIndex((m) => m.country === a.country) - MARKETS.findIndex((m) => m.country === b.country)).flatMap((x) => { const m = marketOf(x.country); return m ? [{ country: x.country, text: showPrice(m, x.amountMinor), note: x.note, sold: x.sold }] : []; });
   const [rows, setRows] = useState<Row[]>(() => p0.prices.length || p0.publishedAt ? toRows(p0.prices) : STARTER.map((c) => ({ country: c, text: "", note: "", sold: 0 })));
   const [busy, setBusy] = useState<"" | "save" | "publish" | "ai">("");
   const [err, setErr] = useState("");
