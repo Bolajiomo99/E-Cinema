@@ -341,3 +341,24 @@ func (st Store) LivePosterKey(ctx context.Context, upload string) (string, error
 	}
 	return key, err
 }
+
+// LiveShowtime is the published screening of one of the studio's films, for the control room.
+// write asks for the edit role (messaging viewers, moderating chat).
+func (st Store) LiveShowtime(ctx context.Context, acct, email, id string, write bool) (showtime, studio string, err error) {
+	s, err := st.verified(ctx, acct, email, write)
+	if err != nil {
+		return "", "", err
+	}
+	if !uuidRe.MatchString(id) {
+		return "", "", ErrNotFound
+	}
+	var sid *string
+	err = st.DB.QueryRow(ctx, `SELECT p.showtime_id FROM studio_premieres p JOIN studio_uploads u ON u.id = p.upload WHERE p.upload = $1 AND u.studio = $2`, id, s.Name).Scan(&sid)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && sid == nil) {
+		return "", s.Name, ErrNotLive
+	}
+	if err != nil {
+		return "", "", err
+	}
+	return *sid, s.Name, nil
+}

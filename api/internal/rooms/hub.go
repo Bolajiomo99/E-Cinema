@@ -23,6 +23,8 @@ type Event struct {
 	Emoji   string   `json:"emoji,omitempty"`
 	Count   int      `json:"count,omitempty"`
 	Error   string   `json:"error,omitempty"`
+	Text    string   `json:"text,omitempty"` // studio: a message from the film's studio to everyone
+	From    string   `json:"from,omitempty"`
 }
 
 type client struct {
@@ -40,6 +42,13 @@ type Hub struct {
 	mu    sync.Mutex
 	rooms map[string]map[*client]struct{}
 	chat  map[string][]chatTick // recent messages per room, for the chat heat map
+	peak  map[string]Peak
+}
+
+// Peak is the most people a screening had at once, for the studio's control room.
+type Peak struct {
+	Watching int       `json:"watching"`
+	At       time.Time `json:"at"`
 }
 
 type chatTick struct {
@@ -51,7 +60,7 @@ type chatTick struct {
 const ChatWindow = 10 * time.Minute
 
 func NewHub() *Hub {
-	return &Hub{rooms: map[string]map[*client]struct{}{}, chat: map[string][]chatTick{}}
+	return &Hub{rooms: map[string]map[*client]struct{}{}, chat: map[string][]chatTick{}, peak: map[string]Peak{}}
 }
 
 // noteChat records that someone from country sent a message in room.
@@ -76,7 +85,42 @@ func (h *Hub) join(room string, c *client) int {
 		h.rooms[room] = map[*client]struct{}{}
 	}
 	h.rooms[room][c] = struct{}{}
+	people := map[string]bool{}
+	for x := range h.rooms[room] {
+		people[x.accountID] = true
+	}
+	if len(people) > h.peak[room].Watching {
+		h.peak[room] = Peak{Watching: len(people), At: time.Now()}
+	}
 	return len(h.rooms[room])
+}
+
+// PeakOf is a screening's highest audience since the server started.
+func (h *Hub) PeakOf(room string) Peak {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.peak[room]
+}
+
+// StatOf is one screening's audience right now (zero when nobody is in).
+func (h *Hub) StatOf(room string) Stat {
+	for _, s := range h.Stats() {
+		if s.ShowtimeID == room {
+			return s
+		}
+	}
+	return Stat{ShowtimeID: room, ByCountry: map[string]int{}, ChatByCountry: map[string]int{}}
+}
+
+// Announce sends the studio's message to everyone in a screening.
+func (h *Hub) Announce(room, from, text string) int {
+	h.broadcast(room, Event{Type: "studio", From: from, Text: text}, nil)
+	return h.Count(room)
+}
+
+// Takedown removes messages from every screen in a screening.
+func (h *Hub) Takedown(room string, ids []int64) {
+	h.broadcast(room, Event{Type: "hide", IDs: ids}, nil)
 }
 
 func (h *Hub) leave(room string, c *client) int {

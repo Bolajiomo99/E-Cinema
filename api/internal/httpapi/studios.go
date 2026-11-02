@@ -1,11 +1,16 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/studios"
 )
 
@@ -223,6 +228,62 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		d, err := s.Studios.Approve(r.Context(), a.ID, a.Email, r.PathValue("id"), r.PathValue("lang"))
 		reply(w, map[string]any{"dub": d}, err)
 	}))
+	// Live control room (Figma 37:1272): the audience of the film's premiere, right now.
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/control", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		sid, studio, err := s.Studios.LiveShowtime(r.Context(), a.ID, a.Email, r.PathValue("id"), false)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		c, err := s.Rooms.Control(r.Context(), sid)
+		if errors.Is(err, rooms.ErrNoMessage) {
+			err = studios.ErrNotFound
+		}
+		reply(w, map[string]any{"control": c, "live": s.Hub.StatOf(sid), "peak": s.Hub.PeakOf(sid), "studio": studio}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/control/announce", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Text string }
+		if !decodeN(w, r, 2<<10, &b) {
+			return
+		}
+		sid, studio, err := s.Studios.LiveShowtime(r.Context(), a.ID, a.Email, r.PathValue("id"), true)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		text := strings.TrimSpace(b.Text)
+		if text == "" || utf8.RuneCountInString(text) > 280 {
+			fail(w, studios.ErrBadInput)
+			return
+		}
+		if !announceAllowed(sid) {
+			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "One message a minute: wait a moment and send again"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"reached": s.Hub.Announce(sid, studio, text)})
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/control/moderate", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			MessageID int64
+			Hide      bool
+		}
+		if !decodeN(w, r, 1<<10, &b) {
+			return
+		}
+		sid, _, err := s.Studios.LiveShowtime(r.Context(), a.ID, a.Email, r.PathValue("id"), true)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		hidden, err := s.Rooms.Moderate(r.Context(), sid, b.MessageID, b.Hide)
+		if errors.Is(err, rooms.ErrNoMessage) {
+			err = studios.ErrNotFound
+		}
+		if err == nil && hidden {
+			s.Hub.Takedown(sid, []int64{b.MessageID})
+		}
+		reply(w, map[string]bool{"hidden": hidden}, err)
+	}))
 	// The web app's dubbing worker.
 	mux.HandleFunc("GET /v1/studio-dubs/work", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		jobs, err := s.Studios.DubWork(r.Context())
@@ -312,4 +373,20 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]bool{"ok": err == nil}, err)
 		}
 	}))
+}
+
+var announced = struct {
+	sync.Mutex
+	at map[string]time.Time
+}{at: map[string]time.Time{}}
+
+// announceAllowed lets a studio message a screening's viewers once a minute.
+func announceAllowed(showtime string) bool {
+	announced.Lock()
+	defer announced.Unlock()
+	if time.Since(announced.at[showtime]) < time.Minute {
+		return false
+	}
+	announced.at[showtime] = time.Now()
+	return true
 }

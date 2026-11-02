@@ -24,6 +24,7 @@ var (
 	langRe         = regexp.MustCompile(`^[a-z]{2,3}$`)
 	ErrDubBusy     = errors.New("this language is still being prepared")
 	ErrNotReady    = errors.New("voice every line and clear every flag first")
+	ErrNotLive     = errors.New("publish the premiere first")
 	ErrTooManyDubs = errors.New("a film can have up to 45 languages")
 )
 
