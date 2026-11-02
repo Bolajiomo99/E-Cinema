@@ -183,6 +183,14 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"premiere": p}, err)
 		}
 	}))
+	// Coming-soon posts (Figma 53:1512).
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/coming-soon", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in studios.ComingSoonInput
+		if decodeN(w, r, 2<<10, &in) {
+			p, err := s.Studios.SaveComingSoon(r.Context(), a.ID, a.Email, r.PathValue("id"), in)
+			reply(w, map[string]any{"premiere": p}, err)
+		}
+	}))
 	// AI dubbing (Figma 35:871).
 	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/dubs", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		d, err := s.Studios.Dubs(r.Context(), a.ID, a.Email, r.PathValue("id"))

@@ -41,6 +41,9 @@ type Premiere struct {
 	UpdatedAt       *time.Time `json:"updatedAt"`
 	Sold            int        `json:"sold"`
 	Prices          []Price    `json:"prices"`
+	ComingSoon      bool       `json:"comingSoon"`
+	EarlySave       int        `json:"earlySave"`
+	Formats         []string   `json:"formats"`
 }
 
 // PremiereInput is what the studio sends. Publish also writes the showtime.
@@ -70,7 +73,7 @@ var (
 )
 
 func defaultPremiere() Premiere {
-	return Premiere{Mode: "global", Seats: 5000, Encores: 2, PriceCents: 499, FreeSeats: true, FreePlan: true, GroupDiscounts: true, StudentPrice: true, ClassicRequests: true, Prices: []Price{}}
+	return Premiere{Mode: "global", Seats: 5000, Encores: 2, PriceCents: 499, FreeSeats: true, FreePlan: true, GroupDiscounts: true, StudentPrice: true, ClassicRequests: true, Prices: []Price{}, Formats: []string{"hd"}}
 }
 
 // Premiere is the film's premiere plan, or the defaults when none is saved yet.
@@ -87,8 +90,10 @@ func (st Store) Premiere(ctx context.Context, acct, email, id string) (Premiere,
 
 func (st Store) premiere(ctx context.Context, id string) (Premiere, error) {
 	p := defaultPremiere()
-	err := st.DB.QueryRow(ctx, `SELECT showtime_id, mode, starts_at, seats, encores, price_cents, free_seats, free_plan, group_discounts, student_price, classic_requests, downloads, published_at, updated_at
-	  FROM studio_premieres WHERE upload = $1`, id).Scan(&p.ShowtimeID, &p.Mode, &p.StartsAt, &p.Seats, &p.Encores, &p.PriceCents, &p.FreeSeats, &p.FreePlan, &p.GroupDiscounts, &p.StudentPrice, &p.ClassicRequests, &p.Downloads, &p.PublishedAt, &p.UpdatedAt)
+	err := st.DB.QueryRow(ctx, `SELECT showtime_id, mode, starts_at, seats, encores, price_cents, free_seats, free_plan, group_discounts, student_price, classic_requests, downloads, published_at, updated_at,
+	    coming_soon, early_save, formats
+	  FROM studio_premieres WHERE upload = $1`, id).Scan(&p.ShowtimeID, &p.Mode, &p.StartsAt, &p.Seats, &p.Encores, &p.PriceCents, &p.FreeSeats, &p.FreePlan, &p.GroupDiscounts, &p.StudentPrice, &p.ClassicRequests, &p.Downloads, &p.PublishedAt, &p.UpdatedAt,
+		&p.ComingSoon, &p.EarlySave, &p.Formats)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return p, err
 	}
@@ -248,10 +253,14 @@ func (st Store) canPublish(ctx context.Context, s Studio, u Upload, cur Premiere
 			master = true
 		}
 	}
+	// A coming-soon post can go on sale before the full film is in, if release is a week away or more.
+	early := cur.ComingSoon && starts != nil && !starts.Before(now.Add(ComingSoonLead))
 	switch {
 	case in.Mode != "global":
 		return bad("rolling and regional premieres are coming soon; pick one global moment")
-	case !master:
+	case !master && cur.ComingSoon && !early:
+		return bad("upload the picture master first; without it the release must be at least 7 days away")
+	case !master && !early:
 		return bad("upload the picture master first")
 	case s.RightsAt == nil:
 		return bad("declare your rights in Settings first")
@@ -273,6 +282,55 @@ func (st Store) canPublish(ctx context.Context, s Studio, u Upload, cur Premiere
 	return nil
 }
 
+// ComingSoonLead is how far ahead a film without its master can be put on sale.
+const ComingSoonLead = 7 * 24 * time.Hour
+
+// Formats a coming-soon film can offer.
+var Formats = map[string]bool{"hd": true, "uhd": true, "atmos": true, "vr": true, "ar": true, "3d": true}
+
+// ComingSoonInput is the coming-soon part of a premiere: the early-bird saving and the formats.
+type ComingSoonInput struct {
+	EarlySave int      `json:"earlySave"`
+	Formats   []string `json:"formats"`
+}
+
+// SaveComingSoon marks the film as a coming-soon post with its early-bird saving and formats.
+// Publishing still goes through SavePremiere.
+func (st Store) SaveComingSoon(ctx context.Context, acct, email, id string, in ComingSoonInput) (Premiere, error) {
+	s, err := st.verified(ctx, acct, email, true)
+	if err != nil {
+		return Premiere{}, err
+	}
+	if _, err := st.upload(ctx, s.Name, id); err != nil {
+		return Premiere{}, err
+	}
+	if in.EarlySave < 0 || in.EarlySave > 60 {
+		return Premiere{}, bad("the early-bird saving must be between 0% and 60%")
+	}
+	seen := map[string]bool{}
+	formats := []string{}
+	for _, f := range in.Formats {
+		if !Formats[f] {
+			return Premiere{}, bad("unknown format")
+		}
+		if !seen[f] {
+			seen[f] = true
+			formats = append(formats, f)
+		}
+	}
+	if !seen["hd"] && !seen["uhd"] {
+		return Premiere{}, bad("offer 1080p or 4K at least")
+	}
+	d := defaultPremiere()
+	if _, err := st.DB.Exec(ctx, `INSERT INTO studio_premieres (upload, mode, seats, encores, price_cents, free_seats, free_plan, group_discounts, student_price, classic_requests, coming_soon, early_save, formats)
+	  VALUES ($1, 'global', $2, $3, $4, $5, $6, $7, $8, $9, true, $10, $11)
+	  ON CONFLICT (upload) DO UPDATE SET coming_soon = true, early_save = $10, formats = $11, updated_at = now()`,
+		id, d.Seats, d.Encores, d.PriceCents, d.FreeSeats, d.FreePlan, d.GroupDiscounts, d.StudentPrice, d.ClassicRequests, in.EarlySave, formats); err != nil {
+		return Premiere{}, err
+	}
+	return st.premiere(ctx, id)
+}
+
 // LiveFilm is a published studio premiere as the public site lists it.
 type LiveFilm struct {
 	ShowtimeID  string           `json:"showtimeId"`
@@ -290,12 +348,16 @@ type LiveFilm struct {
 	Poster      bool             `json:"poster"`
 	Format      string           `json:"format"`
 	Prices      map[string]Price `json:"prices"`
+	EarlySave   int              `json:"earlySave"`
+	Formats     []string         `json:"formats"`
+	HasMaster   bool             `json:"hasMaster"`
 }
 
 // LiveFilms lists every published studio premiere that has not ended more than a day ago.
 func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	rows, err := st.DB.Query(ctx, `SELECT s.id, u.id, s.film, s.studio, s.starts_at, s.duration_min, s.price_cents, s.adult, u.logline, u.genres, u.age_rating, u.languages, u.poster_key <> '',
-	    coalesce((SELECT f.info FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded' LIMIT 1), '')
+	    coalesce((SELECT f.info FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded' LIMIT 1), ''),
+	    p.early_save, p.formats, EXISTS (SELECT 1 FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded')
 	  FROM studio_premieres p JOIN studio_uploads u ON u.id = p.upload JOIN showtimes s ON s.id = p.showtime_id
 	  WHERE p.published_at IS NOT NULL AND s.starts_at + make_interval(mins => s.duration_min) > now() - interval '1 day'
 	  ORDER BY s.starts_at LIMIT 200`)
@@ -304,7 +366,7 @@ func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (LiveFilm, error) {
 		var f LiveFilm
-		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format)
+		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format, &f.EarlySave, &f.Formats, &f.HasMaster)
 		return f, err
 	})
 	if err != nil {
