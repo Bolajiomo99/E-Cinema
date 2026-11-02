@@ -338,3 +338,75 @@ func TestShop(t *testing.T) {
 		t.Fatalf("shop: %+v %v", sh.CanAdd, err)
 	}
 }
+
+func TestRooms(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'rx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM room_types WHERE id LIKE 'rx-%'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role, can_add) VALUES ('rx-coo@example.com', 'coo', true), ('rx-cfo@example.com', 'cfo', false), ('rx-cmo@example.com', 'cmo', true)`)
+	st := exec.Store{DB: p, CEOs: []string{"rx-ceo@example.com"}}
+	if _, err := st.Rooms(ctx, "rx-cmo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cmo sees rooms: %v", err)
+	}
+	r, err := st.Rooms(ctx, "rx-cfo@example.com", time.Now())
+	if err != nil || r.CanAdd || len(r.Types) < 5 {
+		t.Fatalf("cfo rooms = %+v %v", r, err)
+	}
+	in := exec.RoomType{Name: "Rx Night Hall", Kind: "vr", Scene: "rooftop", Seats: 300, Audience: "everyone", Voice: true, Live: false}
+	if _, err := st.SaveRoom(ctx, "rx-cfo@example.com", in); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo adds: %v", err)
+	}
+	bad := in
+	bad.Scene = "lounge"
+	if _, err := st.SaveRoom(ctx, "rx-coo@example.com", bad); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("vr hall in a lounge: %v", err)
+	}
+	id, err := st.SaveRoom(ctx, "rx-coo@example.com", in)
+	if err != nil || id != "rx-night-hall" {
+		t.Fatalf("add = %q %v", id, err)
+	}
+	var seats int
+	var by string
+	p.QueryRow(ctx, `SELECT seats, updated_by FROM room_types WHERE id = $1`, id).Scan(&seats, &by)
+	if seats != exec.HallSeats || by != "rx-coo@example.com" {
+		t.Fatalf("seats %d by %q", seats, by)
+	}
+	kids := exec.RoomType{Name: "Rx Kids", Kind: "party", Scene: "lounge", Seats: 40, Audience: "kids", Voice: true, Live: true}
+	kid, err := st.SaveRoom(ctx, "rx-ceo@example.com", kids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var voice bool
+	p.QueryRow(ctx, `SELECT voice FROM room_types WHERE id = $1`, kid).Scan(&voice)
+	if voice {
+		t.Fatal("kids room kept voice chat")
+	}
+	in.ID, in.Live = id, true
+	if _, err := st.SaveRoom(ctx, "rx-coo@example.com", in); err != nil {
+		t.Fatal(err)
+	}
+	r, _ = st.Rooms(ctx, "rx-ceo@example.com", time.Now())
+	if !r.CanAdd || r.UpdatedBy != "rx-coo@example.com" {
+		t.Fatalf("after edit = %+v", r)
+	}
+	in.ID = "rx-missing"
+	if _, err := st.SaveRoom(ctx, "rx-coo@example.com", in); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("missing: %v", err)
+	}
+}

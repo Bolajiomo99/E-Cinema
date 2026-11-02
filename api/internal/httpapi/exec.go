@@ -122,6 +122,19 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Watching > list[j].Watching })
 		writeJSON(w, http.StatusOK, map[string]any{"playing": list})
 	}))
+	// Rooms and VR halls (Figma 83:831).
+	mux.HandleFunc("GET /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		rm, err := s.Exec.Rooms(r.Context(), a.Email, time.Now())
+		reply(w, rm, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in exec.RoomType
+		if !decode(w, r, &in) {
+			return
+		}
+		id, err := s.Exec.SaveRoom(r.Context(), a.Email, in)
+		reply(w, map[string]string{"id": id}, err)
+	}))
 	// Shop and merch (Figma 51:657) and Add a product (83:631).
 	mux.HandleFunc("GET /v1/me/exec/shop", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		sh, err := s.Exec.Shop(r.Context(), a.Email, time.Now())
