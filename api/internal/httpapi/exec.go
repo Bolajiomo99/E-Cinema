@@ -17,7 +17,12 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /v1/me/exec", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		role, err := s.Exec.Role(r.Context(), a.Email)
-		reply(w, map[string]string{"role": role}, err)
+		if err != nil || role == "" {
+			reply(w, map[string]any{"role": role, "money": false}, err)
+			return
+		}
+		money, err := s.Exec.CanSeeMoney(r.Context(), a.Email)
+		reply(w, map[string]any{"role": role, "money": money}, err)
 	}))
 	// Access and roles (Figma 49:1307): the CEO's list of people, grant or change, and remove.
 	mux.HandleFunc("GET /v1/me/exec/people", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {

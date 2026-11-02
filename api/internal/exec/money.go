@@ -63,6 +63,11 @@ func (st Store) moneyAccess(ctx context.Context, email string) (bool, error) {
 	return role == "cfo" || can, err
 }
 
+// CanSeeMoney says whether the Money page is open to this person.
+func (st Store) CanSeeMoney(ctx context.Context, email string) (bool, error) {
+	return st.moneyAccess(ctx, email)
+}
+
 // Every paid booking as (source, currency, gross, net, created, account, provider) rows.
 // Seats paid from credit are left out: that money was counted when the gift or refund credit
 // was bought. 18+ stage payments go to the charity, church and mosque funds, so E-Cinema nets
