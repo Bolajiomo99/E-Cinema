@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -22,6 +23,7 @@ var (
 	ErrNotInvited = errors.New("this party is invite only; ask the host to add your email")
 	ErrEnded      = errors.New("this premiere has ended")
 	ErrHostLeaves = errors.New("the host cannot leave; end the party instead")
+	ErrRoomClosed = errors.New("this room is not open to your account")
 )
 
 // Rules the host can switch on (Figma "Room rules").
@@ -48,6 +50,8 @@ type Party struct {
 	Members    int       `json:"members"`
 	IsHost     bool      `json:"isHost"`
 	Joined     bool      `json:"joined"`
+	Room       string    `json:"room,omitempty"`    // the room type's name
+	Seats      int       `json:"seats"`             // how many people fit
 	Invited    []string  `json:"invited,omitempty"` // host only
 	People     []Member  `json:"people,omitempty"`
 }
@@ -60,6 +64,7 @@ type New struct {
 	Visibility string   `json:"visibility"`
 	Rules      []string `json:"rules"`
 	Invite     []string `json:"invite"`
+	Room       string   `json:"room"` // a live party or private room type; empty for the standard watch party
 }
 
 var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
@@ -135,6 +140,23 @@ func (s Store) Create(ctx context.Context, hostID string, n New) (Party, error) 
 	if err != nil {
 		return Party{}, err
 	}
+	var room any
+	if n.Room != "" {
+		r, err := s.room(ctx, n.Room, hostID)
+		if err != nil {
+			return Party{}, err
+		}
+		room = r.ID
+		if r.Kind == "private" {
+			n.Visibility = "invite"
+		}
+		if !r.Voice {
+			rules = slices.DeleteFunc(rules, func(x string) bool { return x == "voice-notes" })
+		}
+		if r.Audience == "kids" && !slices.Contains(rules, "kids-safe") {
+			rules = append(rules, "kids-safe")
+		}
+	}
 	var id, c string
 	err = pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
 		var ended bool
@@ -148,8 +170,8 @@ func (s Store) Create(ctx context.Context, hostID string, n New) (Party, error) 
 			return ErrEnded
 		}
 		c = code(n.Name)
-		if err := tx.QueryRow(ctx, `INSERT INTO parties (code, showtime_id, host_id, name, visibility, rules) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			c, n.ShowtimeID, hostID, n.Name, n.Visibility, rules).Scan(&id); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO parties (code, showtime_id, host_id, name, visibility, rules, room_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			c, n.ShowtimeID, hostID, n.Name, n.Visibility, rules, room).Scan(&id); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO party_members (party_id, account_id) VALUES ($1, $2)`, id, hostID); err != nil {
@@ -171,12 +193,13 @@ func (s Store) Create(ctx context.Context, hostID string, n New) (Party, error) 
 const selectParty = `SELECT p.id, p.code, p.showtime_id, st.film, st.starts_at, p.name, p.visibility, p.rules, h.name,
   (SELECT count(*) FROM party_members m WHERE m.party_id = p.id),
   p.host_id = $2,
-  EXISTS (SELECT 1 FROM party_members m WHERE m.party_id = p.id AND m.account_id::text = $2::text)
-  FROM parties p JOIN showtimes st ON st.id = p.showtime_id JOIN accounts h ON h.id = p.host_id`
+  EXISTS (SELECT 1 FROM party_members m WHERE m.party_id = p.id AND m.account_id::text = $2::text),
+  coalesce(rt.name, ''), coalesce(rt.seats, 500)
+  FROM parties p JOIN showtimes st ON st.id = p.showtime_id JOIN accounts h ON h.id = p.host_id LEFT JOIN room_types rt ON rt.id = p.room_type`
 
 func scan(row pgx.Row) (Party, error) {
 	var p Party
-	err := row.Scan(&p.ID, &p.Code, &p.ShowtimeID, &p.Film, &p.StartsAt, &p.Name, &p.Visibility, &p.Rules, &p.HostName, &p.Members, &p.IsHost, &p.Joined)
+	err := row.Scan(&p.ID, &p.Code, &p.ShowtimeID, &p.Film, &p.StartsAt, &p.Name, &p.Visibility, &p.Rules, &p.HostName, &p.Members, &p.IsHost, &p.Joined, &p.Room, &p.Seats)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -225,12 +248,13 @@ func nullable(id string) any {
 // Join adds the viewer to the party. Invite-only parties need the viewer's email on the list.
 func (s Store) Join(ctx context.Context, code, accountID, email string) (Party, error) {
 	err := pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
-		var id, vis string
+		var id, vis, roomID string
 		var ended bool
-		var n int
+		var n, seats int
 		err := tx.QueryRow(ctx, `SELECT p.id, p.visibility, st.starts_at + make_interval(mins => st.duration_min) < now(),
-		  (SELECT count(*) FROM party_members m WHERE m.party_id = p.id)
-		  FROM parties p JOIN showtimes st ON st.id = p.showtime_id WHERE p.code = $1 FOR UPDATE OF p`, code).Scan(&id, &vis, &ended, &n)
+		  (SELECT count(*) FROM party_members m WHERE m.party_id = p.id), coalesce(p.room_type, ''),
+		  coalesce((SELECT seats FROM room_types WHERE id = p.room_type), $2)
+		  FROM parties p JOIN showtimes st ON st.id = p.showtime_id WHERE p.code = $1 FOR UPDATE OF p`, code, MaxMembers).Scan(&id, &vis, &ended, &n, &roomID, &seats)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -240,8 +264,26 @@ func (s Store) Join(ctx context.Context, code, accountID, email string) (Party, 
 		if ended {
 			return ErrEnded
 		}
-		if n >= MaxMembers {
+		var member bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM party_members WHERE party_id = $1 AND account_id = $2)`, id, accountID).Scan(&member); err != nil {
+			return err
+		}
+		if member {
+			return nil
+		}
+		if n >= min(seats, MaxMembers) {
 			return fmt.Errorf("%w: this party is full", ErrBadInput)
+		}
+		if roomID != "" {
+			var aud string
+			if err := tx.QueryRow(ctx, `SELECT audience FROM room_types WHERE id = $1`, roomID).Scan(&aud); err != nil {
+				return err
+			}
+			if ok, err := audienceOK(ctx, tx, aud, accountID); err != nil {
+				return err
+			} else if !ok {
+				return ErrRoomClosed
+			}
 		}
 		if vis == "invite" {
 			var ok bool

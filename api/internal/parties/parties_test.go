@@ -117,3 +117,71 @@ func TestPartyLifecycle(t *testing.T) {
 		t.Fatal("ended party still found")
 	}
 }
+
+func TestRoomTypes(t *testing.T) {
+	p := pool(t)
+	ctx := context.Background()
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM parties WHERE showtime_id = 'party-room'`)
+		p.Exec(ctx, `DELETE FROM room_types WHERE id LIKE 'pt-%'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	if _, err := p.Exec(ctx, `INSERT INTO showtimes VALUES ('party-room', 'Tide', 'S', now() + interval '1 hour', 90, 10, 500, 'USD') ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at;
+	  INSERT INTO room_types (id, name, kind, scene, seats, audience, voice, live) VALUES
+	    ('pt-small', 'Pt Small', 'party', 'lounge', 2, 'everyone', false, true),
+	    ('pt-vip', 'Pt Vip', 'private', 'lounge', 10, 'vip', true, true),
+	    ('pt-kids', 'Pt Kids', 'party', 'lounge', 10, 'kids', false, true),
+	    ('pt-draft', 'Pt Draft', 'party', 'lounge', 10, 'everyone', true, false)`); err != nil {
+		t.Fatal(err)
+	}
+	s := parties.Store{DB: p}
+	host := account(t, p, "room-host@example.com", "Ada")
+	two := account(t, p, "room-two@example.com", "Bo")
+	three := account(t, p, "room-three@example.com", "Cy")
+	p.Exec(ctx, `UPDATE accounts SET plan = 'free' WHERE id = $1`, host)
+
+	list, err := s.Rooms(ctx, host, "party", "private")
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, r := range list {
+		names[r.ID] = true
+	}
+	if !names["pt-small"] || !names["pt-kids"] || names["pt-vip"] || names["pt-draft"] || !names["watch-party"] {
+		t.Fatalf("rooms for a free host = %v", names)
+	}
+	if _, err := s.Create(ctx, host, parties.New{ShowtimeID: "party-room", Name: "X", Visibility: "link", Room: "pt-draft"}); !errors.Is(err, parties.ErrBadInput) {
+		t.Fatalf("draft room: %v", err)
+	}
+	if _, err := s.Create(ctx, host, parties.New{ShowtimeID: "party-room", Name: "X", Visibility: "link", Room: "pt-vip"}); !errors.Is(err, parties.ErrRoomClosed) {
+		t.Fatalf("vip room for free host: %v", err)
+	}
+	small, err := s.Create(ctx, host, parties.New{ShowtimeID: "party-room", Name: "Small", Visibility: "link", Room: "pt-small", Rules: []string{"voice-notes", "spoiler-filter"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if small.Room != "Pt Small" || small.Seats != 2 || len(small.Rules) != 1 || small.Rules[0] != "spoiler-filter" {
+		t.Fatalf("small = %+v", small)
+	}
+	if _, err := s.Join(ctx, small.Code, two, "room-two@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Join(ctx, small.Code, three, "room-three@example.com"); !errors.Is(err, parties.ErrBadInput) {
+		t.Fatalf("third into a room for two: %v", err)
+	}
+	if _, err := s.Join(ctx, small.Code, two, "room-two@example.com"); err != nil {
+		t.Fatalf("member rejoining a full room: %v", err)
+	}
+	kids, err := s.Create(ctx, host, parties.New{ShowtimeID: "party-room", Name: "Kids", Visibility: "link", Room: "pt-kids"})
+	if err != nil || len(kids.Rules) != 1 || kids.Rules[0] != "kids-safe" {
+		t.Fatalf("kids = %+v %v", kids, err)
+	}
+	p.Exec(ctx, `UPDATE accounts SET plan = 'vip', plan_status = 'active' WHERE id = $1`, host)
+	vip, err := s.Create(ctx, host, parties.New{ShowtimeID: "party-room", Name: "Vip", Visibility: "link", Room: "pt-vip"})
+	if err != nil || vip.Visibility != "invite" {
+		t.Fatalf("vip private = %+v %v", vip, err)
+	}
+	p.Exec(ctx, `UPDATE accounts SET plan = 'free' WHERE id = $1`, host)
+}

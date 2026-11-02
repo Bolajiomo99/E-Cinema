@@ -418,7 +418,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, parties.ErrBadInput):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	case errors.Is(err, parties.ErrNotInvited):
+	case errors.Is(err, parties.ErrNotInvited), errors.Is(err, parties.ErrRoomClosed):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, parties.ErrEnded), errors.Is(err, parties.ErrHostLeaves):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})

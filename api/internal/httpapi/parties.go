@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
@@ -38,6 +39,16 @@ func (s *Server) partyRoutes(mux *http.ServeMux) {
 			p.People = nil
 		}
 		writeJSON(w, http.StatusOK, p)
+	}))
+	// Live room types this viewer may use: kinds=party,private for watch parties, vr,ar for the VR cinema.
+	mux.HandleFunc("GET /v1/me/rooms", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		kinds := strings.Split(r.URL.Query().Get("kinds"), ",")
+		list, err := s.Parties.Rooms(r.Context(), a.ID, kinds...)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
 	}))
 	mux.HandleFunc("GET /v1/me/parties", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		list, err := s.Parties.ForViewer(r.Context(), a.ID, 12)
