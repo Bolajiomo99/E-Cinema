@@ -351,7 +351,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 	case errors.Is(err, identity.ErrNoApplicant):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrNotFound):
+	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
@@ -363,7 +363,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadPIN), errors.Is(err, accounts.ErrBadGrant):
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
-	case errors.Is(err, accounts.ErrBadParentPIN):
+	case errors.Is(err, accounts.ErrBadParentPIN), errors.Is(err, accounts.ErrBanned):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrParentPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})

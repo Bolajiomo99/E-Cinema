@@ -26,6 +26,7 @@ var (
 	ErrEmailTaken     = errors.New("an account already uses this email, sign in instead")
 	ErrBadLogin       = errors.New("email or password is wrong")
 	ErrLocked         = errors.New("too many attempts, try again in 15 minutes")
+	ErrBanned         = errors.New("this account was closed for sharing films without permission; write to admin@e-cinema.net if you think this is wrong")
 	ErrNoSession      = errors.New("not signed in")
 	ErrPhoneTaken     = errors.New("this phone number already has an E-Cinema account, sign in to that one instead")
 	ErrBadCode        = errors.New("that code is wrong or has expired")
@@ -233,11 +234,14 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 // startSession must run inside a transaction holding the account row, so two
 // simultaneous sign-ins cannot both slip under the device limit.
 func startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Session, error) {
-	var restored, alerts, known bool
+	var restored, alerts, known, banned bool
 	if err := tx.QueryRow(ctx, `SELECT delete_after IS NOT NULL, login_alerts,
-		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2)
-		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device)).Scan(&restored, &alerts, &known); err != nil {
+		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2), banned_at IS NOT NULL
+		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device)).Scan(&restored, &alerts, &known, &banned); err != nil {
 		return Session{}, err
+	}
+	if banned {
+		return Session{}, ErrBanned
 	}
 	if restored {
 		if _, err := tx.Exec(ctx, `UPDATE accounts SET delete_after = NULL WHERE id = $1`, accountID); err != nil {
@@ -422,4 +426,20 @@ func (s Store) ConfirmPhone(ctx context.Context, accountID, code string) (Accoun
 		return Account{}, err
 	}
 	return acct, tx.Commit(ctx)
+}
+
+// Ban closes an account for sharing films without permission: every device is signed out and
+// no sign-in method works again. Only E-Cinema staff call this, after a studio's leak report.
+func (s Store) Ban(ctx context.Context, accountID, reason string) error {
+	return pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `UPDATE accounts SET banned_at = coalesce(banned_at, now()), ban_reason = $2 WHERE id = $1`, accountID, reason)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		_, err = tx.Exec(ctx, `UPDATE account_sessions SET revoked_at = now() WHERE account_id = $1 AND revoked_at IS NULL`, accountID)
+		return err
+	})
 }
