@@ -16,7 +16,7 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
   const R = 56, C = 2 * Math.PI * R;
   let off = 0;
   return (
-    <section className="exc exl">
+    <section className="exc exlc">
       <header className="exc-head">
         <div>
           <h1>Licensing</h1>
@@ -24,7 +24,7 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
         </div>
         <div className="epf-acts">
           <Link href="/licensing" className="exa-ghost exn-btn">Licence plans and prices</Link>
-          <Link href="/licensing/desk" className="exa-red exn-btn">Review applications {d.applications > 0 && <i className="exl-n">{d.applications}</i>}</Link>
+          <Link href="/licensing/desk" className="exa-red exn-btn">Review applications {d.applications > 0 && <i className="exlc-n">{d.applications}</i>}</Link>
         </div>
       </header>
 
@@ -35,7 +35,7 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
         <div className="exc-tile"><span>Partner sales this month</span><b>{ngn(d.salesNgn)}</b><small>returns not counted</small></div>
       </div>
 
-      <div className="exc-row exl-row">
+      <div className="exc-row exlc-row">
         <div className="exc-card">
           <h2>Partners by country</h2>
           {byCountry.length === 0 && <p className="exc-empty">No active partners yet.</p>}
@@ -45,7 +45,7 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
         </div>
         <div className="exc-card">
           <h2>Plans</h2>
-          <div className="exl-donut">
+          <div className="exlc-donut">
             <svg viewBox="0 0 140 140" role="img" aria-label={plans.map(([k, n]) => `${PLAN[k][0]} ${n}`).join(", ")}>
               <circle cx="70" cy="70" r={R} fill="none" stroke="#26262e" strokeWidth="18" />
               {total > 0 && plans.map(([k, n]) => {
@@ -68,15 +68,15 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
         <h2>Partners</h2>
         {d.rows.length === 0 ? <p className="exc-empty">No licensed partners yet.</p> : (
           <div className="exn-table" role="table" aria-label="Partners">
-            <div className="exn-th exl-g" role="row"><span>Partner</span><span>Country</span><span>Plan</span><span>Sales, 30 days</span><span>Compliance</span><span>Status</span></div>
+            <div className="exn-th exlc-g" role="row"><span>Partner</span><span>Country</span><span>Plan</span><span>Sales, 30 days</span><span>Compliance</span><span>Status</span></div>
             {d.rows.map((r) => (
-              <div key={r.licence} className="exn-tr exl-g" role="row">
-                <span className="exl-name"><b>{r.name}</b><small>{r.licence}</small></span>
+              <div key={r.licence} className="exn-tr exlc-g" role="row">
+                <span className="exlc-name"><b>{r.name}</b><small>{r.licence}</small></span>
                 <span>{countryName(r.country, true)}</span>
                 <span>{PLAN[r.plan]?.[0] ?? r.plan}</span>
                 <span>{ngn(r.sales30Ngn)}</span>
-                <span className="exl-score"><i><em style={{ width: `${r.compliance}%`, background: r.compliance >= 80 ? "#2bb3a3" : r.compliance >= 60 ? "#e8b34b" : "#e3182d" }} /></i>{r.compliance}</span>
-                <span><i className={`exl-st ${STATUS[r.status]?.[1] ?? ""}`}>{STATUS[r.status]?.[0] ?? r.status}</i></span>
+                <span className="exlc-score"><i><em style={{ width: `${r.compliance}%`, background: r.compliance >= 80 ? "#2bb3a3" : r.compliance >= 60 ? "#e8b34b" : "#e3182d" }} /></i>{r.compliance}</span>
+                <span><i className={`exlc-st ${STATUS[r.status]?.[1] ?? ""}`}>{STATUS[r.status]?.[0] ?? r.status}</i></span>
               </div>
             ))}
           </div>

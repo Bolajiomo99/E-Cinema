@@ -20,7 +20,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Hiring and jobs", href: "/executive/hiring", roles: ["coo"], icon: "case" },
   { label: "Brand protection", href: "/executive/brand", roles: ["cmo"], icon: "badge" },
   { label: "Licensing", href: "/executive/licensing", roles: ["cmo", "cfo"], icon: "tag" },
-  { label: "Security operations", roles: ["cto"], icon: "lock" },
+  { label: "Security operations", href: "/executive/security", roles: ["cto"], icon: "lock" },
   { label: "Infrastructure", roles: ["cto"], icon: "server" },
   { label: "Investor view", roles: ["cfo", "investor"], icon: "pie" },
   { label: "Stakeholder view", roles: ["stakeholder"], icon: "people" },
