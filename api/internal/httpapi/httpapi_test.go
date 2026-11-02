@@ -30,6 +30,11 @@ func server(t *testing.T) *httptest.Server {
 	if err := db.Migrate(context.Background(), pool); err != nil {
 		t.Fatal(err)
 	}
+	// A showtime that is always upcoming, so the tests never depend on today's date.
+	if _, err := pool.Exec(context.Background(), `INSERT INTO showtimes VALUES ('api-test-show', 'Tide', 'S', now() + interval '1 hour', 90, 10, 500, 'USD')
+	  ON CONFLICT (id) DO UPDATE SET starts_at = EXCLUDED.starts_at`); err != nil {
+		t.Fatal(err)
+	}
 	s := &httpapi.Server{Tickets: tickets.Store{DB: pool}, AllowedOrigins: []string{"*"}, InternalToken: "test-token"}
 	ts := httptest.NewServer(s.Routes())
 	t.Cleanup(ts.Close)
@@ -39,11 +44,11 @@ func server(t *testing.T) *httptest.Server {
 func TestHoldsNeedTheInternalToken(t *testing.T) {
 	ts := server(t)
 	body := `{"seats":1,"viewerRef":"v"}`
-	res, _ := http.Post(ts.URL+"/v1/showtimes/red-earth-2026-11-02/holds", "application/json", strings.NewReader(body))
+	res, _ := http.Post(ts.URL+"/v1/showtimes/api-test-show/holds", "application/json", strings.NewReader(body))
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("no token: got %d", res.StatusCode)
 	}
-	req, _ := http.NewRequest("POST", ts.URL+"/v1/showtimes/red-earth-2026-11-02/holds", strings.NewReader(body))
+	req, _ := http.NewRequest("POST", ts.URL+"/v1/showtimes/api-test-show/holds", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer test-token")
 	res, _ = http.DefaultClient.Do(req)
 	if res.StatusCode != http.StatusCreated {
@@ -59,7 +64,7 @@ func TestSyncReportsPosition(t *testing.T) {
 	ts := server(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(ts.URL, "http")+"/v1/sync/red-earth-2026-11-02", nil)
+	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(ts.URL, "http")+"/v1/sync/api-test-show", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
