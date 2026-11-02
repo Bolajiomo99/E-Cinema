@@ -4581,3 +4581,52 @@ a.cp-person:hover { border-color: #44444f; }
   .stcr-mod li { flex-wrap: wrap; }
   .stcr-mod .act { width: 100%; justify-content: flex-start; }
 }
+
+/* Studio analytics (Figma 37:1652 Audience, 37:2861 Reach) */
+.stan .stcr-tile span.r { color: #ff4d5e; }
+.stan-tabs { gap: 8px; }
+.stan-tabs button { height: 32px; }
+.stan-range select { height: 32px; padding: 0 14px; border-radius: 16px; border: 0; background: var(--text-primary); color: var(--text-inverse); font: 600 13px/20px Manrope, sans-serif; cursor: pointer; }
+.stan-pill { height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-secondary); font: 500 13px/20px Manrope, sans-serif; cursor: pointer; }
+.stan-pill.off { opacity: .6; text-decoration: line-through; }
+.stan-soon h2 { display: flex; align-items: center; }
+.stan-ret { flex: 1 1 0; min-width: 0; min-height: 200px; }
+.stan-who { flex: 0 0 400px; min-width: 0; }
+.stan-top { flex: 0 0 380px; min-width: 0; }
+.stan-donutrow { display: flex; align-items: center; gap: 22px; }
+.stan-donut { width: 132px; height: 132px; flex: none; }
+.stan-key { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; color: var(--text-secondary); font: 500 12px/18px Manrope, sans-serif; }
+.stan-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
+.stan-note { margin: 0; color: var(--text-muted); font: 500 12px/18px Manrope, sans-serif; }
+.stan-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.stan-bars { display: flex; align-items: flex-end; gap: 14px; height: 150px; padding-top: 4px; }
+.stan-bar { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
+.stan-bar i { display: block; width: 100%; max-width: 48px; border-radius: 3px; }
+.stan-bar small { color: var(--text-muted); font: 500 11px/14px Manrope, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stan-bar .v { color: var(--text-secondary); font: 600 11px/14px Manrope, sans-serif; }
+.stan-top table, .stan-cohort table { width: 100%; border-collapse: collapse; }
+.stan-top th { text-align: left; color: var(--text-muted); font: 600 11px/16px Manrope, sans-serif; padding: 0 0 6px; }
+.stan-top td { padding: 7px 0; color: var(--text-primary); font: 500 14px/20px Manrope, sans-serif; }
+.stan-top td + td { color: var(--text-secondary); font-size: 13px; }
+.stan-top td.am { color: #f5a524; }
+.stan-funnel ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.stan-funnel li { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 10px; color: var(--text-secondary); font: 500 13px/20px Manrope, sans-serif; }
+.stan-funnel b { display: block; padding: 2px 10px; border-radius: 3px; background: linear-gradient(90deg, #f5a524, #e3182d); color: #111; font: 700 11px/20px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stan-funnel b.soon { width: max-content; background: #26262e; color: #a6a6b0; }
+.stan-cohort th { color: var(--text-muted); font: 600 11px/16px Manrope, sans-serif; text-align: left; padding: 0 4px 4px; }
+.stan-cohort tbody th { color: var(--text-secondary); font: 500 13px/20px Manrope, sans-serif; }
+.stan-cohort td { padding: 3px; }
+.stan-cohort td b, .stan-cohort td i { display: block; height: 26px; border-radius: 3px; background: #e7a93a; color: #111; font: 700 11px/26px "JetBrains Mono", monospace; text-align: center; }
+.stan-cohort td i { background: #1d1d23; }
+.stan .bp-panel[id] { scroll-margin-top: 80px; }
+@media (max-width: 1280px) {
+  .stan-who, .stan-top { flex: none; }
+  .stan-three { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .stan .bp-head { flex-direction: column; align-items: flex-start; }
+  .stan .pt-btns { flex-wrap: wrap; }
+  .stan-donutrow { flex-direction: column; align-items: flex-start; }
+}
+.stan .bp-head .vf-btn { height: 32px; padding: 0 14px; font-size: 13px; border-radius: 6px; }
+.stan .bp-head p { margin-top: 2px !important; }
