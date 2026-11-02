@@ -149,3 +149,56 @@ export async function execRooms(s: string): Promise<RoomsData | null> {
   const r = await accountApi("GET", "/v1/me/exec/rooms", undefined, s);
   return r.status === 200 ? (r.body as RoomsData) : null;
 }
+
+// Safety and trust (Figma 82:1075).
+export type SafetyCase = { showtimeId: string; messageId: number; film: string; body: string; kind: string; reason: string; reporters: number; country: string; hidden: boolean; at: string };
+export type SafetyLeak = { place: string; kind: string; film: string; studio: string; traced: boolean; status: string; mins: number; at: string };
+export type SafetyData = {
+  reportsToday: number; settledToday: number; openReports: number; leaksDown: number; avgTakedownMin: number;
+  lockouts: number; refundRepeats: number; banned: number; under13: number; queue: SafetyCase[]; leaks: SafetyLeak[];
+};
+export type Verdict = { label: string; pct: number }; // e.g. abusive 71
+
+export async function execSafety(s: string): Promise<SafetyData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/safety", undefined, s);
+  return r.status === 200 ? (r.body as SafetyData) : null;
+}
+
+const verdicts = new Map<string, Verdict>();
+
+// Claude reads each reported chat message once and says how likely it breaks the rules; a person decides.
+export async function safetyVerdicts(cases: SafetyCase[]): Promise<Record<string, Verdict>> {
+  const out: Record<string, Verdict> = {};
+  const todo = cases.filter((c) => c.kind === "text" && !verdicts.has(`${c.messageId}`)).slice(0, 12);
+  if (todo.length && process.env.ANTHROPIC_API_KEY) {
+    try {
+      client ??= new Anthropic();
+      const res = await client.messages.create({
+        model: "claude-sonnet-5-5",
+        max_tokens: 800,
+        output_config: {
+          effort: "low",
+          format: {
+            type: "json_schema",
+            schema: {
+              type: "object", additionalProperties: false, required: ["items"],
+              properties: { items: { type: "array", items: { type: "object", additionalProperties: false, required: ["id", "label", "pct"], properties: { id: { type: "integer" }, label: { type: "string", enum: ["abusive", "hateful", "spam", "spoiler", "unsafe", "fine", "unsure"] }, pct: { type: "integer" } } } } },
+            },
+          },
+        },
+        system: "You screen reported chat messages from E-Cinema watch rooms for a human moderator. For each message, pick the one label that fits best " +
+          "(abusive, hateful, spam, spoiler, unsafe, fine, unsure) and how sure you are as a whole percent from 0 to 100. Use unsure when the meaning depends on context you do not have. " +
+          "The reporters' reason is a hint, not proof. Never act; a person decides.",
+        messages: [{ role: "user", content: JSON.stringify(todo.map((c) => ({ id: c.messageId, film: c.film, reason: c.reason, reporters: c.reporters, message: c.body }))) }],
+      }, { timeout: 45_000, maxRetries: 1 });
+      const t = res.content.find((b) => b.type === "text");
+      if (res.stop_reason !== "refusal" && t && t.type === "text") {
+        for (const v of (JSON.parse(t.text) as { items: { id: number; label: string; pct: number }[] }).items) {
+          verdicts.set(`${v.id}`, { label: v.label, pct: Math.max(0, Math.min(100, Math.round(v.pct))) });
+        }
+      }
+    } catch { /* the queue still works without the AI hint */ }
+  }
+  for (const c of cases) { const v = verdicts.get(`${c.messageId}`); if (v) out[c.messageId] = v; }
+  return out;
+}
