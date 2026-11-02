@@ -115,6 +115,7 @@ func (s *Server) Routes() http.Handler {
 			Seats     int    `json:"seats"`
 			ViewerRef string `json:"viewerRef"`
 			Quality   string `json:"quality"`
+			Campaign  string `json:"campaign"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.ViewerRef == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seats and viewerRef are required"})
@@ -134,6 +135,10 @@ func (s *Server) Routes() http.Handler {
 		if err != nil {
 			fail(w, err)
 			return
+		}
+		// The campaign link the buyer arrived through, if any (Figma 39:779).
+		if err := s.Studios.Attribute(r.Context(), h.ID, body.Campaign); err != nil {
+			slog.Error("campaign attribution", "hold", h.ID, "err", err)
 		}
 		writeJSON(w, http.StatusCreated, h)
 	}))
@@ -351,7 +356,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 	case errors.Is(err, identity.ErrNoApplicant):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak):
+	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, studios.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})

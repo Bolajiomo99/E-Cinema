@@ -363,6 +363,55 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		reply(w, map[string]bool{"ok": err == nil}, err)
 	}))
 
+	// Marketing (Figma 39:779): tracked campaign links and AI clip moments.
+	mux.HandleFunc("GET /v1/me/studio/campaigns", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		c, err := s.Studios.Campaigns(r.Context(), a.ID, a.Email)
+		reply(w, map[string]any{"campaigns": c}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/campaigns", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in studios.CampaignInput
+		if decodeN(w, r, 2<<10, &in) {
+			c, err := s.Studios.CreateCampaign(r.Context(), a.ID, a.Email, in)
+			reply(w, c, err)
+		}
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/campaigns/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ CostCents int64 }
+		if decodeN(w, r, 1<<10, &b) {
+			c, err := s.Studios.SetCampaignCost(r.Context(), a.ID, a.Email, r.PathValue("id"), b.CostCents)
+			reply(w, c, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/campaigns/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		err := s.Studios.DeleteCampaign(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]bool{"ok": err == nil}, err)
+	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/clips", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		c, err := s.Studios.Clips(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, c, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/clips", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			CutoffMs int
+			Clips    []studios.Clip
+		}
+		if decodeN(w, r, 16<<10, &b) {
+			c, err := s.Studios.SaveClips(r.Context(), a.ID, a.Email, r.PathValue("id"), b.CutoffMs, b.Clips)
+			reply(w, c, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/clips/approve", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ Idx []int }
+		if decodeN(w, r, 1<<10, &b) {
+			c, err := s.Studios.ApproveClips(r.Context(), a.ID, a.Email, r.PathValue("id"), b.Idx)
+			reply(w, c, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/campaign-visits/{code}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		sid, err := s.Studios.CampaignVisit(r.Context(), r.PathValue("code"))
+		reply(w, map[string]string{"showtimeId": sid}, err)
+	}))
+
 	// Piracy protection (Figma 39:578).
 	mux.HandleFunc("GET /v1/me/studio/leaks", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		l, stats, err := s.Studios.Leaks(r.Context(), a.ID, a.Email, time.Now())

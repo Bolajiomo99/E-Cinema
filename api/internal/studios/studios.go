@@ -45,6 +45,8 @@ func can(role, action string) bool {
 		return role == "owner" || role == "admin"
 	case "money":
 		return role == "owner" || role == "admin" || role == "finance"
+	case "marketing":
+		return role == "owner" || role == "admin" || role == "marketing"
 	}
 	return true
 }
