@@ -471,3 +471,56 @@ func TestSafety(t *testing.T) {
 		t.Fatalf("safety = %+v", s)
 	}
 }
+
+func TestHiring(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'hx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM jobs WHERE slug LIKE 'hx-%'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'hx-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('hx-coo@example.com', 'coo'), ('hx-cmo@example.com', 'cmo')`)
+	p.Exec(ctx, `INSERT INTO jobs (slug, title, team, city, country, kind, quota, about, bring) VALUES
+	  ('hx-a', 'A', 'Hxteam', 'Lagos', 'NG', 'full', 'ng', 'x', 'y'), ('hx-b', 'B', 'Hxteam', 'Nairobi', 'KE', 'full', 'world', 'x', 'y')`)
+	var a1, a2 string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('hx-1@example.com', 'H', '!') RETURNING id`).Scan(&a1)
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('hx-2@example.com', 'H', '!') RETURNING id`).Scan(&a2)
+	var app string
+	p.QueryRow(ctx, `INSERT INTO job_applications (job_slug, account_id, name, email, country, cv_key, stage) VALUES ('hx-a', $1, 'H', 'hx-1@example.com', 'NG', 'cv', 'hired') RETURNING id`, a1).Scan(&app)
+	p.Exec(ctx, `INSERT INTO job_application_events (application_id, stage, at) VALUES ($1, 'task', now() - interval '3 days'), ($1, 'hired', now())`, app)
+	p.Exec(ctx, `INSERT INTO job_applications (job_slug, account_id, name, email, country, cv_key, stage) VALUES ('hx-b', $1, 'H', 'hx-2@example.com', 'IN', 'cv', 'closed')`, a2)
+	st := exec.Store{DB: p, CEOs: []string{"hx-ceo@example.com"}}
+	if _, err := st.Hiring(ctx, "hx-cmo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cmo: %v", err)
+	}
+	h, err := st.Hiring(ctx, "hx-coo@example.com", time.Now())
+	if err != nil || !h.CanPost || h.CanQuota || h.HiredYear < 1 || h.HiredNG < 1 || h.ByCountry["IN"] < 1 {
+		t.Fatalf("coo hiring = %+v %v", h, err)
+	}
+	var team bool
+	for _, tm := range h.Teams {
+		if tm.Team == "Hxteam" {
+			team = tm.NG == 1 && tm.Total == 2
+		}
+	}
+	if !team || len(h.Pipeline) != 6 || h.Pipeline[0].NG < 1 || h.Pipeline[5].NG < 1 || h.Pipeline[0].World < 1 {
+		t.Fatalf("teams/pipeline = %+v %+v", h.Teams, h.Pipeline)
+	}
+	if st.CanSetQuota("hx-coo@example.com") == nil || st.CanSetQuota("hx-ceo@example.com") != nil {
+		t.Fatal("only the CEO sets the quota")
+	}
+}

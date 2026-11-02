@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/careers"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"net/http"
 	"sort"
@@ -151,6 +152,37 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			return
 		}
 		reply(w, map[string]bool{"hidden": hidden}, err)
+	}))
+	// Hiring and jobs (Figma 117:948). The CEO and COO post roles; only the CEO changes the Nigeria quota.
+	mux.HandleFunc("GET /v1/me/exec/hiring", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		h, err := s.Exec.Hiring(r.Context(), a.Email, time.Now())
+		reply(w, h, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/jobs/{slug}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.CanHire(r.Context(), a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		var j careers.Job
+		if !decode(w, r, &j) {
+			return
+		}
+		j.Slug = r.PathValue("slug")
+		saved, err := s.Careers.SaveJob(r.Context(), j)
+		reply(w, saved, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/hiring/share", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		if err := s.Exec.CanSetQuota(a.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		var b struct {
+			NGShare int `json:"ngShare"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]int{"ngShare": b.NGShare}, s.Careers.SetShare(r.Context(), b.NGShare))
 	}))
 	// Rooms and VR halls (Figma 83:831).
 	mux.HandleFunc("GET /v1/me/exec/rooms", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
