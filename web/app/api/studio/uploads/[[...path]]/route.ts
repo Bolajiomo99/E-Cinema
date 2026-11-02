@@ -11,6 +11,7 @@ import { usdRates } from "@/lib/fx";
 import { marketOf, type Premiere } from "@/lib/premiere-types";
 import { suggestPrices } from "@/lib/price-ai";
 import { syncDubs } from "@/lib/dub-worker";
+import { readMood } from "@/lib/control-ai";
 
 // Film uploads (Figma 35:290). The browser asks here for signed links and sends each part of
 // a file straight to private storage; this route opens, resumes, finishes and checks files.
@@ -36,7 +37,7 @@ type Ctx = { params: Promise<{ path?: string[] }> };
 async function start(req: NextRequest, ctx: Ctx, write: boolean) {
   if (write && !sameOrigin(req)) return { error: json(403, { error: "forbidden" }) };
   const p = (await ctx.params).path ?? [];
-  if ((p[0] && !ID.test(p[0])) || (p[2] && !ID.test(p[2]))) return { error: json(404, { error: "Not found" }) };
+  if ((p[0] && !ID.test(p[0])) || (p[1] === "files" && p[2] && !ID.test(p[2]))) return { error: json(404, { error: "Not found" }) };
   const s = await session();
   if (!s) return { error: json(401, { error: "Sign in first", signIn: true }) };
   return { p, s };
@@ -62,6 +63,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (!p.length) return pass(await accountApi("GET", "/v1/me/studio/uploads", undefined, s));
   if (p.length === 1) return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s));
   if (p.length === 2 && p[1] === "premiere") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s));
+  // Live control room (Figma 37:1272).
+  if (p.length === 2 && p[1] === "control") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s));
   if (p.length === 2 && p[1] === "poster") {
     const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s);
     if (r.status !== 200) return pass(r);
@@ -113,6 +116,25 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     } catch (e) {
       console.error("price suggestions", e instanceof Error ? e.message : e);
       return json(502, { error: "AI pricing did not answer. Try again." });
+    }
+  }
+  // Control room: message every viewer, settle reported chat, read the audience mood.
+  if (p.length === 3 && p[1] === "control" && (p[2] === "announce" || p[2] === "moderate")) {
+    const body = await req.json().catch(() => ({}));
+    const out = p[2] === "announce" ? { text: String(body.text ?? "").slice(0, 400) } : { messageId: Math.trunc(Number(body.messageId) || 0), hide: body.hide === true };
+    return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/control/${p[2]}`, out, s));
+  }
+  if (p.length === 3 && p[1] === "control" && p[2] === "mood") {
+    if (limited(`m:${s}`, 6)) return json(429, { error: "Slow down: try again in a minute" });
+    const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s);
+    if (r.status !== 200) return pass(r);
+    const c = (r.body as { control: { showtimeId: string; film: string; recent: { body: string; at: string }[] } }).control;
+    try {
+      const mood = await readMood(c.showtimeId, c.film, c.recent ?? []);
+      return mood ? json(200, { mood }) : json(200, { mood: null, why: c.recent?.length >= 5 ? "off" : "quiet" });
+    } catch (e) {
+      console.error("audience mood", e instanceof Error ? e.message : e);
+      return json(502, { error: "Studio AI did not answer. Try again" });
     }
   }
   // The poster: a still image, checked by its first bytes and stored privately.

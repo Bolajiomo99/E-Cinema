@@ -123,7 +123,7 @@ export function useRoomChannel(wsBase: string, showtimeId: string, initial: Room
         setOnline(true);
       };
       ws.onmessage = (e) => {
-        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string; poll?: Poll; online?: string[]; ids?: number[] };
+        const ev = JSON.parse(e.data) as { type: string; message?: RoomMessage; emoji?: string; count?: number; error?: string; poll?: Poll; online?: string[]; ids?: number[]; text?: string; from?: string };
         if (ev.type === "msg" && ev.message) {
           const m = ev.message;
           const add = (list: RoomMessage[]) => (list.some((x) => x.id === m.id) ? list : [...list.slice(-199), m]);
@@ -152,6 +152,10 @@ export function useRoomChannel(wsBase: string, showtimeId: string, initial: Room
           const f = { id: nextFloat++, emoji: ev.emoji, left: 10 + Math.random() * 70 };
           setFloaters((list) => [...list.slice(-30), f]);
           setTimeout(() => setFloaters((list) => list.filter((x) => x.id !== f.id)), 2600);
+        } else if (ev.type === "studio" && ev.text) {
+          // A message from the film's studio to everyone at the premiere (control room, Figma 37:1272).
+          setNotice(`${ev.from ? `${ev.from}: ` : ""}${ev.text}`);
+          setTimeout(() => setNotice(""), 12000);
         } else if (ev.type === "error" && ev.error) {
           setNotice(ev.error);
           setTimeout(() => setNotice(""), 3000);
