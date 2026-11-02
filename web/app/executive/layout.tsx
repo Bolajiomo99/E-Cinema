@@ -4,7 +4,7 @@ import Link from "next/link";
 import ExecShell from "@/components/exec/ExecShell";
 import { currentAccount } from "@/lib/auth";
 import { session } from "@/lib/licensing";
-import { execRole } from "@/lib/exec";
+import { execMe } from "@/lib/exec";
 
 // The executive area: only people the API knows as executives get the shell.
 export const dynamic = "force-dynamic";
@@ -13,8 +13,9 @@ export const metadata = { title: "Executive · E-Cinema", robots: { index: false
 export default async function Executive({ children }: { children: ReactNode }) {
   const me = await currentAccount();
   if (!me) redirect("/signin?next=%2Fexecutive");
-  const role = await execRole(await session());
-  if (!role) {
+  const who = await execMe(await session());
+  const role = who === null ? null : who.role;
+  if (!who || !role) {
     return (
       <main className="exs-none">
         <h1>{role === null ? "The executive area is not reachable just now" : "Executives only"}</h1>
@@ -23,5 +24,5 @@ export default async function Executive({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  return <ExecShell name={me.name} role={role}>{children}</ExecShell>;
+  return <ExecShell name={me.name} role={role} money={who.money}>{children}</ExecShell>;
 }

@@ -17,11 +17,14 @@ export type Command = {
 };
 export type CommandPage = { command: Command; online: number; biggestRoom: number; onlineByCountry: { country: string; watching: number }[] };
 
-export async function execRole(s: string): Promise<ExecRole | "" | null> {
-  if (!s) return "";
+export type ExecMe = { role: ExecRole | ""; money: boolean };
+
+export async function execMe(s: string): Promise<ExecMe | null> {
+  if (!s) return { role: "", money: false };
   const r = await accountApi("GET", "/v1/me/exec", undefined, s);
   if (r.status !== 200) return null;
-  return ((r.body as { role?: string }).role ?? "") as ExecRole | "";
+  const b = r.body as { role?: string; money?: boolean };
+  return { role: (b.role ?? "") as ExecRole | "", money: Boolean(b.money) };
 }
 
 export async function commandCenter(s: string): Promise<CommandPage | null> {
@@ -69,4 +72,18 @@ export type ExecPerson = {
 export async function execPeople(s: string): Promise<ExecPerson[] | null> {
   const r = await accountApi("GET", "/v1/me/exec/people", undefined, s);
   return r.status === 200 ? ((r.body as { people: ExecPerson[] }).people ?? []) : null;
+}
+
+export type MoneyData = {
+  days: number;
+  rows: { source: string; currency: string; gross: number; net: number; prev: boolean }[];
+  regions: { country: string; currency: string; net: number }[];
+  providers: { provider: string; currency: string; volume: number; paid: number; tried: number; refunded: number; countries: string[] }[];
+  refunds: [number, number, number, number];
+  out: { what: string; currency: string; minor: number }[];
+};
+
+export async function execMoney(s: string, days: number): Promise<MoneyData | null> {
+  const r = await accountApi("GET", `/v1/me/exec/money?days=${days}`, undefined, s);
+  return r.status === 200 ? (r.body as MoneyData) : null;
 }

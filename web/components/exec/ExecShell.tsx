@@ -34,7 +34,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{P[name]}</svg>;
 }
 
-export default function ExecShell({ name, role, children }: { name: string; role: string; children: ReactNode }) {
+export default function ExecShell({ name, role, money, children }: { name: string; role: string; money: boolean; children: ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const on = (href: string) => path === href;
@@ -52,7 +52,7 @@ export default function ExecShell({ name, role, children }: { name: string; role
           <div><b>{first} · {ROLE_LABEL[role] ?? "Executive"}</b><small>{role === "ceo" ? "Full access" : `${ROLE_LABEL[role] ?? "Limited"} access`}</small></div>
         </div>
         <nav>
-          {EXEC_NAV.map((n) => n.href ? (
+          {EXEC_NAV.filter((n) => role === "ceo" || n.roles?.includes(role) || (n.money && money)).map((n) => n.href ? (
             <Link key={n.label} href={n.href} className={`pt-item ${on(n.href) ? "on" : ""}`} aria-current={on(n.href) ? "page" : undefined} onClick={() => setOpen(false)}>
               <Icon name={n.icon} />{n.label}{n.lock && <i className="exs-lock" title="Executives only"><Icon name="lock" size={13} /></i>}
             </Link>
