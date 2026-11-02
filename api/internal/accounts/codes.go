@@ -210,7 +210,7 @@ func (s Store) SignInWithCode(ctx context.Context, identifier, code, device stri
 	if err != nil {
 		return Account{}, Session{}, err
 	}
-	sess, err := startSession(ctx, tx, acctID, device)
+	sess, err := s.startSession(ctx, tx, acctID, device)
 	if err != nil {
 		return Account{}, Session{}, err
 	}
@@ -294,7 +294,7 @@ func (s Store) ResetPassword(ctx context.Context, token, password, device string
 	if _, err := tx.Exec(ctx, `DELETE FROM sign_in_failures WHERE email = (SELECT email FROM accounts WHERE id = $1)`, acctID); err != nil {
 		return ResetResult{}, err
 	}
-	if res.Session, err = startSession(ctx, tx, acctID, device); err != nil {
+	if res.Session, err = s.startSession(ctx, tx, acctID, device); err != nil {
 		return ResetResult{}, err
 	}
 	if res.Account, err = scanAccount(tx.QueryRow(ctx, `SELECT `+accountCols+` FROM accounts WHERE id = $1`, acctID)); err != nil {

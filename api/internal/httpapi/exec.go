@@ -189,6 +189,42 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Security operations (Figma 117:1773).
+	mux.HandleFunc("GET /v1/me/exec/security", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		sec, err := s.Exec.Security(r.Context(), a.Email, time.Now())
+		reply(w, sec, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/security/lockdown", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			On bool `json:"on"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]bool{"lockdown": b.On}, s.Exec.SetLockdown(r.Context(), a.Email, b.On))
+	}))
+	mux.HandleFunc("POST /v1/me/exec/security/incidents", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var in exec.Incident
+		if !decode(w, r, &in) {
+			return
+		}
+		out, err := s.Exec.LogIncident(r.Context(), a.Email, in)
+		reply(w, out, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/security/incidents/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			fail(w, exec.ErrBadInput)
+			return
+		}
+		var b struct {
+			Closed bool `json:"closed"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]bool{"closed": b.Closed}, s.Exec.CloseIncident(r.Context(), a.Email, id, b.Closed))
+	}))
 	// Licensing (Figma 117:1481).
 	mux.HandleFunc("GET /v1/me/exec/licensing", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		if err := s.Exec.CanLicensing(r.Context(), a.Email); err != nil {

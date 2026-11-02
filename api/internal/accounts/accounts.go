@@ -26,6 +26,7 @@ var (
 	ErrEmailTaken     = errors.New("an account already uses this email, sign in instead")
 	ErrBadLogin       = errors.New("email or password is wrong")
 	ErrLocked         = errors.New("too many attempts, try again in 15 minutes")
+	ErrLockdown       = errors.New("E-Cinema has paused new sign-ups and sign-ins from new devices for a short while to keep accounts safe. If you are already signed in, you can keep watching. Please try again later")
 	ErrBanned         = errors.New("This account was closed for sharing films without permission; write to admin@e-cinema.net if you think this is wrong")
 	ErrNoSession      = errors.New("not signed in")
 	ErrPhoneTaken     = errors.New("this phone number already has an E-Cinema account, sign in to that one instead")
@@ -57,6 +58,8 @@ type Store struct {
 	SMS SMS
 	// WebAuthn signs in with passkeys; nil until the site's domain is configured.
 	WebAuthn *webauthn.WebAuthn
+	// Trusted are emails (the CEO's) that can still sign in during lock down mode, as can executives.
+	Trusted []string
 }
 
 type Account struct {
@@ -158,7 +161,7 @@ func (s Store) SignUp(ctx context.Context, email, name, password, device string)
 	if err != nil {
 		return Account{}, Session{}, err
 	}
-	sess, err := startSession(ctx, tx, acct.ID, device)
+	sess, err := s.startSession(ctx, tx, acct.ID, device)
 	if err != nil {
 		return Account{}, Session{}, err
 	}
@@ -224,7 +227,7 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 	if _, err := tx.Exec(ctx, `DELETE FROM sign_in_failures WHERE email = $1`, email); err != nil {
 		return Account{}, Session{}, err
 	}
-	sess, err := startSession(ctx, tx, acct.ID, device)
+	sess, err := s.startSession(ctx, tx, acct.ID, device)
 	if err != nil {
 		return Account{}, Session{}, err
 	}
@@ -233,15 +236,21 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 
 // startSession must run inside a transaction holding the account row, so two
 // simultaneous sign-ins cannot both slip under the device limit.
-func startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Session, error) {
-	var restored, alerts, known, banned bool
+func (s Store) startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Session, error) {
+	var restored, alerts, known, banned, locked bool
 	if err := tx.QueryRow(ctx, `SELECT delete_after IS NOT NULL, login_alerts,
-		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2), banned_at IS NOT NULL
-		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device)).Scan(&restored, &alerts, &known, &banned); err != nil {
+		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2), banned_at IS NOT NULL,
+		coalesce((SELECT lockdown FROM security_settings WHERE id = 1), false) AND lower(email) <> ALL(coalesce($3::text[], '{}'))
+		  AND NOT EXISTS (SELECT 1 FROM executives e WHERE e.email = lower(accounts.email) AND (e.expires_on IS NULL OR e.expires_on >= current_date))
+		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device), s.Trusted).Scan(&restored, &alerts, &known, &banned, &locked); err != nil {
 		return Session{}, err
 	}
 	if banned {
 		return Session{}, ErrBanned
+	}
+	// Lock down mode: people already signed in on this device keep going; nobody new gets in.
+	if locked && !known {
+		return Session{}, ErrLockdown
 	}
 	if restored {
 		if _, err := tx.Exec(ctx, `UPDATE accounts SET delete_after = NULL WHERE id = $1`, accountID); err != nil {

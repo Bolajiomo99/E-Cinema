@@ -572,3 +572,73 @@ func TestBrand(t *testing.T) {
 		t.Fatalf("queue %+v top %+v", b.Queue, b.TopReporter)
 	}
 }
+
+func TestSecurity(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'sx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM sign_in_failures WHERE email LIKE 'sx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM security_incidents WHERE created_by LIKE 'sx-%@example.com'`)
+		p.Exec(ctx, `UPDATE security_settings SET lockdown = false, lockdown_by = '', lockdown_at = NULL`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"sx-ceo@example.com"}}
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('sx-cto@example.com', 'cto'), ('sx-cfo@example.com', 'cfo')`)
+	for i := 0; i < 11; i++ {
+		p.Exec(ctx, `INSERT INTO sign_in_failures (email, at) VALUES ('sx-victim@example.com', now() - interval '1 minute')`)
+	}
+	if _, err := st.Security(ctx, "sx-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	if err := st.SetLockdown(ctx, "sx-cfo@example.com", true); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo lockdown: %v", err)
+	}
+	s, err := st.Security(ctx, "sx-cto@example.com", time.Now())
+	if err != nil || s.WrongPw24h < 11 || s.Locked24h < 1 || s.Takeovers < 1 || s.Lockdown {
+		t.Fatalf("security = %+v, %v", s, err)
+	}
+	found := false
+	for _, e := range s.Events {
+		found = found || (e.Title == "11 wrong passwords on s***@example.com" && e.Result == "blocked")
+	}
+	if !found {
+		t.Fatalf("events = %+v", s.Events)
+	}
+	if err := st.SetLockdown(ctx, "sx-ceo@example.com", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.LogIncident(ctx, "sx-cto@example.com", exec.Incident{Title: "x", Kind: "breach", Severity: "low"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("short title: %v", err)
+	}
+	in, err := st.LogIncident(ctx, "sx-cto@example.com", exec.Incident{Title: "Sx credential stuffing wave", Kind: "attack", Severity: "critical"})
+	if err != nil || in.Status != "open" {
+		t.Fatalf("incident = %+v, %v", in, err)
+	}
+	pt, _ := st.LogIncident(ctx, "sx-cto@example.com", exec.Incident{Title: "Sx yearly pen test", Kind: "pentest", Severity: "low", Note: "3 low findings fixed"})
+	if pt.Status != "closed" {
+		t.Fatalf("pen test = %+v", pt)
+	}
+	s, _ = st.Security(ctx, "sx-cto@example.com", time.Now())
+	if !s.Lockdown || s.LockdownBy != "sx-ceo@example.com" || s.OpenCritical < 1 || s.LastPenTest == nil || len(s.Incidents) < 2 {
+		t.Fatalf("after = %+v", s)
+	}
+	if err := st.CloseIncident(ctx, "sx-cto@example.com", in.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CloseIncident(ctx, "sx-cto@example.com", 0, true); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("missing incident: %v", err)
+	}
+}

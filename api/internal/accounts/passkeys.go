@@ -197,7 +197,7 @@ func (s Store) FinishPasskeyLogin(ctx context.Context, challengeID string, respo
 	if _, err := tx.Exec(ctx, `UPDATE passkeys SET credential = $2, last_used_at = now() WHERE id = $1`, cred.ID, raw); err != nil {
 		return Account{}, Session{}, err
 	}
-	sess, err := startSession(ctx, tx, acct.ID, device)
+	sess, err := s.startSession(ctx, tx, acct.ID, device)
 	if err != nil {
 		return Account{}, Session{}, err
 	}

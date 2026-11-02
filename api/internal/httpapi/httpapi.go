@@ -380,6 +380,8 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrBadParentPIN), errors.Is(err, accounts.ErrBanned):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, accounts.ErrLockdown):
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrParentPaused):
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNeedParentPIN), errors.Is(err, accounts.ErrTooManyProfiles):

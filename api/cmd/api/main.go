@@ -97,7 +97,7 @@ func run() error {
 	srv := &httpapi.Server{
 		Identity:       idCheck,
 		Tickets:        tickets.Store{DB: pool},
-		Accounts:       accounts.Store{DB: pool, SMS: texts, WebAuthn: passkeys},
+		Accounts:       accounts.Store{DB: pool, SMS: texts, WebAuthn: passkeys, Trusted: ceoEmails()},
 		AllowedOrigins: strings.Split(env("ALLOWED_ORIGINS", "e-cinema.net,*.e-cinema.net,localhost:3000"), ","),
 		InternalToken:  os.Getenv("INTERNAL_API_TOKEN"),
 		Rooms:          rooms.Store{DB: pool},

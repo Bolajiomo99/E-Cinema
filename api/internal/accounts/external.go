@@ -56,7 +56,7 @@ func (s Store) SignInExternal(ctx context.Context, provider, subject, email stri
 	if err != nil {
 		return Account{}, Session{}, false, err
 	}
-	sess, err := startSession(ctx, tx, accountID, device)
+	sess, err := s.startSession(ctx, tx, accountID, device)
 	if err != nil {
 		return Account{}, Session{}, false, err
 	}
