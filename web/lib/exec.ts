@@ -60,3 +60,13 @@ export async function briefing(p: CommandPage, today: string): Promise<string[]>
   cached = { key, at: Date.now(), items };
   return items;
 }
+
+export type ExecPerson = {
+  email: string; name: string; org: string; role: ExecRole; scopes: string[]; canAdd: boolean; canMoney: boolean; watermark: boolean;
+  expiresOn: string; expired: boolean; joined: boolean; lastActive: string | null; addedAt: string;
+};
+
+export async function execPeople(s: string): Promise<ExecPerson[] | null> {
+  const r = await accountApi("GET", "/v1/me/exec/people", undefined, s);
+  return r.status === 200 ? ((r.body as { people: ExecPerson[] }).people ?? []) : null;
+}

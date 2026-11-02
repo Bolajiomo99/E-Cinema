@@ -290,3 +290,19 @@ export async function sendQuoteRequest(org: string, email: string, guests: numbe
     "E-Cinema <sales@e-cinema.net>",
   );
 }
+
+export async function sendExecInvite(to: string, name: string, role: string, by: string, ends: string) {
+  const link = `${site()}/executive`;
+  await send(
+    to,
+    `${by} gave you ${role} access to E-Cinema`,
+    layout(`${role} access`, "Your executive access is ready",
+      p(`${name ? esc(name) + ", " : ""}${esc(by)} gave you <b>${esc(role)}</b> access to E-Cinema's executive dashboards.`) +
+      facts([["Role", role], ["Access ends", ends || "When the CEO removes it"], ["Sign in with", to]]) +
+      button(link, "Open the dashboards") +
+      p("Sign in, or join with this same email address if you are new to E-Cinema. Your access shows up the moment you are signed in."),
+      "EXECUTIVE",
+      "You got this email because the CEO of E-Cinema added your address under Access and roles. If you did not expect it, you can ignore it."),
+    `${by} gave you ${role} access to E-Cinema. Sign in with ${to} at ${link}${ends ? `. Access ends ${ends}.` : "."}`,
+  );
+}
