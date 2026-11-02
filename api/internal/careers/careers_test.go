@@ -35,7 +35,10 @@ func TestCareers(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	clean := func() { p.Exec(ctx, `DELETE FROM jobs WHERE slug LIKE 'test-%'`); p.Exec(ctx, `DELETE FROM business_quotes WHERE email LIKE '%@example.com'`) }
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM jobs WHERE slug LIKE 'test-%'`)
+		p.Exec(ctx, `DELETE FROM business_quotes WHERE email LIKE '%@example.com'`)
+	}
 	clean()
 	t.Cleanup(clean)
 
