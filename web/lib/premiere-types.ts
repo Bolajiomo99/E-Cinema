@@ -18,6 +18,9 @@ export type Premiere = {
   publishedAt: string | null;
   updatedAt: string | null;
   sold: number;
+  comingSoon: boolean;
+  earlySave: number;
+  formats: string[];
   prices: PremierePrice[];
 };
 

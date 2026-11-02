@@ -7,7 +7,11 @@ type LiveFilm = {
   showtimeId: string; upload: string; film: string; studio: string; startsAt: string; durationMin: number; priceCents: number; adult: boolean;
   logline: string; genres: string; ageRating: string; languages: string; poster: boolean; format: string;
   prices: Record<string, { country: string; currency: string; amountMinor: number }>;
+  earlySave?: number; formats?: string[]; hasMaster?: boolean;
 };
+
+// How a coming-soon post's formats read on the film's card (Figma 53:1512).
+const FORMAT_NAMES: Record<string, string> = { uhd: "4K HDR", atmos: "Dolby Atmos", "3d": "3D" };
 
 const GLOWS = ["rgba(70,150,255,.45)", "rgba(255,140,40,.45)", "rgba(227,24,45,.45)"];
 const TONES = [["#0c2a3a", "#06121a"], ["#3b2a0a", "#160f04"], ["#2a070c", "#12060a"], ["#1d1440", "#0b0819"], ["#0f3324", "#06140e"]];
@@ -37,7 +41,9 @@ export function toShowtime(f: LiveFilm): Showtime {
     rating: f.ageRating.split(" (")[0] || undefined,
     adult: f.adult || undefined,
     category,
-    format: /4K/.test(fmt) ? fmt : undefined,
+    format: /4K/.test(fmt) ? fmt : (f.formats ?? []).map((x) => FORMAT_NAMES[x]).filter(Boolean).join(" · ") || undefined,
+    earlySave: f.earlySave || undefined,
+    vr: (f.formats ?? []).includes("vr") || undefined,
     language: f.languages || undefined,
     blurb: f.logline || undefined,
     poster: { from: tone[0], via: tone[1], to: "#000", glow: GLOWS[h % GLOWS.length] },

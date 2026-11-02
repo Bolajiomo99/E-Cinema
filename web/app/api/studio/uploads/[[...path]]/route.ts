@@ -267,6 +267,13 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     if (r.status === 200 && keep.length) return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/clips/approve`, { idx: keep }, s));
     return pass(r);
   }
+  // Coming-soon post (Figma 53:1512): the early-bird saving and the formats offered.
+  if (p.length === 2 && p[1] === "coming-soon") {
+    const formats = Array.isArray(body.formats) ? (body.formats as unknown[]).slice(0, 8).map(String) : [];
+    const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/coming-soon`, { earlySave: Math.round(Number(body.earlySave) || 0), formats }, s);
+    if (r.status === 200) await refreshLive(true);
+    return pass(r);
+  }
   if (p.length === 2 && p[1] === "premiere") {
     const n = (k: string) => Math.round(Number(body[k]) || 0);
     const b = (k: string) => body[k] === true;
