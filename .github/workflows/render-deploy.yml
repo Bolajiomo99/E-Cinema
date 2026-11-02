@@ -58,12 +58,17 @@ jobs:
           WEBAUTHN_ORIGINS: https://e-cinema.net,https://www.e-cinema.net
           WEB_PUBLIC_URL: https://e-cinema.net
       - name: Smoke test the live services
+        # URLs come in through env so the script has no expressions (GitHub caps those at 21,000 characters).
+        env:
+          SMOKE_API: ${{ steps.render.outputs.api_url }}
+          SMOKE_WEB: ${{ steps.render.outputs.web_url }}
+          HAS_GOOGLE: ${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}
         run: |
-          curl -fsS "${{ steps.render.outputs.api_url }}/healthz"; echo
-          curl -fsS "${{ steps.render.outputs.api_url }}/v1/showtimes" | head -c 300; echo
+          curl -fsS "$SMOKE_API/healthz"; echo
+          curl -fsS "$SMOKE_API/v1/showtimes" | head -c 300; echo
           # The web service can answer 502 for a short while after going live.
           for i in $(seq 1 18); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.render.outputs.web_url }}/checkout")
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$SMOKE_WEB/checkout")
             echo "checkout $code"
             [ "$code" = 200 ] && break
             [ "$i" = 18 ] && exit 1
@@ -71,15 +76,15 @@ jobs:
           done
           # Dub playback: the web app lists the AI dubs stored in R2 (may wait for a fresh deploy).
           for i in $(seq 1 30); do
-            body=$(curl -s "${{ steps.render.outputs.web_url }}/api/dubs/red-earth-sample" || true)
+            body=$(curl -s "$SMOKE_WEB/api/dubs/red-earth-sample" || true)
             echo "dubs $body"
             echo "$body" | grep -q '"fr"' && break
             [ "$i" = 30 ] && exit 1
             sleep 10
           done
           # Accounts: sign up a throwaway viewer, read it back with the cookie, then sign out.
-          web="${{ steps.render.outputs.web_url }}"
-          api="${{ steps.render.outputs.api_url }}"
+          web="$SMOKE_WEB"
+          api="$SMOKE_API"
           for i in $(seq 1 30); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$web/signin")
             echo "signin $code"
@@ -98,7 +103,7 @@ jobs:
           curl -fsS -H "content-type: application/json" -H "origin: $web" -d '{}' "$web/api/auth/passkeys/login/begin" | grep -q '"challengeId"'
           echo "passkeys ok"
           # Google sign-in: once the client secrets exist, start must hand off to Google.
-          if [ -n "${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}" ]; then
+          if [ -n "$HAS_GOOGLE" ]; then
             loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://e-cinema.net/api/auth/google/start")
             echo "google start -> ${loc%%\?*}"
             echo "$loc" | grep -q '^https://accounts.google.com/' || exit 1
@@ -113,7 +118,7 @@ jobs:
           curl -fsS -o /dev/null https://e-cinema.net/releases
           curl -fsS -b "$jar" "$web/room/red-earth-2026-11-02" | grep -q "for ticket holders"
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -X POST "$web/api/rooms/red-earth-2026-11-02/pass")" = 403 ]
-          [ "$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.render.outputs.api_url }}/v1/rooms/red-earth-2026-11-02/live?t=forged.pass")" = 401 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "$SMOKE_API/v1/rooms/red-earth-2026-11-02/live?t=forged.pass")" = 401 ]
           echo "home, releases and watch room gate ok"
           # Signed-in home: guests are sent to sign in, the viewer sees their home and seats.
           curl -s -o /dev/null -w '%{redirect_url}' https://e-cinema.net/home | grep -q '/signin'
@@ -130,7 +135,7 @@ jobs:
           echo "plans and PayPal subscription ok"
           # Checkout, live counts, watch parties and classic requests.
           curl -fsS "$web/checkout?film=red-earth-2026-11-02" | grep -q "Order summary"
-          curl -fsS "${{ steps.render.outputs.api_url }}/v1/live" | grep -q '^\['
+          curl -fsS "$SMOKE_API/v1/live" | grep -q '^\['
           party=$(curl -fsS -b "$jar" -H "content-type: application/json" -H "origin: $web" \
             -d '{"showtimeId":"red-earth-2026-11-02","name":"Smoke party","visibility":"link","rules":["spoiler-filter"]}' "$web/api/parties")
           code=$(echo "$party" | grep -o '"code":"[a-z0-9-]*"' | cut -d'"' -f4)
@@ -173,7 +178,7 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"ids":[1]}' "$web/api/rooms/red-earth-2026-11-02/translate")" = 403 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/media?key=rooms/other/x.pdf")" = 404 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/rooms/red-earth-2026-11-02/catchup")" = 403 ]
-          curl -fsS "${{ steps.render.outputs.api_url }}/v1/showtimes/red-earth-2026-11-02/reviews" | grep -q '"count"'
+          curl -fsS "$SMOKE_API/v1/showtimes/red-earth-2026-11-02/reviews" | grep -q '"count"'
           echo "room panel ok"
           # Library: the empty shelf renders; keeping and rewatching need the film in the library; collections work.
           curl -fsS -b "$jar" "$web/library" | grep -q "Your library"
