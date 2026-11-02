@@ -21,6 +21,9 @@ export type Showtime = {
   featured?: boolean; // leads the landing page hero
   blurb?: string;
   poster?: { from: string; via: string; to: string; glow: string };
+  posterImage?: string; // a studio's uploaded poster
+  studioFilm?: string; // set on premieres a studio published from its portal
+  local?: Record<string, { currency: string; minor: number }>; // studio's price per country
 };
 
 const blue = "rgba(70,150,255,.45)", amber = "rgba(255,140,40,.45)", red = "rgba(227,24,45,.45)";
@@ -75,6 +78,15 @@ export const showtimes: Showtime[] = [
 ];
 
 export const endsAt = (s: Showtime) => Date.parse(s.startsAt) + (s.runtimeMin ?? 120) * 60_000;
+
+// Premieres studios publish from the portal (Figma 35:514) join the list on the server, kept
+// fresh by lib/live-catalog.ts. Client bundles only carry the fixed lineup above.
+export function mergeLive(list: Showtime[]) {
+  const fixed = showtimes.filter((s) => !s.studioFilm);
+  const ids = new Set(fixed.map((s) => s.id));
+  const next = [...fixed, ...list.filter((s) => !ids.has(s.id))].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  showtimes.splice(0, showtimes.length, ...next);
+}
 
 export function findShowtime(id: string): Showtime | undefined {
   return showtimes.find((s) => s.id === id);

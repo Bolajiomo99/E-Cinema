@@ -23,7 +23,10 @@ export async function startSeat(p: Provider, session: string, showtimeId: string
   const prof = await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null);
   const q = quote(s, prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined, Date.now(), quality);
   if (salesOver(q.phase)) return { status: 410, body: { error: q.phase === "ended" ? "This premiere has ended" : "Doors have closed for this premiere" } };
-  const naira = await convert(Number(q.total), q.currency, "NGN");
+  // A studio that set a naira price (Figma 35:514) charges it; quality, late entry, member
+  // discount and VAT scale it the same way they scale the dollar price.
+  const ng = s.local?.NG?.currency === "NGN" ? s.local.NG.minor / 100 : 0;
+  const naira = ng ? ng * (Number(q.total) / Number(s.price.value)) : await convert(Number(q.total), q.currency, "NGN");
   if (!naira) return { status: 503, body: { error: "We could not get today's naira rate. Try PayPal or try again soon." } };
   const amountKobo = Math.ceil(naira) * 100; // whole naira, rounded up
   const net = Math.round((Number(q.seat) + Number(q.late) - Number(q.discount)) * 100);
