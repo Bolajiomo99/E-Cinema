@@ -332,6 +332,10 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" "$web/api/studio/campaigns")" = 404 ] || { echo "campaigns open to a non-studio account"; exit 1; }
           curl -s -o /dev/null -w '%{redirect_url}' "$web/c/zzzzzzzz" | grep -qE "/$" || { echo "unknown campaign link did not go home"; exit 1; }
           echo "marketing ok"
+          # Studio AI (Figma 39:1345): only members of a verified studio can ask.
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -H "origin: $web" -H "content-type: application/json" -d '{"messages":[{"role":"user","text":"hi"}]}' "$web/api/studio/ai")" = 404 ] || { echo "Studio AI open to a non-studio account"; exit 1; }
+          curl -s -o /dev/null -w '%{redirect_url}' -b "$jar" "$web/studio/ai" | grep -q "/studio$" || { echo "Studio AI page open to a non-studio account"; exit 1; }
+          echo "studio ai ok"
           echo "studio ok"
           # Paystack and Flutterwave open their own checkout for a held seat (test keys).
           film=$(curl -fsS "$api/v1/showtimes" | jq -r 'max_by(.startsAt).id') # the furthest premiere: on sale and never 18+
