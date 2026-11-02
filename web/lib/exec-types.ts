@@ -11,7 +11,7 @@ const CAB = ["cfo", "coo", "cto", "cmo"];
 export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: boolean; roles?: string[]; money?: boolean }[] = [
   { label: "Command center", href: "/executive", roles: CAB, icon: "crown", lock: true },
   { label: "Money", href: "/executive/money", roles: ["cfo"], money: true, icon: "money" },
-  { label: "Growth and users", roles: ["cfo", "cmo", "coo"], icon: "trend" },
+  { label: "Growth and users", href: "/executive/growth", roles: ["cfo", "cmo", "coo"], icon: "trend" },
   { label: "Content and studios", roles: ["coo", "cmo"], icon: "film" },
   { label: "Live operations", roles: ["coo", "cto"], icon: "live" },
   { label: "Shop and merch", roles: ["coo", "cfo"], icon: "bag" },

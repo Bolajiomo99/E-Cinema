@@ -87,3 +87,18 @@ export async function execMoney(s: string, days: number): Promise<MoneyData | nu
   const r = await accountApi("GET", `/v1/me/exec/money?days=${days}`, undefined, s);
   return r.status === 200 ? (r.body as MoneyData) : null;
 }
+
+export type GrowthData = {
+  days: number; country: string; members: number; membersPrev: number; daily: number; newWeek: number; newWeekPrev: number; paying: number;
+  months: { month: string; grossCents: number }[];
+  funnel: [number, number, number, number];
+  countries: { country: string; members: number; paid: number; new: number; newPrev: number }[];
+  cohorts: { month: string; size: number; weeks: number[] }[];
+  plans: Record<string, number>;
+  countryList: string[];
+};
+
+export async function execGrowth(s: string, days: number, country: string): Promise<GrowthData | null> {
+  const r = await accountApi("GET", `/v1/me/exec/growth?days=${days}&country=${encodeURIComponent(country)}`, undefined, s);
+  return r.status === 200 ? (r.body as GrowthData) : null;
+}

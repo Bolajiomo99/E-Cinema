@@ -5000,3 +5000,31 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exm-out b { color: #f4f4f6; }
 @media (max-width: 1100px) { .exm .exc-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .exm-row, .exm-row2 { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .exm .exc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .exm-th { display: none; } .exm-tr { grid-template-columns: 1fr 1fr; } }
+
+/* Growth and users (Figma 82:409) */
+.exg-sel { height: 32px; padding: 0 12px; border-radius: 16px; border: 0; background: #1f1f26; color: #f4f4f6; font: 600 13px Manrope, sans-serif; color-scheme: dark; }
+.exg-sel:first-child { background: #f4f4f6; color: #0a0a0c; }
+.exg-sel:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.exg .exg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.exg-row { grid-template-columns: 1.4fr 1fr; }
+.exg-funnel { display: flex; flex-direction: column; gap: 12px; }
+.exg-funnel > div, .exg-plans > div { display: grid; grid-template-columns: 150px 1fr 54px; align-items: center; gap: 10px; font-size: 12.5px; color: #c8c8d0; }
+.exg-funnel > div.off { color: #6e6e7a; grid-template-columns: 150px auto; }
+.exg-funnel i, .exg-plans i { display: block; height: 8px; border-radius: 4px; background: #26262e; overflow: hidden; }
+.exg-funnel i b, .exg-plans i b { display: block; height: 100%; border-radius: 4px; }
+.exg-funnel strong, .exg-plans strong { text-align: right; font-weight: 600; color: #f4f4f6; }
+.exg-plans { display: flex; flex-direction: column; gap: 12px; }
+.exg-plans > div { grid-template-columns: 70px 1fr 40px; }
+.exg-row3 { display: grid; grid-template-columns: 1fr 1.15fr .85fr; gap: 14px; align-items: start; }
+.exg-table .exm-th, .exg-table .exm-tr { grid-template-columns: 1.4fr 1fr .8fr .8fr; }
+.exg-table { display: flex; flex-direction: column; gap: 8px; }
+.exg-up { color: #22c55e; }
+.exg-down { color: #ff5a67; }
+.exg-ret { display: flex; flex-direction: column; gap: 6px; }
+.exg-ret > div { display: grid; grid-template-columns: 34px repeat(5, 1fr); gap: 5px; align-items: center; }
+.exg-ret span { color: #8a8a96; font-size: 12px; }
+.exg-ret i { display: grid; place-items: center; height: 28px; border-radius: 5px; font: 700 10.5px Manrope, sans-serif; font-style: normal; color: #fff; }
+.exg-ret i.none { background: #1b1b21; }
+@media (max-width: 1100px) { .exg-row, .exg-row3 { grid-template-columns: 1fr; } .exg .exg-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .exg-funnel > div { grid-template-columns: 110px 1fr 44px; } .exg-table .exm-th { display: none; } .exg-table .exm-tr { grid-template-columns: 1fr 1fr; } }
+.exg-funnel > div.off .soon-tag { justify-self: start; margin-left: 0; }
