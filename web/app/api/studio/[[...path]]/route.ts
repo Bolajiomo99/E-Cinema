@@ -5,6 +5,7 @@ import { aiEnabled, readCertificate, session } from "@/lib/licensing";
 import { mediaEnabled, putRoomObject, roomObjectLink } from "@/lib/media";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { draftNotice } from "@/lib/leak-notice";
+import { askStudio, type Turn } from "@/lib/studio-ai";
 import { isStaff } from "@/lib/store";
 import type { Studio } from "@/lib/studio-types";
 
@@ -77,6 +78,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   const p = (await params).path ?? [];
   const s = await session();
   if (!s) return json(401, { error: "Sign in first", signIn: true });
+
+  // Studio AI (Figma 39:1345): a question about the studio's own numbers.
+  if (p.length === 1 && p[0] === "ai") {
+    if (limited(s + ":ai", 10)) return json(429, { error: "Slow down: Studio AI takes 10 questions a minute" });
+    const cur = await accountApi("GET", "/v1/me/studio", undefined, s);
+    const st = cur.status === 200 ? (cur.body as { studio: Studio | null }).studio : null;
+    if (!st || st.status !== "verified") return json(404, { error: "Not found" });
+    const body = await req.json().catch(() => ({}));
+    const turns = (Array.isArray(body.messages) ? (body.messages as Record<string, unknown>[]) : []).slice(-12)
+      .map((t) => ({ role: t.role === "assistant" ? "assistant" : "user", text: String(t.text ?? "").trim().slice(0, 2000) }) as Turn).filter((t) => t.text);
+    while (turns.length && turns[0].role !== "user") turns.shift();
+    if (!turns.length || turns[turns.length - 1].role !== "user") return json(400, { error: "Ask a question" });
+    const today = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", dateStyle: "full" }).format(new Date());
+    try {
+      return json(200, await askStudio(s, st.name, st.role ?? "viewer", turns, today));
+    } catch (e) {
+      if ((e as Error).message === "off") return json(503, { error: "Studio AI is not switched on yet." });
+      console.error("studio ai", (e as Error).message);
+      return json(502, { error: "Studio AI did not answer. Try again" });
+    }
+  }
 
   // The company certificate: stored privately, then read by AI against what the studio typed.
   if (p[0] === "docs") {
