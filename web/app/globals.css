@@ -5183,3 +5183,12 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exf-st.open { background: #3a1016; color: #ff7a85; }
 @media (max-width: 980px) { .exf-row { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .exf-case { flex-wrap: wrap; } .exf-txt { flex-basis: 100%; } }
+
+/* Executive · Hiring and jobs (117:948) */
+.exh-row { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+.exh-bar { grid-template-columns: 120px 1fr 52px; }
+.exh-quota { font-family: "Bebas Neue", Manrope, sans-serif; font-size: 40px; letter-spacing: .5px; color: #2bb3a3; margin: 6px 0 4px; }
+.exh-rest { color: #b4b4be; font-size: 14px; margin: 0 0 4px; }
+.exh-g { grid-template-columns: 1.4fr 1fr 1fr; }
+.exh-dialog { max-width: 640px; width: calc(100vw - 32px); max-height: calc(100vh - 48px); overflow-y: auto; }
+@media (max-width: 980px) { .exh-row { grid-template-columns: 1fr; } }

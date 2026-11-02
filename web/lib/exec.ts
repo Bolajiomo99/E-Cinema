@@ -202,3 +202,15 @@ export async function safetyVerdicts(cases: SafetyCase[]): Promise<Record<string
   for (const c of cases) { const v = verdicts.get(`${c.messageId}`); if (v) out[c.messageId] = v; }
   return out;
 }
+
+// Hiring and jobs (Figma 117:948).
+export type HiringData = {
+  open: number; openNg: number; appsQuarter: number; countries: number; hiredYear: number; hiredNg: number; daysToHire: number; ngShare: number;
+  teams: { team: string; ng: number; total: number }[]; pipeline: { stage: string; ng: number; world: number }[]; byCountry: Record<string, number>;
+  canPost: boolean; canQuota: boolean;
+};
+
+export async function execHiring(s: string): Promise<HiringData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/hiring", undefined, s);
+  return r.status === 200 ? (r.body as HiringData) : null;
+}
