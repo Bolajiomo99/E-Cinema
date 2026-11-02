@@ -137,3 +137,15 @@ export async function execCanAdd(s: string): Promise<boolean> {
   const r = await accountApi("GET", "/v1/me/exec/can-add", undefined, s);
   return r.status === 200 && Boolean((r.body as { canAdd?: boolean }).canAdd);
 }
+
+// Rooms and VR halls (Figma 83:831).
+export type RoomType = {
+  id: string; name: string; kind: "vr" | "ar" | "party" | "private"; scene: "hall" | "rooftop" | "space" | "living" | "lounge"; seats: number;
+  audience: "everyone" | "vip" | "adult" | "kids"; voice: boolean; spatial: boolean; avatars: boolean; live: boolean; parties: number;
+};
+export type RoomsData = { types: RoomType[]; vrSeats: number; parties: number; avgParty: number; canAdd: boolean; updatedBy: string; updatedAt: string | null };
+
+export async function execRooms(s: string): Promise<RoomsData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/rooms", undefined, s);
+  return r.status === 200 ? (r.body as RoomsData) : null;
+}

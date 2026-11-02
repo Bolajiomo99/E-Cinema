@@ -5126,3 +5126,33 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .epf-cart { height: 34px; display: inline-flex; align-items: center; font-size: 13px; padding: 0 14px; }
 @media (max-width: 980px) { .epf-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .epf-two { grid-template-columns: 1fr; } .exs2-g { grid-template-columns: minmax(160px, 2fr) 60px 70px 90px 130px 60px; } }
+
+/* Executive · Rooms and VR halls (83:831) */
+.exr-big { font-family: "Bebas Neue", Manrope, sans-serif; letter-spacing: .5px; font-size: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
+.exr-card { text-align: left; background: #131317; border: 1px solid #1f1f26; border-radius: 14px; padding: 10px 10px 14px; color: #f4f4f6; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.exr-card:disabled { cursor: default; }
+.exr-card:not(:disabled):hover { border-color: #34343f; }
+.exr-card small { color: #8a8a96; font-size: 12px; padding: 0 4px; }
+.exr-card .exr-who { color: #6e6e7a; }
+.exr-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 4px 0; }
+.exr-top b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exr-live, .exr-draft { font-size: 11px; padding: 2px 8px; border-radius: 6px; flex: none; }
+.exr-live { background: #0f2a22; color: #3ddc97; }
+.exr-draft { background: #2e2410; color: #e8b34b; }
+.exr-art { position: relative; height: 112px; border-radius: 9px; overflow: hidden; }
+.exr-scr { position: absolute; left: 22%; right: 22%; top: 16%; height: 34%; border-radius: 3px; background: linear-gradient(135deg, #f4f4f6, #a9b8d6); box-shadow: 0 0 28px rgba(200,215,255,.45); }
+.exr-seats { position: absolute; left: -10%; right: -10%; bottom: -6%; height: 42%; background: repeating-linear-gradient(180deg, transparent 0 6px, rgba(0,0,0,.35) 6px 8px), repeating-linear-gradient(90deg, var(--seat, #8e1420) 0 10px, transparent 10px 13px); transform: perspective(120px) rotateX(38deg); transform-origin: bottom; }
+.exr-hall { background: radial-gradient(120% 90% at 50% 10%, #3a0a10, #0b0507 70%); }
+.exr-rooftop { background: linear-gradient(180deg, #0b1a3a 0%, #3a2152 55%, #ff7a3d 92%); --seat: #2c2f3a; }
+.exr-space { background: radial-gradient(ellipse at 50% 30%, #241a52 0%, #000 75%); --seat: #3c3f5a; }
+.exr-living { background: linear-gradient(180deg, #3b2f27, #1c1612); --seat: #6b5848; }
+.exr-lounge { background: radial-gradient(120% 90% at 30% 20%, #2a1252, #0c0716 75%); --seat: #4b2a7a; }
+.exr-lounge .exr-scr { background: linear-gradient(135deg, #ff4d8d, #6a5cff); box-shadow: 0 0 28px rgba(255,77,141,.4); }
+.exr-row { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+.exr-note { color: #6e6e7a; font-size: 11px; }
+.exr-fixed { margin: 0; color: #b4b4be; font-size: 13px; background: #1a1a20; border: 1px solid #2a2a33; border-radius: 8px; padding: 11px 12px; }
+.exr-aud { margin: 0; }
+.exr-prev { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 8px; border: 1px dashed #2a2a33; color: #6e6e7a; font-size: 13px; }
+.exr-ask { text-align: left; max-width: none; }
+@media (max-width: 980px) { .exr-row { grid-template-columns: 1fr; } }
