@@ -22,7 +22,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Investor view", icon: "pie" },
   { label: "Stakeholder view", icon: "people" },
   { label: "Partners view", icon: "hands" },
-  { label: "Access and roles", icon: "key", lock: true },
+  { label: "Access and roles", href: "/executive/access", icon: "key", lock: true },
   { label: "18+ recipients", icon: "heart", lock: true },
   { label: "Notifications", icon: "bell" },
   { label: "Settings", icon: "gear" },

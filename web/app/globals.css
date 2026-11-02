@@ -4892,3 +4892,78 @@ a.cp-person:hover { border-color: #44444f; }
 .exc-empty { color: #8a8a96; font-size: 13px; line-height: 20px; margin: 0; }
 @media (max-width: 1100px) { .exc-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .exc-row { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .exc { padding: 16px 16px 40px; } .exc h1 { font-size: 24px; line-height: 32px; } .exc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .exc-tile b { font-size: 21px; } .exc-bars li { grid-template-columns: 84px 1fr 44px; } }
+
+/* Access and roles (Figma 49:1307, 99:1041) */
+.exa .exc-sub { max-width: 700px; }
+.exa-red { height: 40px; padding: 0 18px; border: 0; border-radius: 8px; background: #e3182d; color: #fff; font: 600 14px Manrope, sans-serif; cursor: pointer; }
+.exa-red:disabled { opacity: .55; cursor: default; }
+.exa-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.exa-card { padding: 14px 16px; }
+.exa-card div { display: flex; align-items: center; gap: 8px; }
+.exa-card i { width: 8px; height: 8px; border-radius: 4px; }
+.exa-card b { font: 600 15px Manrope, sans-serif; }
+.exa-card small { margin-left: auto; color: #6e6e7a; font-size: 11px; }
+.exa-card p { margin: 8px 0 0; color: #a6a6b0; font-size: 12px; line-height: 18px; }
+.exa-msg { margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
+.exa-msg.ok { background: rgba(34,197,94,.1); color: #6ee7a0; }
+.exa-msg.bad { background: rgba(227,24,45,.12); color: #ff8a95; }
+.exa-table { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.exa-th, .exa-tr { display: grid; grid-template-columns: 1.4fr 1fr 1.5fr .9fr 70px; align-items: center; gap: 12px; }
+.exa-th { padding: 0 12px; color: #6e6e7a; font: 600 11px Manrope, sans-serif; letter-spacing: .3px; }
+.exa-tr { background: #1b1b21; border-radius: 10px; padding: 12px; font-size: 13px; color: #c8c8d0; }
+.exa-tr small { display: block; color: #6e6e7a; font-size: 11px; }
+.exa-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.exa-who em { flex: 0 0 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; font: 700 11px Manrope, sans-serif; font-style: normal; color: #fff; }
+.exa-who b { display: block; color: #f4f4f6; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exa-who > span { min-width: 0; }
+.exa-role { color: #8b7cf6; font: 700 11px Manrope, sans-serif; letter-spacing: .3px; }
+.exa-exp { color: #ff8a95 !important; }
+.exa-edit, .exa-ghost { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #34343f; background: transparent; color: #f4f4f6; font: 600 13px Manrope, sans-serif; cursor: pointer; }
+.exa-row { grid-template-columns: 1.1fr 1fr; }
+.exa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.exa label, .exa-lab { display: flex; flex-direction: column; gap: 6px; color: #a6a6b0; font-size: 12px; }
+.exa input:not([type=checkbox]), .exa select { height: 42px; padding: 0 12px; border-radius: 8px; border: 1px solid #26262e; background: #1b1b21; color: #f4f4f6; font: 500 14px Manrope, sans-serif; color-scheme: dark; }
+.exa input:focus, .exa select:focus { outline: none; border-color: #f4f4f6; }
+.exa-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.exa-chips button { height: 30px; padding: 0 12px; border-radius: 15px; border: 0; background: #1f1f26; color: #a6a6b0; font: 600 12px Manrope, sans-serif; cursor: pointer; }
+.exa-chips button.on { background: #f4f4f6; color: #0a0a0c; }
+.exa-sec ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.exa-sec li { position: relative; padding-left: 24px; color: #8a8a96; font-size: 13px; line-height: 20px; }
+.exa-sec li.ok { color: #d4d4dc; }
+.exa-sec li::before { content: "–"; position: absolute; left: 4px; color: #6e6e7a; }
+.exa-sec li.ok::before { content: "✓"; color: #22c55e; }
+.exa-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.exa-dialog { width: 100%; max-width: 600px; box-sizing: border-box; background: #18181d; border: 1px solid #26262e; border-radius: 16px; padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+.exa-dh { display: flex; justify-content: space-between; align-items: center; }
+.exa-dh h2 { margin: 0; font: 600 22px Manrope, sans-serif; }
+.exa-dh span { padding: 3px 8px; border-radius: 10px; border: 1px solid #e3182d; color: #ff6b78; font: 600 11px Manrope, sans-serif; }
+.exa-dp { margin: 0; color: #a6a6b0; font-size: 13px; line-height: 20px; }
+.exa-dialog .exa-grid { margin: 0; }
+.exa-roles { display: flex; flex-direction: column; gap: 8px; }
+.exa-opt { border: 1px solid #26262e; border-radius: 10px; background: #1b1b21; }
+.exa-opt.on { border-color: #e3182d; }
+.exa-opt button { width: 100%; text-align: left; padding: 12px 14px; border: 0; background: none; color: #f4f4f6; cursor: pointer; }
+.exa-opt b { display: block; font: 600 14px Manrope, sans-serif; }
+.exa-opt small { display: block; color: #8a8a96; font-size: 12px; margin-top: 2px; }
+.exa-opt select { margin: 0 14px 12px; width: calc(100% - 28px); }
+.exa-full { width: 100%; }
+.exa-full small { color: #6e6e7a; font-size: 11px; }
+label.exa-tog { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; }
+.exa-tog b { display: block; color: #f4f4f6; font: 600 14px Manrope, sans-serif; }
+.exa-tog small { display: block; color: #8a8a96; font-size: 12px; }
+.exa-tog input { appearance: none; flex: 0 0 38px; width: 38px; height: 22px; border-radius: 11px; background: #f4f4f6; position: relative; cursor: pointer; transition: background .15s; }
+.exa-tog input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: #0a0a0c; transition: left .15s; }
+.exa-tog input:checked { background: #e3182d; }
+.exa-tog input:checked::after { left: 19px; background: #fff; }
+.exa-tog input:focus-visible, .exa-opt button:focus-visible, .exa-chips button:focus-visible, .exa-red:focus-visible, .exa-ghost:focus-visible, .exa-edit:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.exa-dact { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.exa-rm { margin-right: auto; height: 40px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: #ff6b78; font: 600 13px Manrope, sans-serif; cursor: pointer; }
+@media (max-width: 1100px) { .exa-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .exa-th { display: none; }
+  .exa-tr { grid-template-columns: 1fr auto; }
+  .exa-tr > span:nth-child(3), .exa-tr > span:nth-child(4) { grid-column: 1 / -1; }
+  .exa-grid { grid-template-columns: 1fr; }
+  .exa-cards { grid-template-columns: 1fr; }
+}
+.exa > .exc-card { margin-bottom: 14px; }
