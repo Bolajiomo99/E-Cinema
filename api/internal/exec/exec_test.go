@@ -111,3 +111,70 @@ func TestAccess(t *testing.T) {
 		t.Fatalf("second revoke: %v", err)
 	}
 }
+
+func TestMoney(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'mx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM holds WHERE showtime_id = 'test-mx-1'`)
+		p.Exec(ctx, `DELETE FROM showtimes WHERE id = 'test-mx-1'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	p.Exec(ctx, `INSERT INTO executives (email, role, can_money) VALUES ('mx-cfo@example.com', 'cfo', false), ('mx-coo@example.com', 'coo', false), ('mx-inv@example.com', 'investor', true)`)
+	p.Exec(ctx, `INSERT INTO showtimes (id, film, studio, starts_at, duration_min, capacity, price_cents, currency) VALUES ('test-mx-1', 'Orbit Zero', 'Test Studio', now() - interval '1 day', 100, 50, 1000, 'USD')`)
+	p.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, paypal_order_id, net_cents) VALUES
+	  ('test-mx-1', 2, 'mx1', 'paid', now(), 'PSK-mx1', 2000), ('test-mx-1', 1, 'mx2', 'refunded', now(), 'FLW-mx2', 1000), ('test-mx-1', 1, 'mx3', 'paid', now(), 'PAYPAL-mx3', NULL),
+	  ('test-mx-1', 1, 'mx4', 'released', now(), 'PSK-mx4', NULL)`)
+	p.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, paypal_order_id, paypal_capture_id, net_cents) VALUES ('test-mx-1', 1, 'mx5', 'paid', now(), 'x', 'CREDIT-x', 1000)`)
+	st := exec.Store{DB: p, CEOs: []string{"mx-ceo@example.com"}}
+	for _, e := range []string{"mx-coo@example.com", "mx-nobody@example.com"} {
+		if _, err := st.Money(ctx, e, 30, time.Now()); !errors.Is(err, exec.ErrForbidden) {
+			t.Fatalf("%s: %v", e, err)
+		}
+	}
+	for _, e := range []string{"mx-ceo@example.com", "mx-cfo@example.com", "mx-inv@example.com"} {
+		if _, err := st.Money(ctx, e, 30, time.Now()); err != nil {
+			t.Fatalf("%s: %v", e, err)
+		}
+	}
+	// Our three paid-with-money seats: 2000 + 1000 USD gross; credit seats are not counted again.
+	before, _ := st.Money(ctx, "mx-ceo@example.com", 30, time.Now().Add(-time.Hour))
+	m, err := st.Money(ctx, "mx-ceo@example.com", 30, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := func(m exec.Money) (g, n int64) {
+		for _, r := range m.Rows {
+			if r.Source == "tickets" && r.Currency == "USD" && !r.Prev {
+				g += r.Gross
+				n += r.Net
+			}
+		}
+		return
+	}
+	g0, n0 := sum(before)
+	g1, n1 := sum(m)
+	if g1-g0 != 3000 || n1-n0 != 900 {
+		t.Fatalf("tickets gross %d net %d (before %d %d)", g1, n1, g0, n0)
+	}
+	prov := map[string]exec.ProviderRow{}
+	for _, x := range m.Providers {
+		prov[x.Provider] = x
+	}
+	if prov["paystack"].Tried < 2 || prov["flutterwave"].Refunded < 1 {
+		t.Fatalf("providers %+v", m.Providers)
+	}
+}

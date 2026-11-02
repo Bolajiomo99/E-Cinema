@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -37,6 +38,12 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}))
+	// Money (Figma 50:253): the CEO, the CFO and anyone allowed to see money.
+	mux.HandleFunc("GET /v1/me/exec/money", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+		m, err := s.Exec.Money(r.Context(), a.Email, days, time.Now())
+		reply(w, m, err)
 	}))
 	// The command center (Figma 49:1055), with who is in a watch room right now from the hub.
 	mux.HandleFunc("GET /v1/me/exec/command", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
