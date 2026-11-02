@@ -38,8 +38,8 @@ export const ROLE_HELP: Record<Role, string> = {
   viewer: "Can look at everything, change nothing",
 };
 // Same rule as the API (api/internal/studios can()).
-export const can = (role: Role | undefined, action: "edit" | "team" | "money") =>
-  role === "owner" || role === "admin" || (role === "finance" && action === "money");
+export const can = (role: Role | undefined, action: "edit" | "team" | "money" | "marketing") =>
+  role === "owner" || role === "admin" || (role === "finance" && action === "money") || (role === "marketing" && action === "marketing");
 
 // The sidebar (Figma 34:272). Pages not built yet carry "Soon" and do not link.
 export const STUDIO_NAV: { label: string; href?: string; icon: string }[] = [
@@ -52,7 +52,7 @@ export const STUDIO_NAV: { label: string; href?: string; icon: string }[] = [
   { label: "Analytics", href: "/studio/analytics", icon: "chart" },
   { label: "Revenue and payouts", href: "/studio/payouts", icon: "wallet" },
   { label: "Piracy protection", href: "/studio/piracy", icon: "shield" },
-  { label: "Marketing", icon: "megaphone" },
+  { label: "Marketing", href: "/studio/marketing", icon: "megaphone" },
   { label: "Team", href: "/studio/team", icon: "team" },
   { label: "Settings", href: "/studio/settings", icon: "gear" },
 ];
