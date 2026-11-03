@@ -17,14 +17,14 @@ export type Command = {
 };
 export type CommandPage = { command: Command; online: number; biggestRoom: number; onlineByCountry: { country: string; watching: number }[] };
 
-export type ExecMe = { role: ExecRole | ""; money: boolean };
+export type ExecMe = { role: ExecRole | ""; money: boolean; needsStrong?: boolean };
 
 export async function execMe(s: string): Promise<ExecMe | null> {
   if (!s) return { role: "", money: false };
   const r = await accountApi("GET", "/v1/me/exec", undefined, s);
   if (r.status !== 200) return null;
-  const b = r.body as { role?: string; money?: boolean };
-  return { role: (b.role ?? "") as ExecRole | "", money: Boolean(b.money) };
+  const b = r.body as { role?: string; money?: boolean; needsStrong?: boolean };
+  return { role: (b.role ?? "") as ExecRole | "", money: Boolean(b.money), needsStrong: Boolean(b.needsStrong) };
 }
 
 export async function commandCenter(s: string): Promise<CommandPage | null> {
@@ -321,4 +321,15 @@ export type CampaignsData = {
 export async function execCampaigns(s: string): Promise<CampaignsData | null> {
   const r = await accountApi("GET", "/v1/me/exec/campaigns", undefined, s);
   return r.status === 200 ? (r.body as CampaignsData) : null;
+}
+
+// Executive settings (Figma 83:386), CEO only.
+export type SettingsData = {
+  values: Record<string, boolean | string>; strong: boolean;
+  audit: { actor: string; key: string; old: unknown; new: unknown; at: string }[];
+  countries: { country: string; members: number }[];
+};
+export async function execSettings(s: string): Promise<SettingsData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/settings", undefined, s);
+  return r.status === 200 ? (r.body as SettingsData) : null;
 }

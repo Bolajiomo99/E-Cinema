@@ -5,6 +5,7 @@ import ExecShell from "@/components/exec/ExecShell";
 import { currentAccount } from "@/lib/auth";
 import { session } from "@/lib/licensing";
 import { execMe } from "@/lib/exec";
+import { refreshPlatform, switchOn } from "@/lib/platform";
 
 // The executive area: only people the API knows as executives get the shell.
 export const dynamic = "force-dynamic";
@@ -24,5 +25,17 @@ export default async function Executive({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  return <ExecShell name={me.name} role={role} money={who.money}>{children}</ExecShell>;
+  // Settings > "Passkey and face for every executive" (Figma 83:386).
+  if (who.needsStrong) {
+    return (
+      <main className="exs-none">
+        <h1>Add a passkey and a face check first</h1>
+        <p>The CEO requires every executive to sign in with a passkey and to finish the ID and face check before opening the executive area.</p>
+        <Link href="/settings/security" className="exs-back">Add a passkey</Link>{" "}
+        <Link href="/settings/account" className="exs-back">Finish the face check</Link>
+      </main>
+    );
+  }
+  await refreshPlatform();
+  return <ExecShell name={me.name} role={role} money={who.money} idleMinutes={switchOn("sec.timeout") ? 15 : 0}>{children}</ExecShell>;
 }

@@ -5408,3 +5408,21 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
   .exnt-table .exrc-tr { grid-template-columns: 1fr auto; }
   .exnt-table .exrc-tr > span:nth-child(n+2):nth-child(-n+6) { display: none; }
 }
+
+/* Executive settings (Figma 83:386) */
+.exst-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 14px; align-items: start; }
+.exst-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #1f1f26; }
+.exst-row:last-of-type { border-bottom: 0; }
+.exst-row b { display: block; font-weight: 500; font-size: 14px; }
+.exst-row small { display: block; color: #8a8a96; font-size: 12.5px; margin-top: 3px; line-height: 18px; }
+.exst-soon { display: flex; align-items: center; gap: 10px; flex: none; }
+.exst-row .st-toggle { width: 40px; height: 22px; border-radius: 11px; }
+.exst-row .st-toggle i { width: 16px; height: 16px; }
+.exst-row .st-toggle.on i { left: 21px; }
+.exst-note { margin: 10px 0 0; color: #8a8a96; font-size: 12.5px; line-height: 18px; }
+.exst-table .exrc-tr { grid-template-columns: 1.1fr .8fr .7fr 2fr; }
+.exst-log { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.exst-log li { font-size: 14px; color: #d4d4dc; }
+.exst-log small { display: block; color: #8a8a96; font-size: 12px; margin-top: 2px; }
+@media (max-width: 1100px) { .exst-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .exst-table .exrc-tr { grid-template-columns: 1fr auto; } .exst-table .exrc-tr > span:nth-child(2), .exst-table .exrc-tr > span:nth-child(3) { display: none; } .exst-table .exrc-th { display: none; } }

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useEffect } from "react";
 import Logo from "@/components/landing/Logo";
 import { EXEC_NAV, ROLE_LABEL } from "@/lib/exec-types";
 
@@ -34,9 +34,23 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{P[name]}</svg>;
 }
 
-export default function ExecShell({ name, role, money, children }: { name: string; role: string; money: boolean; children: ReactNode }) {
+export default function ExecShell({ name, role, money, idleMinutes = 0, children }: { name: string; role: string; money: boolean; idleMinutes?: number; children: ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  // Settings > "Session timeout": sign out after this many idle minutes (0 = off).
+  useEffect(() => {
+    if (!idleMinutes) return;
+    let timer = 0;
+    const out = async () => {
+      await fetch("/api/auth/signout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+      window.location.href = `/signin?next=${encodeURIComponent(window.location.pathname)}`;
+    };
+    const reset = () => { window.clearTimeout(timer); timer = window.setTimeout(out, idleMinutes * 60_000); };
+    const evs = ["pointerdown", "keydown", "scroll", "pointermove"] as const;
+    evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => { window.clearTimeout(timer); evs.forEach((e) => window.removeEventListener(e, reset)); };
+  }, [idleMinutes]);
   const on = (href: string) => path === href || (href !== "/executive" && path.startsWith(href + "/"));
   const ini = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "EC";
   const first = name.trim().split(/\s+/)[0] || "Executive";
