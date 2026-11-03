@@ -3,8 +3,10 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
 
 // The 18+ unlock (Figma 28:839): adult status, PIN, a code per stage, and the stage ledger.
@@ -58,6 +60,15 @@ func (s *Server) adultRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"grant": g})
 	}))
+	// The recipients a viewer can pick for a fund stage (1 to 3): names and places only.
+	mux.HandleFunc("GET /v1/adult/recipients/{stage}", func(w http.ResponseWriter, r *http.Request) {
+		stage, _ := strconv.Atoi(r.PathValue("stage"))
+		list, err := s.Tickets.Recipients(r.Context(), stage)
+		if list == nil {
+			list = []tickets.Recipient{}
+		}
+		reply(w, list, err)
+	})
 	// Records the PayPal order for a fund stage. The grant proves the PIN and code were checked.
 	mux.HandleFunc("POST /v1/me/adult/{showtime}/stages", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		var b struct {
@@ -66,6 +77,7 @@ func (s *Server) adultRoutes(mux *http.ServeMux) {
 			AmountCents int    `json:"amountCents"`
 			Currency    string `json:"currency"`
 			Grant       string `json:"grant"`
+			Recipient   string `json:"recipient,omitempty"`
 		}
 		if !decode(w, r, &b) {
 			return
@@ -74,7 +86,7 @@ func (s *Server) adultRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
-		if err := s.Tickets.AttachStage(r.Context(), a.ID, r.PathValue("showtime"), b.Stage, b.OrderID, b.AmountCents, b.Currency); err != nil {
+		if err := s.Tickets.AttachStage(r.Context(), a.ID, r.PathValue("showtime"), b.Stage, b.OrderID, b.AmountCents, b.Currency, b.Recipient); err != nil {
 			fail(w, err)
 			return
 		}

@@ -154,16 +154,34 @@ func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
 	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); !errors.Is(err, tickets.ErrStagesDue) {
 		t.Fatalf("verified, no stages paid: want ErrStagesDue, got %v", err)
 	}
+	// With an active charity on the list, stage 1 must name one of them.
+	var charity, paused string
+	s.DB.QueryRow(ctx, `INSERT INTO adult_recipients (kind, name, country, status, added_by) VALUES ('charity', 'Tx Hope Home', 'NG', 'active', 't') RETURNING id::text`).Scan(&charity)
+	s.DB.QueryRow(ctx, `INSERT INTO adult_recipients (kind, name, country, status, added_by) VALUES ('charity', 'Tx Paused Home', 'NG', 'paused', 't') RETURNING id::text`).Scan(&paused)
+	if list, err := s.Recipients(ctx, 1); err != nil || len(list) == 0 {
+		t.Fatalf("recipients = %v, %v", list, err)
+	}
+	if err := s.AttachStage(ctx, id, "adult-test", 1, "ORD-R0", 879, "USD", ""); !errors.Is(err, tickets.ErrRecipient) {
+		t.Fatalf("no pick: %v", err)
+	}
+	if err := s.AttachStage(ctx, id, "adult-test", 1, "ORD-R1", 879, "USD", paused); !errors.Is(err, tickets.ErrRecipient) {
+		t.Fatalf("paused pick: %v", err)
+	}
+	if err := s.AttachStage(ctx, id, "adult-test", 1, "ORD-R2", 879, "USD", charity); err != nil {
+		t.Fatalf("good pick: %v", err)
+	}
+	s.DB.Exec(ctx, `DELETE FROM adult_stages WHERE showtime_id = 'adult-test'`)
+	s.DB.Exec(ctx, `DELETE FROM adult_recipients WHERE name LIKE 'Tx %'`)
 	// Stages go in order: 1 charity, 2 church, 3 mosque. Each is paid through PayPal.
-	if err := s.AttachStage(ctx, id, "adult-test", 2, "ORD-A2", 879, "USD"); !errors.Is(err, tickets.ErrWrongStage) {
+	if err := s.AttachStage(ctx, id, "adult-test", 2, "ORD-A2", 879, "USD", ""); !errors.Is(err, tickets.ErrWrongStage) {
 		t.Fatalf("skipping stage 1: %v", err)
 	}
 	for i := 1; i <= 3; i++ {
 		order := fmt.Sprintf("ORD-A%d-%s", i, id[:8])
-		if err := s.AttachStage(ctx, id, "adult-test", i, "STALE-"+order, 879, "USD"); err != nil {
+		if err := s.AttachStage(ctx, id, "adult-test", i, "STALE-"+order, 879, "USD", ""); err != nil {
 			t.Fatalf("stage %d: %v", i, err)
 		}
-		if err := s.AttachStage(ctx, id, "adult-test", i, order, 879, "USD"); err != nil {
+		if err := s.AttachStage(ctx, id, "adult-test", i, order, 879, "USD", ""); err != nil {
 			t.Fatalf("stage %d retry: %v", i, err)
 		}
 		if err := s.MarkPaid(ctx, "STALE-"+order, "CAP-STALE"); !errors.Is(err, tickets.ErrNoHold) {
@@ -180,7 +198,7 @@ func TestAdultScreeningsNeedVerifiedAccount(t *testing.T) {
 	if err != nil || len(got) != 3 || got[2].Fund != "mosque" || got[0].Status != "paid" {
 		t.Fatalf("stages = %+v, %v", got, err)
 	}
-	if err := s.AttachStage(ctx, id, "adult-test", 3, "ORD-AGAIN", 879, "USD"); !errors.Is(err, tickets.ErrWrongStage) {
+	if err := s.AttachStage(ctx, id, "adult-test", 3, "ORD-AGAIN", 879, "USD", ""); !errors.Is(err, tickets.ErrWrongStage) {
 		t.Fatalf("paying stage 3 twice: %v", err)
 	}
 	if _, err := s.Hold(ctx, "adult-test", "v", 1, id); err != nil {
