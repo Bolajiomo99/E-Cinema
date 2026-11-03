@@ -286,3 +286,14 @@ export async function execStakeholder(s: string): Promise<StakeholderData | null
   const r = await accountApi("GET", "/v1/me/exec/stakeholder", undefined, s);
   return r.status === 200 ? (r.body as StakeholderData) : null;
 }
+
+// Partners view (Figma 51:198).
+export type Deal = { email: string; name: string; org: string; kind: string; provider: string; summary: string; plan: string[] };
+export type PartnerData = {
+  deal: Deal | null; deals: Deal[]; canEdit: boolean;
+  stats: { paid: number; paidPrev: number; tried: number; refunded: number; volume: CurAmount[]; countries: Record<string, number> } | null;
+};
+export async function execPartner(s: string, as = ""): Promise<PartnerData | null> {
+  const r = await accountApi("GET", `/v1/me/exec/partner${as ? `?as=${encodeURIComponent(as)}` : ""}`, undefined, s);
+  return r.status === 200 ? (r.body as PartnerData) : null;
+}

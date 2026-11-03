@@ -5322,3 +5322,14 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exstk-doc a::before { content: "▤ "; color: #8a8a96; }
 .exstk-doc small { color: #6e6e7a; font-size: 12px; white-space: nowrap; }
 .exstk-up { display: inline-flex; align-items: center; margin-top: 12px; cursor: pointer; }
+/* Executive partners view (Figma 51:198) */
+.exprt-pick { margin-bottom: 14px; }
+.exprt-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+.exprt-chips a { text-decoration: none; }
+.exprt-types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.exprt-types > * { background: #1f1f26; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; }
+.exprt-types b { font-size: 14px; color: #fff; font-weight: 600; }
+.exprt-types small { font-size: 12px; color: #8a8a96; }
+@media (max-width: 980px) { .exprt-types { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.exprt-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 14px; border-radius: 999px; border: 1px solid #2a2a33; background: #1a1a20; color: #e6e6ea; font: 500 12px Manrope, sans-serif; }
+.exprt-chip.on { background: #fff; color: #111; border-color: #fff; }
