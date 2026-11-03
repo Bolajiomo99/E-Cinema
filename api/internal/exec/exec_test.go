@@ -787,3 +787,52 @@ func TestStakeholder(t *testing.T) {
 		t.Fatalf("deleted doc: %v", err)
 	}
 }
+
+func TestPartner(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() { p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'px-%@example.com'`) }
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"px-ceo@example.com"}}
+	p.Exec(ctx, `INSERT INTO executives (email, role, name, org) VALUES ('px-pay@example.com', 'partner', 'Ife Obi', 'Kola Pay'), ('px-tel@example.com', 'partner', 'Musa Bello', 'Harmattan Mobile'), ('px-cmo@example.com', 'cmo', '', '')`)
+	if _, err := st.Partner(ctx, "px-cmo@example.com", "", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cmo: %v", err)
+	}
+	pv, err := st.Partner(ctx, "px-pay@example.com", "", time.Now())
+	if err != nil || pv.Deal != nil || pv.CanEdit {
+		t.Fatalf("no deal yet = %+v, %v", pv, err)
+	}
+	if err := st.SaveDeal(ctx, "px-pay@example.com", exec.Deal{Email: "px-pay@example.com", Kind: "other"}); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("partner editing: %v", err)
+	}
+	if err := st.SaveDeal(ctx, "px-ceo@example.com", exec.Deal{Email: "px-pay@example.com", Kind: "payments", Provider: "venmo"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad provider: %v", err)
+	}
+	if err := st.SaveDeal(ctx, "px-ceo@example.com", exec.Deal{Email: "px-cmo@example.com", Kind: "other"}); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("not a partner: %v", err)
+	}
+	if err := st.SaveDeal(ctx, "px-ceo@example.com", exec.Deal{Email: "PX-pay@example.com", Kind: "payments", Provider: "paystack", Summary: "Card and bank payments in Nigeria", Plan: []string{"Joint fraud desk", " "}}); err != nil {
+		t.Fatal(err)
+	}
+	st.SaveDeal(ctx, "px-ceo@example.com", exec.Deal{Email: "px-tel@example.com", Kind: "carrier"})
+	pv, err = st.Partner(ctx, "px-pay@example.com", "px-tel@example.com", time.Now())
+	if err != nil || pv.Deal == nil || pv.Deal.Org != "Kola Pay" || pv.Stats == nil || len(pv.Deal.Plan) != 1 {
+		t.Fatalf("payments partner = %+v, %v", pv, err)
+	}
+	ceo, err := st.Partner(ctx, "px-ceo@example.com", "px-tel@example.com", time.Now())
+	if err != nil || !ceo.CanEdit || ceo.Deal == nil || ceo.Deal.Kind != "carrier" || ceo.Stats != nil || len(ceo.Deals) < 2 {
+		t.Fatalf("ceo preview = %+v, %v", ceo, err)
+	}
+}

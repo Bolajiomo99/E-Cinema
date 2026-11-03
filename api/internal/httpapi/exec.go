@@ -189,6 +189,18 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Partners view (Figma 51:198).
+	mux.HandleFunc("GET /v1/me/exec/partner", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Exec.Partner(r.Context(), a.Email, r.URL.Query().Get("as"), time.Now())
+		reply(w, p, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/partner", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var d exec.Deal
+		if !decode(w, r, &d) {
+			return
+		}
+		reply(w, map[string]bool{"saved": true}, s.Exec.SaveDeal(r.Context(), a.Email, d))
+	}))
 	// Stakeholder view (Figma 83:958).
 	mux.HandleFunc("GET /v1/me/exec/stakeholder", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		st, err := s.Exec.Stakeholder(r.Context(), a.Email, time.Now())
