@@ -325,3 +325,30 @@ export async function sendStudioInvite(to: string, studio: string, by: string, n
   );
 }
 const note_ = (t: string) => note(`“${esc(t)}”`);
+
+// Announcements (Figma 51:375) go to members who keep "New features and updates" email on.
+// Sent in batches of up to 100 through Resend; returns how many were accepted.
+const NEWS_FROM = "E-Cinema <news@e-cinema.net>";
+export type CampaignMail = { email: string; name: string; title: string; body: string };
+export async function sendCampaignEmails(items: CampaignMail[], link: string): Promise<number> {
+  if (!emailEnabled || items.length === 0) return 0;
+  const href = `${site()}${link || "/"}`;
+  const footer = "You get this because \u201cNew features and updates\u201d email is on. Turn it off in Settings > Notifications.";
+  let sent = 0;
+  for (let i = 0; i < items.length; i += 100) {
+    const chunk = items.slice(i, i + 100).map((m) => ({
+      from: NEWS_FROM, to: [m.email], subject: m.title,
+      html: layout(m.body || m.title, m.title, `${m.body ? p(esc(m.body)) : ""}${button(href, "Open E-Cinema")}<p style="margin:0;font:500 13px/1.5 ${FONT};color:#7a7a84"><a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Email settings</a></p>`, "NEWS", footer),
+      text: `${m.title}\n\n${m.body ? m.body + "\n\n" : ""}${href}\n\nEmail settings: ${site()}/settings/notifications`,
+      headers: { "List-Unsubscribe": `<${site()}/settings/notifications>` },
+    }));
+    const res = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(chunk),
+      signal: AbortSignal.timeout(30000),
+    }).catch(() => null);
+    if (res?.ok) sent += chunk.length;
+  }
+  return sent;
+}
