@@ -15,17 +15,53 @@ import (
 
 // Executive dashboards (Figma page "07 Executive").
 func (s *Server) execRoutes(mux *http.ServeMux) {
+	// Every executive route checks the "passkey and face for every executive" switch (Figma 83:386).
 	on := func(fn func(w http.ResponseWriter, r *http.Request, a accounts.Account)) http.HandlerFunc {
-		return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) { fn(w, r, a) })
+		return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+			ok, err := s.Exec.StrongOK(r.Context(), a.ID)
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			if !ok {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "Add a passkey and finish the face check to open the executive area"})
+				return
+			}
+			fn(w, r, a)
+		})
 	}
-	mux.HandleFunc("GET /v1/me/exec", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+	mux.HandleFunc("GET /v1/me/exec", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		role, err := s.Exec.Role(r.Context(), a.Email)
 		if err != nil || role == "" {
 			reply(w, map[string]any{"role": role, "money": false}, err)
 			return
 		}
+		strong, err := s.Exec.StrongOK(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		money, err := s.Exec.CanSeeMoney(r.Context(), a.Email)
-		reply(w, map[string]any{"role": role, "money": money}, err)
+		reply(w, map[string]any{"role": role, "money": money, "needsStrong": !strong}, err)
+	}))
+	// Settings (Figma 83:386): platform switches, public for the web to read, CEO to change.
+	mux.HandleFunc("GET /v1/platform", func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.Exec.Platform(r.Context())
+		reply(w, v, err)
+	})
+	mux.HandleFunc("GET /v1/me/exec/settings", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Exec.Settings(r.Context(), a.Email, a.ID)
+		reply(w, p, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/settings", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Key   string `json:"key"`
+			Value any    `json:"value"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]any{"key": b.Key, "value": b.Value}, s.Exec.SetSetting(r.Context(), a.Email, a.ID, b.Key, b.Value))
 	}))
 	// Access and roles (Figma 49:1307): the CEO's list of people, grant or change, and remove.
 	mux.HandleFunc("GET /v1/me/exec/people", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {

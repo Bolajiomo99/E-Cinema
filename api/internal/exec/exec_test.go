@@ -981,3 +981,68 @@ func TestCampaigns(t *testing.T) {
 		t.Fatalf("cancel sent: %v", err)
 	}
 }
+
+func TestSettings(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM platform_settings`)
+		p.Exec(ctx, `DELETE FROM settings_audit WHERE actor LIKE 'sx-%'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'sx-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"sx-ceo@example.com"}}
+	var ceoID, cfoID string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('sx-ceo@example.com', 'Bo', 'x') RETURNING id`).Scan(&ceoID)
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('sx-cfo@example.com', 'Tolu', 'x') RETURNING id`).Scan(&cfoID)
+	v, err := st.Platform(ctx)
+	if err != nil || v["pay.paystack"] != true || v["sec.strong"] != false {
+		t.Fatalf("defaults = %v, %v", v, err)
+	}
+	if err := st.SetSetting(ctx, "sx-cfo@example.com", cfoID, "pay.paystack", false); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "pay.stripe", true); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("unknown: %v", err)
+	}
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "pay.paystack", "no"); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("type: %v", err)
+	}
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "company.support", "not an email"); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("email: %v", err)
+	}
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "pay.paystack", false); err != nil {
+		t.Fatal(err)
+	}
+	st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "pay.paystack", false) // no change, no log
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "sec.strong", true); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("strong without passkey: %v", err)
+	}
+	p.Exec(ctx, `UPDATE accounts SET face_verified_at = now() WHERE id = $1`, ceoID)
+	p.Exec(ctx, `INSERT INTO passkeys (id, account_id, credential, name) VALUES ('\x0102', $1, '{}', 'Laptop')`, ceoID)
+	if err := st.SetSetting(ctx, "sx-ceo@example.com", ceoID, "sec.strong", true); err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := st.StrongOK(ctx, cfoID); ok {
+		t.Fatal("cfo without passkey passes strong")
+	}
+	if ok, _ := st.StrongOK(ctx, ceoID); !ok {
+		t.Fatal("ceo with passkey fails strong")
+	}
+	pg, err := st.Settings(ctx, "sx-ceo@example.com", ceoID)
+	if err != nil || pg.Values["pay.paystack"] != false || len(pg.Audit) != 2 || pg.Audit[0].Key != "sec.strong" || !pg.Strong {
+		t.Fatalf("settings = %+v, %v", pg, err)
+	}
+}
