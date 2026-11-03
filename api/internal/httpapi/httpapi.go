@@ -365,7 +365,12 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, exec.ErrBadInput):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Check the email, role and end date"})
+		// Wrapped errors carry their own reason ("bad input: pick the kind of partner").
+		msg := "Check the email, role and end date"
+		if why, ok := strings.CutPrefix(err.Error(), exec.ErrBadInput.Error()+": "); ok && why != "" {
+			msg = strings.ToUpper(why[:1]) + why[1:]
+		}
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
 	case errors.Is(err, exec.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "That person has no executive access"})
 	case errors.Is(err, exec.ErrForbidden):
