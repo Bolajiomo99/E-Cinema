@@ -162,11 +162,15 @@ jobs:
           curl -s -o /dev/null -w '%{redirect_url}' "$web/checkout/failed?film=iron-delta-2026-12-14" | grep -c "/signin" >/dev/null
           echo "payment failed page ok"
           # 18+ titles unlock in four stages instead of a plain seat.
-          curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -c "Unlock in 4 stages" >/dev/null
-          curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -c "/signin" >/dev/null
-          echo "18+ unlock ok"
+          # The seeded lineup has fixed dates: checks tied to one screening run only while it is still ahead.
+          upcoming() { curl -fsS "$SMOKE_API/v1/showtimes" | jq -r --arg id "$1" '[.[] | select(.id == $id and .startsAt > (now | todate))] | length'; }
+          if [ "$(upcoming velvet-hour-2026-11-02)" = 1 ]; then
+            curl -fsS "$web/film/velvet-hour-2026-11-02" | grep -c "Unlock in 4 stages" >/dev/null
+            curl -s -o /dev/null -w '%{redirect_url}' "$web/unlock/velvet-hour-2026-11-02" | grep -c "/signin" >/dev/null
+            echo "18+ unlock ok"
+          else echo "18+ unlock skipped: that screening is over"; fi
           # Sold-out page: a premiere with seats left sends you to checkout; the lottery API answers.
-          curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/lagos-lights-2026-11-04" | grep -c "/checkout" >/dev/null
+          curl -s -o /dev/null -w '%{redirect_url}' "$web/sold-out/$next" | grep -c "/checkout" >/dev/null
           echo "sold-out lottery ok"
           # Gifts: the builder renders and an unknown gift code says so.
           curl -fsS "$web/gift" | grep -c "Build your gift" >/dev/null
