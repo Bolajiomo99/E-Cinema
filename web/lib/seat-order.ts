@@ -1,4 +1,5 @@
 import "server-only";
+import { switchOn } from "@/lib/platform";
 import { NextResponse } from "next/server";
 import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import type { OrderRequest } from "@paypal/paypal-server-sdk";
@@ -15,6 +16,7 @@ import { kidsGate } from "@/lib/family";
 export async function createSeatOrder(showtime: Showtime, session: string | undefined, quality?: string) {
   // Tickets belong to an account (one person, one seat), so buyers sign in first.
   if (apiEnabled && !session) return NextResponse.json({ error: "Sign in to buy a seat", signIn: true }, { status: 401 });
+  if (!switchOn("pay.paypal")) return NextResponse.json({ error: "PayPal is switched off just now. Pick another way to pay." }, { status: 503 });
   const gate = await kidsGate(session, showtime.adult ? "18+" : (showtime.rating ?? ""));
   if (gate) return gate;
 

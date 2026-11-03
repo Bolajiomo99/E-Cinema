@@ -1,4 +1,5 @@
 import "server-only";
+import { switchOn } from "@/lib/platform";
 import { accountApi } from "@/lib/auth";
 import { convert } from "@/lib/fx";
 import { currencyFor } from "@/lib/plans";
@@ -20,7 +21,9 @@ export async function storeProduct(id: string): Promise<{ product: Product; revi
 
 export async function myQuote(session: string, country?: string): Promise<Quote | null> {
   const r = await accountApi("GET", `/v1/me/cart${country ? `?country=${country}` : ""}`, undefined, session).catch(() => null);
-  return r?.status === 200 ? (r.body as Quote) : null;
+  if (r?.status !== 200) return null;
+  const q = r.body as Quote;
+  return { ...q, cod: q.cod && switchOn("pay.cod") };
 }
 
 export async function myOrders(session: string): Promise<{ orders: Order[]; reviewable: string[] }> {

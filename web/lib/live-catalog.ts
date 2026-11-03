@@ -1,5 +1,6 @@
 import "server-only";
 import { mergeLive, type Showtime } from "@/lib/catalog";
+import { refreshPlatform } from "@/lib/platform";
 
 // Studio premieres published from the portal (Figma 35:514), merged into the catalog every 30
 // seconds so a published film shows up on the site and can be booked without a redeploy.
@@ -57,6 +58,7 @@ let last = 0;
 let running: Promise<void> | null = null;
 
 export async function refreshLive(force = false) {
+  void refreshPlatform(force);
   const base = process.env.API_URL, token = process.env.INTERNAL_API_TOKEN;
   if (!base || !token) return;
   if (!force && Date.now() - last < 30_000) return;

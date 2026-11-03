@@ -1,4 +1,5 @@
 import "server-only";
+import { switchOn } from "@/lib/platform";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 // Paystack and Flutterwave hosted checkouts for Nigeria and the rest of Africa. Both charge in
@@ -7,7 +8,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 export type Provider = "paystack" | "flutterwave";
 export const PREFIX: Record<Provider, string> = { paystack: "PSK", flutterwave: "FLW" };
 
-export const providerReady = (p: Provider) => Boolean(p === "paystack" ? process.env.PAYSTACK_SECRET_KEY : process.env.FLUTTERWAVE_SECRET_KEY);
+export const providerReady = (p: Provider) => switchOn(`pay.${p}`) && Boolean(p === "paystack" ? process.env.PAYSTACK_SECRET_KEY : process.env.FLUTTERWAVE_SECRET_KEY);
 
 export type Started = { url: string; reference: string };
 export type Verified = { ok: boolean; reference: string; txId: string; amountKobo: number; currency: string; meta: Record<string, string>; why?: string };

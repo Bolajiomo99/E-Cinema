@@ -8,6 +8,7 @@ import { paypalError, paypalOrders, paypalPayments } from "@/lib/paypal";
 import { kidsGate } from "@/lib/family";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { chargeFor, isStaff, myQuote } from "@/lib/store";
+import { switchOn } from "@/lib/platform";
 import type { Order, Quote } from "@/lib/store-types";
 
 // The E-Cinema store (Figma 53:925, 96:1194, 53:1111, 89:894): cart, address, checkout with
@@ -144,6 +145,8 @@ async function checkout(session: string, country: string, body: Record<string, u
   const method = body.method === "cod" ? "cod" : body.method === "paypal" ? "paypal" : "";
   if (!method) return json(400, { error: "Choose how to pay" });
   const expect = Number(body.expectTotalNgn);
+  if (method === "cod" && !switchOn("pay.cod")) return json(503, { error: "Pay on delivery is switched off just now" });
+  if (method === "paypal" && !switchOn("pay.paypal")) return json(503, { error: "PayPal is switched off just now" });
   if (method === "cod") return pass(await accountApi("POST", "/v1/me/orders", { method, country, expectTotalNgn: expect }, session));
 
   const q: Quote | null = await myQuote(session, country);

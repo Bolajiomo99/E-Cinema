@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Logo from "@/components/landing/Logo";
 import LocalWhen from "@/components/dash/LocalWhen";
 import Methods from "@/components/checkout/Methods";
-import { localReady, methodsFor } from "@/lib/pay-methods";
+import { localReady, methodsFor, paypalReady } from "@/lib/pay-methods";
 import PayCta from "@/components/checkout/PayCta";
 import { convert } from "@/lib/fx";
 import HashToFilm from "@/components/checkout/HashToFilm";
@@ -65,7 +65,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const owned = me ? (await myTickets(session).catch(() => [])).find((t) => t.showtimeId === s.id && t.status === "paid") : undefined;
   const country = profile?.country || loc.country;
   const q = quote(s, profile ? { ...profile, country } : { country: undefined }, Date.now(), quality);
-  const methods = methodsFor(country, Boolean(process.env.PAYPAL_CLIENT_ID), localReady());
+  const methods = methodsFor(country, paypalReady(), localReady());
   // Paystack and Flutterwave charge in naira at today's rate, rounded up to the whole naira.
   // A studio's own naira price wins over today's rate (Figma 35:514); lib/local-seat.ts charges the same.
   const ngLocal = s.local?.NG?.currency === "NGN" ? (s.local.NG.minor / 100) * (Number(q.total) / Number(s.price.value)) : 0;

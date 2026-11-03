@@ -1,8 +1,11 @@
 import type { Method } from "@/components/checkout/Methods";
+import { switchOn } from "@/lib/platform";
 
 // Payment methods by buyer country, shared by Checkout (18:533) and Payment failed (96:1254).
 // Card payments run through PayPal's checkout; Paystack and Flutterwave charge in naira.
-export const localReady = () => ({ paystack: Boolean(process.env.PAYSTACK_SECRET_KEY), flutterwave: Boolean(process.env.FLUTTERWAVE_SECRET_KEY) });
+// Each method is offered only when its key exists and the CEO has not switched it off.
+export const localReady = () => ({ paystack: switchOn("pay.paystack") && Boolean(process.env.PAYSTACK_SECRET_KEY), flutterwave: switchOn("pay.flutterwave") && Boolean(process.env.FLUTTERWAVE_SECRET_KEY) });
+export const paypalReady = () => switchOn("pay.paypal") && Boolean(process.env.PAYPAL_CLIENT_ID);
 export function methodsFor(country: string | undefined, paypal: boolean, ready: { paystack?: boolean; flutterwave?: boolean } = {}): Method[] {
   const base: Method[] = [
     { id: "paypal", name: "PayPal", sub: "PayPal balance, card or Pay Later · billed in USD", ready: paypal, icon: "paypal" },

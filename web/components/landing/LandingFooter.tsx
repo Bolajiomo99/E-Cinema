@@ -1,4 +1,5 @@
 import Logo from "@/components/landing/Logo";
+import { supportEmail } from "@/lib/platform";
 
 // The public footer from the Figma landing frames (Watch, Account, Company, Help).
 export const FOOTER: [string, [string, string][]][] = [
@@ -13,7 +14,7 @@ export default function LandingFooter({ heads }: { heads?: Record<string, string
     <footer className="lp-footer">
       <div className="lp-footer-brand">
         <Logo />
-        <p>© 2026 Online Cinema Ltd, trading as E-Cinema. Premieres, together.</p>
+        <p>© 2026 Online Cinema Ltd, trading as E-Cinema. Premieres, together. Help: <a href={`mailto:${supportEmail()}`}>{supportEmail()}</a></p>
       </div>
       <div className="lp-footer-cols">
         {FOOTER.map(([head, links]) => (
