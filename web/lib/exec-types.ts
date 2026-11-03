@@ -21,7 +21,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Brand protection", href: "/executive/brand", roles: ["cmo"], icon: "badge" },
   { label: "Licensing", href: "/executive/licensing", roles: ["cmo", "cfo"], icon: "tag" },
   { label: "Security operations", href: "/executive/security", roles: ["cto"], icon: "lock" },
-  { label: "Infrastructure", roles: ["cto"], icon: "server" },
+  { label: "Infrastructure", href: "/executive/infra", roles: ["cto"], icon: "server" },
   { label: "Investor view", roles: ["cfo", "investor"], icon: "pie" },
   { label: "Stakeholder view", roles: ["stakeholder"], icon: "people" },
   { label: "Partners view", roles: ["partner"], icon: "hands" },
