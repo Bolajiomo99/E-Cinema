@@ -297,3 +297,14 @@ export async function execPartner(s: string, as = ""): Promise<PartnerData | nul
   const r = await accountApi("GET", `/v1/me/exec/partner${as ? `?as=${encodeURIComponent(as)}` : ""}`, undefined, s);
   return r.status === 200 ? (r.body as PartnerData) : null;
 }
+
+// 18+ recipients (Figma 49:1577, 99:1362), CEO only.
+export type AdultRecipient = {
+  id: string; kind: "charity" | "pastor" | "cleric"; name: string; regNumber: string; country: string; city: string;
+  bank: string; accountLast: string; accountName: string; status: "pending" | "active" | "paused"; note: string; received30: CurAmount[];
+};
+export type RecipientsData = { recipients: AdultRecipient[]; paid30: Record<string, CurAmount[]>; unlocks30: number; access30: CurAmount[] };
+export async function execRecipients(s: string): Promise<RecipientsData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/recipients", undefined, s);
+  return r.status === 200 ? (r.body as RecipientsData) : null;
+}
