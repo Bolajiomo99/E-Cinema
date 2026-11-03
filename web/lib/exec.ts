@@ -275,3 +275,14 @@ export async function execInvestor(s: string): Promise<InvestorData | null> {
   const r = await accountApi("GET", "/v1/me/exec/investor", undefined, s);
   return r.status === 200 ? (r.body as InvestorData) : null;
 }
+
+// Stakeholder view (Figma 83:958).
+export type StakeDoc = { id: string; name: string; bytes: number; sharedAt: string };
+export type StakeholderData = {
+  members: number; membersStart: number; revenue: CurAmount[]; revenuePrev: CurAmount[]; countries: number;
+  milestones: Milestone[]; note: string; noteBy: string; noteAt: string | null; docs: StakeDoc[]; canEdit: boolean;
+};
+export async function execStakeholder(s: string): Promise<StakeholderData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/stakeholder", undefined, s);
+  return r.status === 200 ? (r.body as StakeholderData) : null;
+}

@@ -5310,3 +5310,15 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
   .exinv-noprint, .pt-side, nav { display: none !important; }
   .exinv-wm { display: flex; flex-wrap: wrap; gap: 80px 60px; position: fixed; inset: 0; z-index: 50; pointer-events: none; transform: rotate(-24deg); opacity: .09; font: 700 18px Manrope, sans-serif; color: #000; overflow: hidden; }
 }
+/* Executive stakeholder view (Figma 83:958) */
+.exstk-ms { display: flex; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; color: #d4d4dc; }
+.exstk-ms span { flex: 1; }
+.exstk-ms small { color: #6e6e7a; font-size: 12px; }
+.exstk-note { font-size: 15px; line-height: 1.6; color: #d4d4dc; margin: 8px 0; white-space: pre-wrap; }
+.exstk-by { font-size: 13px; font-weight: 700; color: #fff; margin: 0 0 10px; }
+.exstk-ta { width: 100%; box-sizing: border-box; background: #1f1f26; border: 1px solid #2c2c35; border-radius: 8px; color: #fff; padding: 10px 12px; font: 14px/1.5 Manrope, sans-serif; margin: 8px 0; }
+.exstk-doc { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #1f1f26; font-size: 14px; }
+.exstk-doc a { flex: 1; color: #fff; text-decoration: none; font-weight: 600; overflow-wrap: anywhere; }
+.exstk-doc a::before { content: "▤ "; color: #8a8a96; }
+.exstk-doc small { color: #6e6e7a; font-size: 12px; white-space: nowrap; }
+.exstk-up { display: inline-flex; align-items: center; margin-top: 12px; cursor: pointer; }

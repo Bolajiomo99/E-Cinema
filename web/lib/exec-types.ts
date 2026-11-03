@@ -23,7 +23,7 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Security operations", href: "/executive/security", roles: ["cto"], icon: "lock" },
   { label: "Infrastructure", href: "/executive/infra", roles: ["cto"], icon: "server" },
   { label: "Investor view", href: "/executive/investor", roles: ["cfo", "investor"], icon: "pie" },
-  { label: "Stakeholder view", roles: ["stakeholder"], icon: "people" },
+  { label: "Stakeholder view", href: "/executive/stakeholder", roles: ["stakeholder"], icon: "people" },
   { label: "Partners view", roles: ["partner"], icon: "hands" },
   { label: "Access and roles", href: "/executive/access", icon: "key", lock: true },
   { label: "18+ recipients", icon: "heart", lock: true },
