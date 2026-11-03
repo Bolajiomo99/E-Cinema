@@ -246,6 +246,44 @@ await waitLive(apiSvc);
 await waitLive(webSvc);
 
 // 6. Render Workflow service: studio payouts and subtitle translation (workflows/).
+// Nightly database copy (Figma 50:469): a cron job inside Render's private network dumps the
+// database, test-restores it in its own container and saves it to the private R2 backups bucket.
+if (r2Endpoint && process.env.R2_ACCESS_KEY_ID) {
+  const cronVars = [
+    { key: "DATABASE_URL", value: internalConnectionString },
+    { key: "R2_ENDPOINT", value: r2Endpoint },
+    { key: "AWS_ACCESS_KEY_ID", value: process.env.R2_ACCESS_KEY_ID },
+    { key: "AWS_SECRET_ACCESS_KEY", value: process.env.R2_SECRET_ACCESS_KEY },
+    { key: "BACKUP_BUCKET", value: "e-cinema-backups" },
+  ];
+  let cron = await findService("e-cinema-backup");
+  let runNow = process.env.BACKUP_NOW === "1";
+  if (!cron) {
+    cron = (await api("POST", "/services", {
+      type: "cron_job", name: "e-cinema-backup", ownerId: OWNER, environmentId: env.id, repo: REPO, branch: BRANCH,
+      rootDir: "ops/backup", autoDeploy: "yes", envVars: cronVars,
+      serviceDetails: { runtime: "docker", plan: "starter", region: REGION, schedule: "0 0 * * *", envSpecificDetails: { dockerfilePath: "./Dockerfile", dockerContext: "." } },
+    })).service;
+    console.log("Created the nightly backup cron job (01:00 Lagos)");
+    runNow = true;
+  } else {
+    await api("PUT", `/services/${cron.id}/env-vars`, cronVars);
+    console.log("Backup cron job exists");
+  }
+  if (runNow) {
+    let dep;
+    for (let i = 0; i < 60; i++) {
+      dep = (await api("GET", `/services/${cron.id}/deploys?limit=1`))[0]?.deploy;
+      if (dep && ["live", "build_failed", "update_failed", "canceled", "deactivated"].includes(dep.status)) break;
+      await sleep(10_000);
+    }
+    if (dep?.status === "live") {
+      await api("POST", `/cron-jobs/${cron.id}/runs`, {});
+      console.log("Started the first backup run");
+    } else console.log(`Backup cron build: ${dep?.status}`);
+  }
+}
+
 const wfEnv = {
   API_URL: apiSvc.serviceDetails.url,
   INTERNAL_API_TOKEN: token,
