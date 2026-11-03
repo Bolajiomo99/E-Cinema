@@ -31,6 +31,7 @@ export const KINDS: Record<string, { icon: ReactNode; tone: string }> = {
   refund: { icon: back, tone: "amber" },
   share: { icon: folder, tone: "blue" },
   gift: { icon: gift, tone: "gold" },
+  news: { icon: bell, tone: "violet" },
 };
 
 function ago(iso: string, now: number): string {

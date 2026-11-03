@@ -308,3 +308,17 @@ export async function execRecipients(s: string): Promise<RecipientsData | null> 
   const r = await accountApi("GET", "/v1/me/exec/recipients", undefined, s);
   return r.status === 200 ? (r.body as RecipientsData) : null;
 }
+
+// Notifications and re-engagement (Figma 51:375), CEO and CMO.
+export type Campaign = {
+  id: number; title: string; body: string; link: string; audience: "everyone" | "lapsed" | "country"; country: string; channels: string[];
+  status: "scheduled" | "sending" | "sent" | "cancelled"; sendAt: string; testSent: number; sent: number; emailed: number; opened: number; booked: number; langs: number;
+};
+export type CampaignsData = {
+  sentToday: number; sent30: number; opened30: number; booked30: number; members: number; emailOff: number;
+  campaigns: Campaign[]; automatic: { kind: string; sent: number; opened: number }[]; languages: { lang: string; members: number }[]; countryList: string[];
+};
+export async function execCampaigns(s: string): Promise<CampaignsData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/campaigns", undefined, s);
+  return r.status === 200 ? (r.body as CampaignsData) : null;
+}

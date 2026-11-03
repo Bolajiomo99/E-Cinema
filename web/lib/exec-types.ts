@@ -27,6 +27,6 @@ export const EXEC_NAV: { label: string; href?: string; icon: string; lock?: bool
   { label: "Partners view", href: "/executive/partners", roles: ["partner"], icon: "hands" },
   { label: "Access and roles", href: "/executive/access", icon: "key", lock: true },
   { label: "18+ recipients", href: "/executive/recipients", icon: "heart", lock: true },
-  { label: "Notifications", roles: [...CAB, "investor", "stakeholder", "partner"], icon: "bell" },
+  { label: "Notifications", href: "/executive/notifications", roles: ["cmo"], icon: "bell" },
   { label: "Settings", roles: [...CAB, "investor", "stakeholder", "partner"], icon: "gear" },
 ];
