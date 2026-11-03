@@ -895,3 +895,89 @@ func TestRecipients(t *testing.T) {
 		t.Fatalf("missing: %v", err)
 	}
 }
+
+func TestCampaigns(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM exec_campaigns WHERE created_by LIKE 'cx-%'`)
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'cx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'cx-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"cx-ceo@example.com"}}
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('cx-cmo@example.com', 'cmo'), ('cx-cfo@example.com', 'cfo')`)
+	p.Exec(ctx, `INSERT INTO accounts (email, name, password_hash, country, app_language, prefs) VALUES
+	  ('cx-a@example.com', 'Ada', 'x', 'ZW', 'yo', '{}'), ('cx-b@example.com', 'Bayo', 'x', 'ZW', 'en', '{"n.features.email": false}'), ('cx-c@example.com', 'Chi', 'x', 'GH', 'en', '{}')`)
+	now := time.Now()
+	if _, err := st.Campaigns(ctx, "cx-cfo@example.com", now); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cfo: %v", err)
+	}
+	if _, err := st.SaveCampaign(ctx, "cx-cmo@example.com", exec.Campaign{Title: "VR is here", Audience: "country", Channels: []string{"inapp"}}, nil, now); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("no country: %v", err)
+	}
+	if _, err := st.SaveCampaign(ctx, "cx-cmo@example.com", exec.Campaign{Title: "VR is here", Audience: "everyone", Channels: []string{"push"}}, nil, now); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("no channel: %v", err)
+	}
+	c, err := st.SaveCampaign(ctx, "cx-cmo@example.com", exec.Campaign{Title: "VR premieres are here", Body: "Put on your headset", Link: "/browse", Audience: "country", Country: "zw", Channels: []string{"inapp", "email"}, SendAt: now.Add(time.Hour)},
+		[]exec.Text{{Lang: "yo", Title: "Àwọn àfihàn VR ti dé", Body: "Wọ agbekọri rẹ"}, {Lang: "en", Title: "skip"}}, now)
+	if err != nil || c.Status != "scheduled" || c.Langs != 1 || c.Country != "ZW" {
+		t.Fatalf("save = %+v, %v", c, err)
+	}
+	if due, err := st.DueCampaigns(ctx, now); err != nil || len(due) != 0 {
+		t.Fatalf("not due yet = %v, %v", due, err)
+	}
+	test, err := st.TestCampaign(ctx, "cx-cmo@example.com", c.ID, now)
+	if err != nil || len(test.Recipients) > 1 {
+		t.Fatalf("test = %+v, %v", test, err)
+	}
+	due, err := st.DueCampaigns(ctx, now.Add(2*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mine *exec.Batch
+	for i := range due {
+		if due[i].Campaign.ID == c.ID {
+			mine = &due[i]
+		}
+	}
+	emailed := len(test.Recipients)
+	if mine != nil {
+		emailed += len(mine.Recipients)
+		for _, r := range mine.Recipients {
+			if r.Email == "cx-b@example.com" || r.Email == "cx-c@example.com" {
+				t.Fatalf("emailed %s", r.Email)
+			}
+		}
+	}
+	if emailed != 1 {
+		t.Fatalf("emails = %d (only Ada keeps news email on in ZW)", emailed)
+	}
+	var title string
+	p.QueryRow(ctx, `SELECT n.title FROM notifications n JOIN accounts a ON a.id = n.account_id WHERE a.email = 'cx-a@example.com' AND n.campaign_id = $1`, c.ID).Scan(&title)
+	var n int
+	p.QueryRow(ctx, `SELECT count(*) FROM notifications WHERE campaign_id = $1`, c.ID).Scan(&n)
+	if title != "Àwọn àfihàn VR ti dé" || n != 2 {
+		t.Fatalf("in-app: %q, %d rows", title, n)
+	}
+	st.CampaignEmailed(ctx, c.ID, 1)
+	pg, err := st.Campaigns(ctx, "cx-ceo@example.com", now.Add(2*time.Hour))
+	if err != nil || len(pg.Campaigns) == 0 || pg.Campaigns[0].ID != c.ID || pg.Campaigns[0].Status != "sent" || pg.Campaigns[0].Emailed != 1 || pg.Campaigns[0].Sent+pg.Campaigns[0].TestSent != 2 {
+		t.Fatalf("page = %+v, %v", pg.Campaigns, err)
+	}
+	if err := st.CancelCampaign(ctx, "cx-cmo@example.com", c.ID); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("cancel sent: %v", err)
+	}
+}

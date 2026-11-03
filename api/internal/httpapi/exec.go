@@ -201,6 +201,57 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		}
 		reply(w, map[string]bool{"saved": true}, s.Exec.SaveDeal(r.Context(), a.Email, d))
 	}))
+	// Notifications and re-engagement (Figma 51:375): the CEO and the CMO.
+	mux.HandleFunc("GET /v1/me/exec/campaigns", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Exec.Campaigns(r.Context(), a.Email, time.Now())
+		reply(w, p, err)
+	}))
+	mux.HandleFunc("POST /v1/me/exec/campaigns", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			exec.Campaign
+			Texts []exec.Text `json:"texts"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		c, err := s.Exec.SaveCampaign(r.Context(), a.Email, b.Campaign, b.Texts, time.Now())
+		reply(w, c, err)
+	}))
+	mux.HandleFunc("POST /v1/me/exec/campaigns/{id}/test", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			fail(w, exec.ErrNotFound)
+			return
+		}
+		b, err := s.Exec.TestCampaign(r.Context(), a.Email, id, time.Now())
+		reply(w, b, err)
+	}))
+	mux.HandleFunc("POST /v1/me/exec/campaigns/{id}/cancel", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			fail(w, exec.ErrNotFound)
+			return
+		}
+		reply(w, map[string]bool{"cancelled": true}, s.Exec.CancelCampaign(r.Context(), a.Email, id))
+	}))
+	// The web service sends due campaigns every minute and reports the emails it sent.
+	mux.HandleFunc("POST /v1/exec-campaigns/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		b, err := s.Exec.DueCampaigns(r.Context(), time.Now())
+		reply(w, map[string]any{"batches": b}, err)
+	}))
+	mux.HandleFunc("POST /v1/exec-campaigns/{id}/emailed", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		var b struct {
+			Count int `json:"count"`
+		}
+		if err != nil || !decode(w, r, &b) {
+			if err != nil {
+				fail(w, exec.ErrNotFound)
+			}
+			return
+		}
+		reply(w, map[string]bool{"ok": true}, s.Exec.CampaignEmailed(r.Context(), id, b.Count))
+	}))
 	// 18+ recipients (Figma 49:1577, 99:1362), CEO only.
 	mux.HandleFunc("GET /v1/me/exec/recipients", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		p, err := s.Exec.Recipients(r.Context(), a.Email, time.Now())
