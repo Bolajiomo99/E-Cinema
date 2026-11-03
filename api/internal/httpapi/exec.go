@@ -189,6 +189,12 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Infrastructure (Figma 50:469).
+	mux.HandleFunc("GET /v1/me/exec/infra", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		in, err := s.Exec.Infra(r.Context(), a.Email, time.Now())
+		in.P50Ms, in.P99Ms, in.Requests = s.lat.percentiles()
+		reply(w, in, err)
+	}))
 	// Security operations (Figma 117:1773).
 	mux.HandleFunc("GET /v1/me/exec/security", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		sec, err := s.Exec.Security(r.Context(), a.Email, time.Now())

@@ -642,3 +642,35 @@ func TestSecurity(t *testing.T) {
 		t.Fatalf("missing incident: %v", err)
 	}
 }
+
+func TestInfra(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'ix-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM infra_backups WHERE object_key LIKE 'db/ix-%'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p}
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('ix-cto@example.com', 'cto'), ('ix-cmo@example.com', 'cmo')`)
+	p.Exec(ctx, `INSERT INTO infra_backups (target, object_key, bytes, tables, restored, started_at) VALUES ('r2', 'db/ix-1.dump', 1234, 90, true, now() - interval '2 minutes')`)
+	if _, err := st.Infra(ctx, "ix-cmo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cmo: %v", err)
+	}
+	in, err := st.Infra(ctx, "ix-cto@example.com", time.Now())
+	if err != nil || in.DBMaxConns == 0 || in.DBBytes == 0 || in.DBVersion == "" || len(in.Backups) == 0 || in.Backups[0].Key != "db/ix-1.dump" || !in.Backups[0].Restored {
+		t.Fatalf("infra = %+v, %v", in, err)
+	}
+}

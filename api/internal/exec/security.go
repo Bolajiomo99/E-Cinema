@@ -13,7 +13,6 @@ import (
 // Security operations (Figma 117:1773): what the platform itself blocked, lock down mode and the
 // incident log. Edge traffic (bots, DDoS) needs Cloudflare in front of the site, so it is not counted here.
 
-
 type SecEvent struct {
 	At     time.Time `json:"at"`
 	Title  string    `json:"title"`
@@ -113,9 +112,9 @@ func (st Store) Security(ctx context.Context, email string, now time.Time) (Secu
 		case "lock":
 			e.Title, e.Detail, e.Result = fmt.Sprintf("%s wrong passwords on %s", e.Detail, mask(e.Title)), "Account locked, owner can reset by email", "blocked"
 		case "blocked":
-			e.Title, e.Detail = "Account closed for piracy", e.Detail
+			e.Title = "Account closed for piracy"
 		default:
-			e.Title, e.Detail = "Pirate link taken down", e.Detail
+			e.Title = "Pirate link taken down"
 		}
 		s.Events = append(s.Events, e)
 	}

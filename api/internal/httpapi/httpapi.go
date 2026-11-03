@@ -33,6 +33,8 @@ import (
 )
 
 type Server struct {
+	lat latency // request times for the Infrastructure page
+
 	Tickets  tickets.Store
 	Accounts accounts.Store
 	// Identity runs face and ID checks; nil until Sumsub keys are set.
@@ -307,7 +309,7 @@ func (s *Server) Routes() http.Handler {
 	s.giftRoutes(mux)
 	s.studentRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
-	return securityHeaders(mux)
+	return securityHeaders(s.lat.wrap(mux))
 }
 
 type schedule struct{ t tickets.Store }
