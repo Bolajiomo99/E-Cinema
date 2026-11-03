@@ -263,3 +263,15 @@ export async function execInfra(s: string): Promise<InfraData | null> {
   const r = await accountApi("GET", "/v1/me/exec/infra", undefined, s);
   return r.status === 200 ? (r.body as InfraData) : null;
 }
+
+// Investor view (Figma 50:609).
+export type CurAmount = { currency: string; minor: number };
+export type Milestone = { id: number; quarter: string; title: string; done: boolean };
+export type InvestorData = {
+  months: { month: string; currency: string; net: number }[]; net30: CurAmount[]; netPrev30: CurAmount[]; gross30: CurAmount[]; studio30: CurAmount[];
+  buyers30: number; members: number; paying: Record<string, number>; milestones: Milestone[]; canEdit: boolean;
+};
+export async function execInvestor(s: string): Promise<InvestorData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/investor", undefined, s);
+  return r.status === 200 ? (r.body as InvestorData) : null;
+}
