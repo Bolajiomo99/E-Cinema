@@ -836,3 +836,62 @@ func TestPartner(t *testing.T) {
 		t.Fatalf("ceo preview = %+v, %v", ceo, err)
 	}
 }
+
+func TestRecipients(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() { p.Exec(ctx, `DELETE FROM adult_recipients WHERE name LIKE 'rx-%'`) }
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"rx-ceo@example.com"}}
+	if _, err := st.Recipients(ctx, "rx-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("not ceo: %v", err)
+	}
+	if _, err := st.SaveRecipient(ctx, "rx-ceo@example.com", exec.AdultRecipient{Kind: "imam", Name: "rx-a", Country: "NG"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad kind: %v", err)
+	}
+	if _, err := st.SaveRecipient(ctx, "rx-ceo@example.com", exec.AdultRecipient{Kind: "charity", Name: "rx-a", Country: "NG", AccountNo: "12ab"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad account: %v", err)
+	}
+	if _, err := st.SaveRecipient(ctx, "rx-ceo@example.com", exec.AdultRecipient{Kind: "charity", Name: "rx-a", Country: "NG", Status: "active"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("active with no bank: %v", err)
+	}
+	r, err := st.SaveRecipient(ctx, "rx-ceo@example.com", exec.AdultRecipient{Kind: "charity", Name: " rx-Hope Wells ", Country: "ng", Bank: "Kola Bank", AccountNo: "0123456789", AccountName: "HOPE WELLS"})
+	if err != nil || r.ID == "" || r.Status != "pending" || r.AccountLast != "6789" || r.AccountNo != "" || r.Country != "NG" {
+		t.Fatalf("add = %+v, %v", r, err)
+	}
+	if err := st.SetRecipientStatus(ctx, "rx-ceo@example.com", r.ID, "active"); err != nil {
+		t.Fatal(err)
+	}
+	r.Name, r.Note, r.Status = "rx-Hope Wells Trust", "Boreholes", "active"
+	if _, err := st.SaveRecipient(ctx, "rx-ceo@example.com", r); err != nil {
+		t.Fatal(err)
+	}
+	pg, err := st.Recipients(ctx, "rx-ceo@example.com", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *exec.AdultRecipient
+	for i := range pg.Recipients {
+		if pg.Recipients[i].ID == r.ID {
+			got = &pg.Recipients[i]
+		}
+	}
+	if got == nil || got.Name != "rx-Hope Wells Trust" || got.AccountLast != "6789" || got.Status != "active" || got.AccountNo != "" {
+		t.Fatalf("list = %+v", got)
+	}
+	if err := st.SetRecipientStatus(ctx, "rx-ceo@example.com", "00000000-0000-0000-0000-000000000000", "paused"); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("missing: %v", err)
+	}
+}

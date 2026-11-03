@@ -201,6 +201,28 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		}
 		reply(w, map[string]bool{"saved": true}, s.Exec.SaveDeal(r.Context(), a.Email, d))
 	}))
+	// 18+ recipients (Figma 49:1577, 99:1362), CEO only.
+	mux.HandleFunc("GET /v1/me/exec/recipients", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Exec.Recipients(r.Context(), a.Email, time.Now())
+		reply(w, p, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/recipients", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b exec.AdultRecipient
+		if !decode(w, r, &b) {
+			return
+		}
+		out, err := s.Exec.SaveRecipient(r.Context(), a.Email, b)
+		reply(w, out, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/recipients/{id}/status", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Status string `json:"status"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]string{"status": b.Status}, s.Exec.SetRecipientStatus(r.Context(), a.Email, r.PathValue("id"), b.Status))
+	}))
 	// Stakeholder view (Figma 83:958).
 	mux.HandleFunc("GET /v1/me/exec/stakeholder", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		st, err := s.Exec.Stakeholder(r.Context(), a.Email, time.Now())
