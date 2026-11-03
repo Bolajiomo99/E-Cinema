@@ -189,6 +189,39 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Stakeholder view (Figma 83:958).
+	mux.HandleFunc("GET /v1/me/exec/stakeholder", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		st, err := s.Exec.Stakeholder(r.Context(), a.Email, time.Now())
+		reply(w, st, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/stakeholder/note", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Body string `json:"body"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]string{"body": b.Body}, s.Exec.SetNote(r.Context(), a.Email, b.Body))
+	}))
+	mux.HandleFunc("POST /v1/me/exec/stakeholder/docs", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Name  string `json:"name"`
+			Key   string `json:"key"`
+			Bytes int64  `json:"bytes"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		d, err := s.Exec.AddDoc(r.Context(), a.Email, b.Name, b.Key, b.Bytes)
+		reply(w, d, err)
+	}))
+	mux.HandleFunc("GET /v1/me/exec/stakeholder/docs/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		key, name, err := s.Exec.DocKey(r.Context(), a.Email, r.PathValue("id"))
+		reply(w, map[string]string{"key": key, "name": name}, err)
+	}))
+	mux.HandleFunc("DELETE /v1/me/exec/stakeholder/docs/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		reply(w, map[string]bool{"deleted": true}, s.Exec.DeleteDoc(r.Context(), a.Email, r.PathValue("id")))
+	}))
 	// Investor view (Figma 50:609).
 	mux.HandleFunc("GET /v1/me/exec/investor", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		in, err := s.Exec.Investor(r.Context(), a.Email, time.Now())

@@ -730,3 +730,60 @@ func TestInvestor(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestStakeholder(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'kx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM stakeholder_docs WHERE shared_by LIKE 'kx-%@example.com'`)
+		p.Exec(ctx, `UPDATE stakeholder_note SET body = '', updated_by = '', updated_at = NULL`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"kx-ceo@example.com"}}
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('kx-sh@example.com', 'stakeholder'), ('kx-inv@example.com', 'investor')`)
+	if _, err := st.Stakeholder(ctx, "kx-inv@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("investor: %v", err)
+	}
+	if err := st.SetNote(ctx, "kx-sh@example.com", "hi"); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("stakeholder writing: %v", err)
+	}
+	if err := st.SetNote(ctx, "kx-ceo@example.com", "  A calm first month.  "); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.AddDoc(ctx, "kx-ceo@example.com", "Bad", "../x.pdf", 10); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad key: %v", err)
+	}
+	d, err := st.AddDoc(ctx, "kx-ceo@example.com", "November update.pdf", "board/11111111-2222-4333-8444-555555555555.pdf", 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := st.Stakeholder(ctx, "kx-sh@example.com", time.Now())
+	if err != nil || s.Note != "A calm first month." || s.CanEdit || len(s.Docs) == 0 || s.Members == 0 {
+		t.Fatalf("stakeholder = %+v, %v", s, err)
+	}
+	if key, _, err := st.DocKey(ctx, "kx-sh@example.com", d.ID); err != nil || key != "board/11111111-2222-4333-8444-555555555555.pdf" {
+		t.Fatalf("doc key = %q, %v", key, err)
+	}
+	if _, _, err := st.DocKey(ctx, "kx-inv@example.com", d.ID); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("investor doc: %v", err)
+	}
+	if err := st.DeleteDoc(ctx, "kx-ceo@example.com", d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := st.DocKey(ctx, "kx-sh@example.com", d.ID); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("deleted doc: %v", err)
+	}
+}
