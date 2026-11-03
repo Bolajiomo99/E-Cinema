@@ -6,7 +6,10 @@ import { useState } from "react";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
 
 // The pay step of the 18+ unlock (Figma 28:839): adult PIN, a one-time code, then PayPal.
-export default function UnlockFlow({ showtimeId, stage, price, verified, pinSet }: { showtimeId: string; stage: number; price: string; verified: boolean; pinSet: boolean }) {
+type Recipient = { id: string; name: string; city: string; country: string };
+const WHO = ["charity", "church pastor", "mosque cleric"];
+
+export default function UnlockFlow({ showtimeId, stage, price, verified, pinSet, recipients = [] }: { showtimeId: string; stage: number; price: string; verified: boolean; pinSet: boolean; recipients?: Recipient[] }) {
   const router = useRouter();
   const [hasPin, setHasPin] = useState(pinSet);
   const [newPin, setNewPin] = useState("");
@@ -15,6 +18,7 @@ export default function UnlockFlow({ showtimeId, stage, price, verified, pinSet 
   const [sent, setSent] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [to, setTo] = useState(recipients.length === 1 ? recipients[0].id : "");
   const post = (action: string, body: unknown) =>
     fetch(`/api/unlock/${showtimeId}/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(async (r) => ({ ok: r.ok, status: r.status, body: (await r.json().catch(() => ({}))) as { error?: string; sentTo?: string; orderId?: string } }));
@@ -41,6 +45,17 @@ export default function UnlockFlow({ showtimeId, stage, price, verified, pinSet 
 
   return (
     <div className="ul-step">
+      {recipients.length > 0 && (
+        <fieldset className="ul-to">
+          <legend>Choose the {WHO[stage - 1] ?? "recipient"} this payment goes to</legend>
+          {recipients.map((r) => (
+            <label key={r.id} className={`ul-to-o${to === r.id ? " on" : ""}`}>
+              <input type="radio" name="ul-to" value={r.id} checked={to === r.id} onChange={() => setTo(r.id)} />
+              <span><strong>{r.name}</strong>{r.city && <small>{r.city}</small>}</span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <div className="ul-row">
         <label className="ul-field">
           <span>Adult PIN</span>
@@ -63,9 +78,9 @@ export default function UnlockFlow({ showtimeId, stage, price, verified, pinSet 
       <PayPalTicketButton
         className="ul-cta"
         label={`Pay stage ${stage} · ${price}`}
-        disabled={pin.length < 4 || code.length !== 6}
+        disabled={pin.length < 4 || code.length !== 6 || (recipients.length > 0 && !to)}
         create={async () => {
-          const r = await post("order", { pin, code });
+          const r = await post("order", { pin, code, recipient: to });
           setMsg("");
           if (!r.ok || !r.body.orderId) throw new Error(r.body.error ?? "Could not start the payment.");
           return r.body.orderId;

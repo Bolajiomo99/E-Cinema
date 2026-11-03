@@ -42,6 +42,8 @@ export default async function UnlockPage({ params }: { params: Promise<{ id: str
   const paidCents = paidFund.reduce((n, x) => n + x.amountCents, 0) + (seat ? stageCents : 0);
   const totalCents = paidFund.reduce((n, x) => n + x.amountCents, 0) + stageCents * (ADULT_STAGES - paidFund.length);
   const current = seat ? 0 : paidCount + 1;
+  const rec = current >= 1 && current < ADULT_STAGES ? await accountApi("GET", `/v1/adult/recipients/${current}`, undefined, session).catch(() => null) : null;
+  const recipients = rec?.status === 200 ? (rec.body as { id: string; name: string; city: string; country: string }[]) : [];
   const verifiedOn = state.status.verifiedAt ? new Date(state.status.verifiedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "";
 
   return (
@@ -74,7 +76,7 @@ export default async function UnlockPage({ params }: { params: Promise<{ id: str
             return (
               <li key={n} className={`ul-stage${paid ? " paid" : now ? " now" : ""}`}>
                 <span className="ul-num">{paid ? <Ico n="check" /> : <Ico n={x.icon} />}</span>
-                <span className="ul-t"><strong>Stage {n} · {x.name}</strong><small>{x.sub || `Unlocks ${s.film} on this account`}</small></span>
+                <span className="ul-t"><strong>Stage {n} · {x.name}</strong><small>{now && recipients.length ? "You choose who receives it below" : x.sub || `Unlocks ${s.film} on this account`}</small></span>
                 <span className="ul-p"><b>{money(q.currency, paid && i < 3 ? paidFund[i]?.amountCents ?? stageCents : stageCents)}</b><em>{paid ? "Paid" : now ? "Pay now" : "Locked"}</em></span>
               </li>
             );
@@ -89,7 +91,7 @@ export default async function UnlockPage({ params }: { params: Promise<{ id: str
         ) : salesOver(q.phase) ? (
           <p className="ul-sub">{q.phase === "ended" ? "This premiere has ended." : "Doors have closed for this premiere."}</p>
         ) : (
-          <UnlockFlow showtimeId={s.id} stage={current} price={money(q.currency, stageCents)} verified={state.status.verified} pinSet={state.status.pinSet} />
+          <UnlockFlow showtimeId={s.id} stage={current} price={money(q.currency, stageCents)} verified={state.status.verified} pinSet={state.status.pinSet} recipients={recipients} />
         )}
         <div className="ul-note">
           <Ico n="eye" />

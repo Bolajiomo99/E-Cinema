@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!s?.adult) return json(404, { error: "Not an adult title" });
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!session) return json(401, { error: "Sign in first", signIn: true });
-  const b = (await req.json().catch(() => ({}))) as { pin?: string; code?: string };
+  const b = (await req.json().catch(() => ({}))) as { pin?: string; code?: string; recipient?: string };
 
   if (action === "pin") return relay(await accountApi("PUT", "/v1/me/adult/pin", { pin: b.pin }, session));
 
@@ -71,6 +71,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (used.status !== 204) return relay(used);
       return createSeatOrder(s, session);
     }
+    // The viewer's pick for this stage, from the CEO's list of active recipients (18+ recipients).
+    const list = await accountApi("GET", `/v1/adult/recipients/${next}`, undefined, session);
+    const options = list.status === 200 ? (list.body as { id: string; name: string }[]) : [];
+    const pick = options.find((x) => x.id === b.recipient);
+    if (options.length && !pick) return json(400, { error: "Pick who this payment goes to" });
+    const payee = pick ? pick.name.slice(0, 60) : FUND_NAME[next - 1];
     const prof = await accountApi("GET", "/v1/me/profile", undefined, session).catch(() => null);
     const q = quote(s, prof?.status === 200 ? (prof.body as { country?: string }) : undefined);
     if (salesOver(q.phase)) return json(410, { error: q.phase === "ended" ? "This premiere has ended" : "Doors have closed for this premiere" });
@@ -84,17 +90,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           purchaseUnits: [{
             referenceId: `${s.id}:stage${next}`,
             customId: `${s.id}:adult:${next}`,
-            description: `E-Cinema 18+ unlock, stage ${next} of ${ADULT_STAGES}: ${FUND_NAME[next - 1]}`,
+            description: `E-Cinema 18+ unlock, stage ${next} of ${ADULT_STAGES}: ${payee}`,
             amount: {
               currencyCode: cur, value: q.total,
               breakdown: { itemTotal: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { taxTotal: { currencyCode: cur, value: q.vat } } : {}) },
             },
-            items: [{ name: `${s.film} · 18+ unlock stage ${next} of ${ADULT_STAGES} · ${FUND_NAME[next - 1]}`, quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) }],
+            items: [{ name: `${s.film} · 18+ unlock stage ${next} of ${ADULT_STAGES} · ${payee}`.slice(0, 127), quantity: "1", unitAmount: { currencyCode: cur, value: q.seat }, ...(Number(q.vat) ? { tax: { currencyCode: cur, value: q.vat } } : {}) }],
           }],
         },
       });
       if (!result.id) return json(502, { error: "PayPal did not return an order" });
-      const a = await accountApi("POST", `/v1/me/adult/${encodeURIComponent(s.id)}/stages`, { stage: next, orderId: result.id, amountCents: Math.round(Number(q.total) * 100), currency: cur, grant }, session);
+      const a = await accountApi("POST", `/v1/me/adult/${encodeURIComponent(s.id)}/stages`, { stage: next, orderId: result.id, amountCents: Math.round(Number(q.total) * 100), currency: cur, grant, recipient: pick?.id ?? "" }, session);
       if (a.status !== 204) return relay(a);
       return json(200, { orderId: result.id, stage: next });
     } catch (err) {
