@@ -189,6 +189,27 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		b, err := s.Exec.Brand(r.Context(), a.Email, time.Now())
 		reply(w, b, err)
 	}))
+	// Investor view (Figma 50:609).
+	mux.HandleFunc("GET /v1/me/exec/investor", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		in, err := s.Exec.Investor(r.Context(), a.Email, time.Now())
+		reply(w, in, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/exec/milestones", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var m exec.Milestone
+		if !decode(w, r, &m) {
+			return
+		}
+		out, err := s.Exec.SaveMilestone(r.Context(), a.Email, m)
+		reply(w, out, err)
+	}))
+	mux.HandleFunc("DELETE /v1/me/exec/milestones/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			fail(w, exec.ErrNotFound)
+			return
+		}
+		reply(w, map[string]bool{"deleted": true}, s.Exec.DeleteMilestone(r.Context(), a.Email, id))
+	}))
 	// Infrastructure (Figma 50:469).
 	mux.HandleFunc("GET /v1/me/exec/infra", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		in, err := s.Exec.Infra(r.Context(), a.Email, time.Now())

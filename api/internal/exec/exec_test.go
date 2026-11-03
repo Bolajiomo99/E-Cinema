@@ -674,3 +674,59 @@ func TestInfra(t *testing.T) {
 		t.Fatalf("infra = %+v, %v", in, err)
 	}
 }
+
+func TestInvestor(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'vx-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM investor_milestones WHERE title LIKE 'Vx %'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"vx-ceo@example.com"}}
+	p.Exec(ctx, `INSERT INTO executives (email, role) VALUES ('vx-inv@example.com', 'investor'), ('vx-cmo@example.com', 'cmo')`)
+	if _, err := st.Investor(ctx, "vx-cmo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("cmo: %v", err)
+	}
+	in, err := st.Investor(ctx, "vx-inv@example.com", time.Now())
+	if err != nil || in.CanEdit || in.Members == 0 || in.Paying == nil {
+		t.Fatalf("investor = %+v, %v", in, err)
+	}
+	if _, err := st.SaveMilestone(ctx, "vx-inv@example.com", exec.Milestone{Quarter: "Q1 2027", Title: "Vx launch"}); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("investor editing: %v", err)
+	}
+	if _, err := st.SaveMilestone(ctx, "vx-ceo@example.com", exec.Milestone{Quarter: "2027", Title: "Vx launch"}); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("bad quarter: %v", err)
+	}
+	m, err := st.SaveMilestone(ctx, "vx-ceo@example.com", exec.Milestone{Quarter: "q1 2027", Title: "Vx launch in Ghana"})
+	if err != nil || m.ID == 0 || m.Quarter != "Q1 2027" {
+		t.Fatalf("milestone = %+v, %v", m, err)
+	}
+	m.Done = true
+	if _, err := st.SaveMilestone(ctx, "vx-ceo@example.com", m); err != nil {
+		t.Fatal(err)
+	}
+	in, _ = st.Investor(ctx, "vx-ceo@example.com", time.Now())
+	found := false
+	for _, x := range in.Milestones {
+		found = found || (x.ID == m.ID && x.Done)
+	}
+	if !found || !in.CanEdit {
+		t.Fatalf("milestones = %+v", in.Milestones)
+	}
+	if err := st.DeleteMilestone(ctx, "vx-ceo@example.com", m.ID); err != nil {
+		t.Fatal(err)
+	}
+}
