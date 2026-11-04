@@ -1,8 +1,8 @@
-import { endsAt, showtimes, type Showtime } from "@/lib/catalog";
+import { endsAt, showtimes, type Showtime, nextPerFilm } from "@/lib/catalog";
 
 // Films for the kids cinema: family and animation titles, never 18+, not yet over.
 export function kidsFilms(now = Date.now()): Showtime[] {
-  return showtimes.filter((s) => !s.adult && (s.category === "Cartoon" || s.genres?.includes("Family")) && endsAt(s) > now);
+  return nextPerFilm(showtimes.filter((s) => !s.adult && (s.category === "Cartoon" || s.genres?.includes("Family")) && endsAt(s) > now));
 }
 
 export function whenText(list: Showtime[]): Record<string, string> {

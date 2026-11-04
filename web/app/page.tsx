@@ -13,7 +13,7 @@ import LocalePicker from "@/components/LocalePicker";
 import { readLocale } from "@/lib/locale";
 import { countryName, currencyFor, money as planMoney, priceOf, type PlanId } from "@/lib/plans";
 import { currentAccount } from "@/lib/auth";
-import { endsAt, showtimes } from "@/lib/catalog";
+import { endsAt, showtimes, nextPerFilm } from "@/lib/catalog";
 
 // Built from the Figma frame "Web / Landing" (14:280). Films, times, prices and seats are live data.
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ async function liveSeats(): Promise<Record<string, Live>> {
 // Screenings that haven't ended yet; falls back to the full list so the page is never empty.
 function lineupNow() {
   const now = Date.now();
-  const open = showtimes.filter((s) => endsAt(s) > now);
+  const open = nextPerFilm(showtimes.filter((s) => endsAt(s) > now));
   const list = open.length ? open : showtimes;
   const hero = list.find((s) => s.featured && Date.parse(s.startsAt) > now) ?? list.find((s) => Date.parse(s.startsAt) > now) ?? list[0];
   return { list, hero };
@@ -45,7 +45,7 @@ const money = (p: { currency: string; value: string }) => (p.currency === "USD" 
 const runtime = (m?: number) => (m ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : "");
 
 const STEPS = [
-  ["01", "Pick tonight's premiere", "Only new releases, and each screening disappears once it ends. Miss it and it is gone."],
+  ["01", "Pick tonight's premiere", "Only new releases, screened live at set times. Miss the premiere and catch the weekly encore."],
   ["02", "Take your seat", "Pay once with card, Paystack, Flutterwave or crypto. Prices are set for your country."],
   ["03", "Watch with the world", "Same frame, same second, for everyone. Pick your audio language and talk in the room chat."],
 ];
@@ -118,8 +118,8 @@ export default async function Home() {
 
         <div className="lp-hero-copy">
           <div className="lp-badges">
-            <span className="lp-badge live"><i />{t.worldPremiere}</span>
-            <HeroWhen startsAt={hero.startsAt} />
+            <span className="lp-badge live"><i />{hero.encoreOf ? "WEEKLY ENCORE" : t.worldPremiere}</span>
+            <HeroWhen startsAt={hero.startsAt} encore={Boolean(hero.encoreOf)} />
           </div>
           <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
           <div className="lp-meta">
@@ -128,7 +128,7 @@ export default async function Home() {
             ))}
             {hero.rating && <><i className="lp-dot" aria-hidden /><span className={`lp-badge ${hero.adult ? "adult" : "outline"}`}>{hero.rating}</span></>}
           </div>
-          <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. One night, one screening, the whole world in the same seat.`}</p>
+          <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. One live screening, the whole world in the same seat.`}</p>
           <Countdown to={hero.startsAt} />
           <div className="lp-ctas">
             <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · {money(hero.price)}</Link>

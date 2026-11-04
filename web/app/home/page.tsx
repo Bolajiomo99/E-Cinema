@@ -19,7 +19,7 @@ import ClassicCard from "@/components/home/ClassicCard";
 import type { Classic } from "@/lib/classics";
 import type { Party } from "@/lib/parties";
 import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
-import { endsAt, showtimes } from "@/lib/catalog";
+import { endsAt, showtimes, nextPerFilm } from "@/lib/catalog";
 import LocalePicker from "@/components/LocalePicker";
 import { readLocale } from "@/lib/locale";
 import { SPEND_LIMIT } from "@/lib/concierge";
@@ -36,7 +36,7 @@ const ANNOUNCED = [
 
 function pick() {
   const now = Date.now();
-  const open = showtimes.filter((s) => endsAt(s) > now);
+  const open = nextPerFilm(showtimes.filter((s) => endsAt(s) > now));
   const list = open.length ? open : showtimes;
   const live = list.find((s) => Date.parse(s.startsAt) <= now);
   const hero = live ?? list.find((s) => s.featured) ?? list[0];
@@ -115,7 +115,7 @@ export default async function Home() {
               {live ? (
                 <><span className="lp-badge live pulse"><i />{t.liveNow}</span><LiveAudience showtimeId={hero.id} initial={heroStat} /></>
               ) : (
-                <><span className="lp-badge live"><i />{t.worldPremiere}</span><span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span></>
+                <><span className="lp-badge live"><i />{hero.encoreOf ? "WEEKLY ENCORE" : t.worldPremiere}</span><span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span></>
               )}
             </div>
             <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>

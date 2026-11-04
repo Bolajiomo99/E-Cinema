@@ -81,7 +81,7 @@ export default async function ComingSoonPage({ searchParams }: { searchParams: P
   const now = Date.now();
   const f = (FILTERS.find((x) => x.id === q.f)?.id ?? "all") as F;
   // Coming soon = anything more than a week out, soonest first.
-  const soon = showtimes.filter((s) => Date.parse(s.startsAt) - now > 7 * DAY).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const soon = showtimes.filter((s) => !s.encoreOf && Date.parse(s.startsAt) - now > 7 * DAY).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   const hero = soon.find((s) => s.blurb && s.earlySave) ?? soon[0];
   const grid = soon.filter((s) => s !== hero && matches(s, f, now));
   const seats = hero ? await seatsFor(hero.id) : null;

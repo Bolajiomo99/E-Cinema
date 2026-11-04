@@ -55,23 +55,26 @@ export function toShowtime(f: LiveFilm): Showtime {
 }
 
 let last = 0;
+let lastLive: Showtime[] = [];
 let running: Promise<void> | null = null;
 
 export async function refreshLive(force = false) {
   void refreshPlatform(force);
   const base = process.env.API_URL, token = process.env.INTERNAL_API_TOKEN;
-  if (!base || !token) return;
+  if (!base || !token) { if (force) mergeLive([]); return; }
   if (!force && Date.now() - last < 30_000) return;
   if (running) return running;
   running = (async () => {
     try {
       const r = await fetch(`${base}/v1/studio-films`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000), cache: "no-store" });
-      if (!r.ok) return;
+      if (!r.ok) { mergeLive(lastLive); return; }
       const j = (await r.json()) as { films?: LiveFilm[] };
-      mergeLive((j.films ?? []).map(toShowtime));
+      lastLive = (j.films ?? []).map(toShowtime);
+      mergeLive(lastLive);
       last = Date.now();
     } catch (e) {
       console.error("live catalog", e instanceof Error ? e.message : e);
+      mergeLive(lastLive);
     } finally {
       running = null;
     }

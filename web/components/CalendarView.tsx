@@ -42,12 +42,14 @@ const taglines: Record<string, string> = {
 };
 const genreOf = (s: (typeof showtimes)[number]) =>
   s.adult ? "adult" : s.category === "K-Drama" ? "kdrama" : s.category === "Bollywood" ? "bollywood" : s.category === "Hollywood" ? "hollywood" : "nollywood";
+// The calendar opens on today's week (or the first premiere, if that is later).
+const opened = Date.now();
 const code = (lang?: string) => (lang ?? "English").slice(0, 2).toUpperCase();
 
 const premieres: Premiere[] = [
   ...showtimes.map((s) => ({
-    id: s.id, name: s.film, resourceId: genreOf(s), startDate: s.startsAt, minutes: s.runtimeMin ?? 120, studio: s.studio,
-    tagline: taglines[s.id] ?? "", audio: [code(s.language), ...(s.dubs ? [`+${s.dubs} dubs`] : [])],
+    id: s.id, name: s.encoreOf ? `${s.film} · encore` : s.film, resourceId: genreOf(s), startDate: s.startsAt, minutes: s.runtimeMin ?? 120, studio: s.studio,
+    tagline: taglines[s.encoreOf ?? s.id] ?? "", audio: [code(s.language), ...(s.dubs ? [`+${s.dubs} dubs`] : [])],
   })),
   { id: "paper-moon-riders", name: "Paper Moon Riders", resourceId: "anime", startDate: "2026-11-05T16:00:00Z", minutes: 100, studio: "Kumo Frame Studio", tagline: "Couriers on kites racing a storm across the sky city.", audio: ["JA", "EN"] },
   { id: "the-last-glacier", name: "The Last Glacier", resourceId: "documentary", startDate: "2026-11-06T19:00:00Z", minutes: 90, studio: "North Ledger Films", tagline: "A year on the ice with the people who measure it.", audio: ["EN"] },
@@ -102,7 +104,7 @@ export default function CalendarView() {
   );
 
   const [config] = useState<BryntumCalendarProps>(() => ({
-    date: new Date(premieres[0].startDate),
+    date: new Date(Math.max(Date.parse(premieres[0].startDate), opened)),
     mode,
     readOnly: true,
     sidebar: false,

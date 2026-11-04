@@ -1,7 +1,7 @@
 import Logo from "@/components/landing/Logo";
 import WorldMap, { type MapFilm } from "@/components/map/WorldMap";
 import { liveStats, seatsFor, tonightAudience } from "@/lib/api";
-import { endsAt, showtimes } from "@/lib/catalog";
+import { endsAt, showtimes, nextPerFilm } from "@/lib/catalog";
 import { readLocale } from "@/lib/locale";
 
 // Built from the Figma frame "Web / World map · live" (32:1201), with live room numbers.
@@ -11,7 +11,7 @@ export const metadata = { title: "World map · E-Cinema", description: "Where th
 export default async function MapPage() {
   const now = Date.now();
   const [live, tonight, loc] = await Promise.all([liveStats(), tonightAudience(), readLocale()]);
-  const open = showtimes.filter((s) => endsAt(s) > now);
+  const open = nextPerFilm(showtimes.filter((s) => endsAt(s) > now));
   // Seats left only for the first few upcoming screenings the strip can show.
   const upcoming = open.filter((s) => Date.parse(s.startsAt) > now).slice(0, 4);
   const seats = new Map(await Promise.all(upcoming.map(async (s) => [s.id, await seatsFor(s.id)] as const)));

@@ -1,4 +1,4 @@
-import { endsAt, showtimes, type Showtime } from "@/lib/catalog";
+import { endsAt, showtimes, type Showtime, nextPerFilm } from "@/lib/catalog";
 
 // The ten formats on Browse (Figma 30:564). Each catalogue title belongs to one; formats with
 // no premieres yet still show, with an honest empty state, until studios schedule one.
@@ -35,14 +35,14 @@ const DAY = 86_400_000;
 
 // "This week" is the next seven days (plus anything screening now); "Next week" the seven after.
 export function filterShowtimes({ when, lang, now = Date.now() }: { when?: When; lang?: string; now?: number }) {
-  return showtimes.filter((s) => {
+  return nextPerFilm(showtimes.filter((s) => {
     if (endsAt(s) <= now) return false;
     const t = Date.parse(s.startsAt);
     if (when === "week" && t > now + 7 * DAY) return false;
     if (when === "next" && (t <= now + 7 * DAY || t > now + 14 * DAY)) return false;
     if (lang && s.language !== lang) return false;
     return true;
-  });
+  }));
 }
 
 export const languages = () => [...new Set(showtimes.map((s) => s.language).filter(Boolean) as string[])].sort();

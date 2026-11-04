@@ -1,6 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { endsAt, showtimes, type Showtime } from "@/lib/catalog";
+import { endsAt, showtimes, type Showtime, nextPerFilm } from "@/lib/catalog";
 import { TYPES, typeOf, type TypeId } from "@/lib/browse";
 import { LANGS } from "@/lib/i18n";
 
@@ -44,7 +44,7 @@ export function ruleParse(raw: string, now = Date.now()): Filters {
 }
 
 function apply(f: Filters, now: number): Showtime[] {
-  return showtimes.filter((s) => {
+  return nextPerFilm(showtimes.filter((s) => {
     if (endsAt(s) <= now) return false;
     const t = Date.parse(s.startsAt);
     if (f.from && endsAt(s) < f.from) return false;
@@ -52,7 +52,7 @@ function apply(f: Filters, now: number): Showtime[] {
     if (f.types.length && !f.types.includes(typeOf(s))) return false;
     if (f.maxPrice !== undefined && Number(s.price.value) > f.maxPrice) return false;
     return true;
-  });
+  }));
 }
 
 const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
@@ -109,7 +109,7 @@ export async function search(raw: string, now = Date.now()): Promise<SearchResul
   if (hit && now - hit.at < 10 * 60_000) return hit.r;
   if (!process.env.ANTHROPIC_API_KEY) return ruleSearch(q, now);
 
-  const open = showtimes.filter((s) => endsAt(s) > now);
+  const open = nextPerFilm(showtimes.filter((s) => endsAt(s) > now));
   const catalogue = open.map((s) => ({ id: s.id, title: s.film, studio: s.studio, format: typeOf(s), genres: s.genres, startsAtUTC: s.startsAt, priceUSD: s.price.value, rating: s.rating, originalAudio: s.language, aiDubTracks: s.dubs, blurb: s.blurb }));
   try {
     client ??= new Anthropic();

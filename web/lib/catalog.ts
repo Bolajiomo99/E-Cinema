@@ -24,6 +24,7 @@ export type Showtime = {
   posterImage?: string; // a studio's uploaded poster
   studioFilm?: string; // set on premieres a studio published from its portal
   local?: Record<string, { currency: string; minor: number }>; // studio's price per country
+  encoreOf?: string; // a weekly encore of this lineup screening
 };
 
 const blue = "rgba(70,150,255,.45)", amber = "rgba(255,140,40,.45)", red = "rgba(227,24,45,.45)";
@@ -79,10 +80,39 @@ export const showtimes: Showtime[] = [
 
 export const endsAt = (s: Showtime) => Date.parse(s.startsAt) + (s.runtimeMin ?? 120) * 60_000;
 
+// Weekly encores (API migration 060): once a lineup film has premiered it comes back at the same
+// weekday and time every week, up to 8 weeks ahead, so there is always something on sale until
+// studios publish their own films. The API creates the rows 9 weeks ahead. The window is anchored
+// to the UTC day so the server and the browser build the same list.
+const LINEUP = showtimes.slice();
+const WEEK = 7 * 864e5;
+export function encores(now: number): Showtime[] {
+  const day = Math.floor(now / 864e5) * 864e5;
+  const from = day - 864e5, to = day + 8 * WEEK;
+  const out: Showtime[] = [];
+  for (const b of LINEUP) {
+    const start = Date.parse(b.startsAt);
+    if (start > now) continue;
+    const slug = b.id.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+    for (let t = start + WEEK * Math.max(1, Math.ceil((from - start) / WEEK)); t <= to; t += WEEK) {
+      const at = new Date(t).toISOString();
+      out.push({ ...b, id: `${slug}-${at.slice(0, 10)}`, startsAt: at, featured: undefined, earlySave: undefined, encoreOf: b.id });
+    }
+  }
+  return out;
+}
+// One screening per film, the earliest in the list, for rows and grids that show each film once.
+export function nextPerFilm(list: Showtime[]): Showtime[] {
+  const seen = new Set<string>();
+  return list.filter((s) => (seen.has(s.film) ? false : (seen.add(s.film), true)));
+}
+const withEncores = (now: number) => [...LINEUP, ...encores(now).filter((e) => !LINEUP.some((b) => b.id === e.id))];
+showtimes.splice(0, showtimes.length, ...withEncores(Date.now()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)));
+
 // Premieres studios publish from the portal (Figma 35:514) join the list on the server, kept
 // fresh by lib/live-catalog.ts. Client bundles only carry the fixed lineup above.
 export function mergeLive(list: Showtime[]) {
-  const fixed = showtimes.filter((s) => !s.studioFilm);
+  const fixed = withEncores(Date.now());
   const ids = new Set(fixed.map((s) => s.id));
   const next = [...fixed, ...list.filter((s) => !ids.has(s.id))].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   showtimes.splice(0, showtimes.length, ...next);
