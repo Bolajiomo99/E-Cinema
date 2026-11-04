@@ -49,7 +49,7 @@ func (st Store) CanAddProducts(ctx context.Context, email string) (bool, error) 
 	}
 	var ok bool
 	err := st.DB.QueryRow(ctx, `SELECT role IN ('cfo', 'coo', 'cto', 'cmo') AND can_add FROM executives WHERE email = lower($1)
-	  AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&ok)
+	  AND NOT pending AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&ok)
 	if err == pgx.ErrNoRows {
 		return false, nil
 	}

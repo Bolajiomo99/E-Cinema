@@ -80,6 +80,7 @@ func TestAccess(t *testing.T) {
 	if err != nil || !added {
 		t.Fatalf("grant: %v %v", added, err)
 	}
+	p.Exec(ctx, `UPDATE executives SET pending = false WHERE email = 'ax-inv@example.com'`) // as if they finished the invite
 	if added, err = st.Grant(ctx, "ax-ceo@example.com", "", exec.Grant{Email: "ax-inv@example.com", Role: "stakeholder"}, now); err != nil || added {
 		t.Fatalf("change: %v %v", added, err)
 	}
@@ -1046,3 +1047,100 @@ func TestSettings(t *testing.T) {
 		t.Fatalf("settings = %+v, %v", pg, err)
 	}
 }
+
+func TestInvites(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		p.Exec(ctx, `DELETE FROM executives WHERE email LIKE 'ix-%@example.com'`)
+		p.Exec(ctx, `DELETE FROM accounts WHERE email LIKE 'ix-%@example.com'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"ix-ceo@example.com"}}
+	now := time.Now()
+	added, err := st.Grant(ctx, "ix-ceo@example.com", "", exec.Grant{Email: "ix-coo@example.com", Role: "coo", Name: "Amaka"}, now)
+	if err != nil || !added {
+		t.Fatalf("grant: %v %v", added, err)
+	}
+	if r, _ := st.Role(ctx, "ix-coo@example.com"); r != "" {
+		t.Fatalf("pending person has role %q", r)
+	}
+	if _, err := st.NewInvite(ctx, "ix-coo@example.com", "ix-coo@example.com", "x", now); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("non-ceo invite: %v", err)
+	}
+	old, _ := st.NewInvite(ctx, "ix-ceo@example.com", "ix-coo@example.com", "Bolaji", now)
+	tok, err := st.NewInvite(ctx, "ix-ceo@example.com", "ix-coo@example.com", "Bolaji", now)
+	if err != nil || tok == "" {
+		t.Fatalf("invite: %q %v", tok, err)
+	}
+	if _, err := st.LookInvite(ctx, old, now); !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("old link should be replaced: %v", err)
+	}
+	in, err := st.LookInvite(ctx, tok, now)
+	if err != nil || in.Gone || in.Role != "coo" || in.By != "Bolaji" || in.Name != "Amaka" {
+		t.Fatalf("look: %+v %v", in, err)
+	}
+	var id, otherID string
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('ix-coo@example.com', 'Amaka', 'x') RETURNING id`).Scan(&id)
+	p.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ('ix-other@example.com', 'Eve', 'x') RETURNING id`).Scan(&otherID)
+	if _, err := st.InviteCode(ctx, tok, "ix-other@example.com", now); !errors.Is(err, exec.ErrWrongPerson) {
+		t.Fatalf("wrong person code: %v", err)
+	}
+	code, err := st.InviteCode(ctx, tok, "ix-coo@example.com", now)
+	if err != nil || len(code) != 6 {
+		t.Fatalf("code: %q %v", code, err)
+	}
+	if _, err := st.InviteCode(ctx, tok, "ix-coo@example.com", now.Add(10*time.Second)); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("resend gap: %v", err)
+	}
+	wrong := "000000"
+	if code == wrong {
+		wrong = "111111"
+	}
+	if err := st.ConfirmInviteCode(ctx, tok, "ix-coo@example.com", wrong, now); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("wrong code: %v", err)
+	}
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("accept before email: %v", err)
+	}
+	if err := st.ConfirmInviteCode(ctx, tok, "ix-coo@example.com", code, now); err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now); err == nil {
+		t.Fatal("accept without face")
+	}
+	p.Exec(ctx, `UPDATE accounts SET face_verified_at = now() WHERE id = $1`, id)
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now); err == nil {
+		t.Fatal("accept without passkey")
+	}
+	p.Exec(ctx, `INSERT INTO passkeys (id, account_id, credential, name) VALUES ('\x0102', $1, '{}', 'Phone')`, id)
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now.Add(InviteHours(49))); !errors.Is(err, exec.ErrInviteGone) {
+		t.Fatalf("expired: %v", err)
+	}
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	if r, _ := st.Role(ctx, "ix-coo@example.com"); r != "coo" {
+		t.Fatalf("role after accept = %q", r)
+	}
+	if err := st.AcceptInvite(ctx, tok, "ix-coo@example.com", id, now); !errors.Is(err, exec.ErrInviteGone) {
+		t.Fatalf("second use: %v", err)
+	}
+	if tok2, err := st.NewInvite(ctx, "ix-ceo@example.com", "ix-coo@example.com", "Bolaji", now); err != nil || tok2 != "" {
+		t.Fatalf("joined person needs no link: %q %v", tok2, err)
+	}
+}
+
+func InviteHours(h int) time.Duration { return time.Duration(h) * time.Hour }

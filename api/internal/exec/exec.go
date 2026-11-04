@@ -29,7 +29,7 @@ func (st Store) Role(ctx context.Context, email string) (string, error) {
 		}
 	}
 	var role string
-	err := st.DB.QueryRow(ctx, `SELECT role FROM executives WHERE email = $1 AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&role)
+	err := st.DB.QueryRow(ctx, `SELECT role FROM executives WHERE email = $1 AND NOT pending AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}

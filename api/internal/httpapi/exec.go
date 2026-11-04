@@ -74,7 +74,41 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			return
 		}
 		added, err := s.Exec.Grant(r.Context(), a.Email, a.ID, g, time.Now())
-		reply(w, map[string]bool{"added": added}, err)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		// A new person, or "resend", gets a fresh one-time link while they have not joined yet.
+		out := map[string]any{"added": added}
+		if added || r.URL.Query().Get("invite") == "1" {
+			tok, err := s.Exec.NewInvite(r.Context(), a.Email, g.Email, a.Name, time.Now())
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			out["invite"] = tok
+		}
+		reply(w, out, nil)
+	}))
+	// Executive invites (Figma 99:1696): the link page reads the invite before sign-in; the
+	// invited person then confirms the inbox with a code and accepts once face and passkey are done.
+	mux.HandleFunc("GET /v1/exec-invites/{token}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		in, err := s.Exec.LookInvite(r.Context(), r.PathValue("token"), time.Now())
+		reply(w, in, err)
+	}))
+	mux.HandleFunc("POST /v1/exec-invites/{token}/code", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		code, err := s.Exec.InviteCode(r.Context(), r.PathValue("token"), a.Email, time.Now())
+		reply(w, map[string]string{"code": code, "email": a.Email}, err)
+	}))
+	mux.HandleFunc("POST /v1/exec-invites/{token}/confirm", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ Code string }
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]bool{"ok": true}, s.Exec.ConfirmInviteCode(r.Context(), r.PathValue("token"), a.Email, b.Code, time.Now()))
+	}))
+	mux.HandleFunc("POST /v1/exec-invites/{token}/accept", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		reply(w, map[string]bool{"ok": true}, s.Exec.AcceptInvite(r.Context(), r.PathValue("token"), a.Email, a.ID, time.Now()))
 	}))
 	mux.HandleFunc("DELETE /v1/me/exec/people/{email}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		if err := s.Exec.Revoke(r.Context(), a.Email, r.PathValue("email")); err != nil {

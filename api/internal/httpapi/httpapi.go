@@ -371,6 +371,10 @@ func fail(w http.ResponseWriter, err error) {
 			msg = strings.ToUpper(why[:1]) + why[1:]
 		}
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+	case errors.Is(err, exec.ErrInviteGone):
+		writeJSON(w, http.StatusGone, map[string]string{"error": "This invite link has expired or was already used. Ask the CEO to send a new one."})
+	case errors.Is(err, exec.ErrWrongPerson):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Sign in with the address the invite was sent to"})
 	case errors.Is(err, exec.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "That person has no executive access"})
 	case errors.Is(err, exec.ErrForbidden):

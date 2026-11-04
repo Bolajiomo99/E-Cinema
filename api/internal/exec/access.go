@@ -86,7 +86,7 @@ func (st Store) People(ctx context.Context, email string) ([]Person, error) {
 	}
 	rows, err := st.DB.Query(ctx, `SELECT e.email, coalesce(nullif(e.name, ''), a.name, ''), e.org, e.role, e.scopes, e.can_add, e.can_money, e.watermark,
 	    coalesce(to_char(e.expires_on, 'YYYY-MM-DD'), ''), e.expires_on IS NOT NULL AND e.expires_on < (now() AT TIME ZONE 'Africa/Lagos')::date,
-	    a.id IS NOT NULL, `+strings.Replace(last, "%s", "e.email", 1)+`, e.added_at
+	    a.id IS NOT NULL AND NOT e.pending, `+strings.Replace(last, "%s", "e.email", 1)+`, e.added_at
 	  FROM executives e LEFT JOIN accounts a ON lower(a.email) = e.email ORDER BY e.added_at`)
 	if err != nil {
 		return nil, err
@@ -130,8 +130,8 @@ func (st Store) Grant(ctx context.Context, email, by string, g Grant, now time.T
 		exp = &d
 	}
 	var added bool
-	err := st.DB.QueryRow(ctx, `INSERT INTO executives (email, role, name, org, scopes, can_add, can_money, watermark, expires_on, added_by)
-	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, nullif($10, '')::uuid)
+	err := st.DB.QueryRow(ctx, `INSERT INTO executives (email, role, name, org, scopes, can_add, can_money, watermark, expires_on, added_by, pending)
+	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, nullif($10, '')::uuid, true)
 	  ON CONFLICT (email) DO UPDATE SET role = $2, name = $3, org = $4, scopes = $5, can_add = $6, can_money = $7, watermark = $8, expires_on = $9
 	  RETURNING xmax = 0`, g.Email, g.Role, g.Name, g.Org, scopes, g.CanAdd, g.CanMoney, g.Watermark, exp, by).Scan(&added)
 	return added, err

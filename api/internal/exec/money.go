@@ -56,7 +56,7 @@ func (st Store) moneyAccess(ctx context.Context, email string) (bool, error) {
 	}
 	var role string
 	var can bool
-	err := st.DB.QueryRow(ctx, `SELECT role, can_money FROM executives WHERE email = lower($1) AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&role, &can)
+	err := st.DB.QueryRow(ctx, `SELECT role, can_money FROM executives WHERE email = lower($1) AND NOT pending AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE 'Africa/Lagos')::date)`, email).Scan(&role, &can)
 	if err == pgx.ErrNoRows {
 		return false, nil
 	}
