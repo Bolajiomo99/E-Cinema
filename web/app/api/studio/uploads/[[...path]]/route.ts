@@ -64,6 +64,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (!p.length) return pass(await accountApi("GET", "/v1/me/studio/uploads", undefined, s));
   if (p.length === 1) return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s));
   if (p.length === 2 && p[1] === "premiere") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s));
+  if (p.length === 2 && p[1] === "plan") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/plan`, undefined, s));
   // Live control room (Figma 37:1272).
   if (p.length === 2 && p[1] === "control") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s));
   // Marketing (Figma 39:779): the clip moments Studio AI picked.
@@ -185,6 +186,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
   const body = await req.json().catch(() => ({}));
   if (!p.length) return pass(await accountApi("POST", "/v1/me/studio/uploads", { title: String(body.title ?? "") }, s));
+  // Danger zone (99:247): move the premiere, or withdraw it and refund every seat.
+  if (p.length === 2 && p[1] === "reschedule") return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/reschedule`, { StartsAt: String(body.StartsAt ?? "") }, s));
+  if (p.length === 2 && p[1] === "withdraw") return pass(await accountApi("POST", `/v1/me/studio/uploads/${p[0]}/withdraw`, {}, s));
   if (!mediaEnabled) return json(503, { error: "Uploads are paused right now" });
 
   // A new file: reserve its place, then open a multipart upload in storage.

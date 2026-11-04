@@ -121,3 +121,9 @@ export function ago(iso: string, now: number) {
   const d = Math.round(h / 24);
   return `${d} ${d === 1 ? "day" : "days"} ago`;
 }
+
+// Where a film's premiere stands (Figma 99:247 Pre-sales and Danger zone). Money is USD cents.
+export type PremierePlan = {
+  showtimeId: string; startsAt: string; movedFrom?: string; withdrawnAt?: string;
+  seats: number; holders: number; grossCents: number; sharePct: number; week: number; refundsDue: number;
+};

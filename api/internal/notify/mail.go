@@ -176,7 +176,7 @@ func (s Store) refundMailWhere(ctx context.Context, where, arg string) error {
 	_, err := s.DB.Exec(ctx, `INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
 	  SELECT CASE WHEN st.withdrawn_at IS NOT NULL THEN 'premiere_cancelled' ELSE 'refund' END, a.email, a.name,
 	    jsonb_build_object('what', st.film || ' · ' || h.seats || CASE WHEN h.seats = 1 THEN ' seat' ELSE ' seats' END, 'film', st.film,
-	      'netMinor', coalesce(h.net_cents, h.seats * st.price_cents), 'currency', st.currency, 'credit', coalesce(h.paypal_refund_id, '') LIKE 'CREDIT-%',
+	      'netMinor', coalesce(h.net_cents, h.seats * st.price_cents), 'currency', st.currency, 'credit', coalesce(h.paypal_refund_id, '') LIKE 'CREDIT-%', 'gross', coalesce(h.paypal_refund_id, '') LIKE 'CREDIT-%',
 	      'ref', 'EC-T-' || upper(left(replace(h.id::text, '-', ''), 8)), 'link', '/tickets'),
 	    'refund:' || h.id
 	  FROM holds h JOIN showtimes st ON st.id = h.showtime_id JOIN accounts a ON a.id = h.account_id

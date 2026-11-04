@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import type { Upload, UploadFile } from "@/lib/studio-types";
+import { useRef, useState, useSyncExternalStore } from "react";
+import type { PremierePlan, Upload, UploadFile } from "@/lib/studio-types";
 import { scall } from "./scall";
 
 // Figma "Studio / Film detail" (99:247): what viewers will read, whether the files are ready,
@@ -28,11 +28,25 @@ function statusRows(u: Upload, rightsDeclared: boolean): Row[] {
   rows.push(done.length ? { title: "Subtitles", detail: done.map((f) => { const [lang, lines] = f.info.split(" · "); return lang === "Subtitles" ? `${lines ?? f.name}` : `${lang.replace(/ subtitles$/, "")} · ${lines}`; }).join(", "), pill: warns(subs) ? { tone: "amber", text: `Fix ${warns(subs)}` } : { tone: "teal", text: "Passed" } }
     : { title: "Subtitles", detail: "None yet. AI can write them from the dialogue", pill: { tone: "grey", text: "Missing" } });
   rows.push({ title: "Rights papers", detail: rightsDeclared ? "Declared when your studio was verified" : "Not declared", pill: rightsDeclared ? { tone: "teal", text: "Approved" } : { tone: "red", text: "Needed" } });
-  rows.push({ title: "Watermark", detail: "Per-viewer forensic mark", pill: { tone: "grey", text: "Soon" } });
+  rows.push({ title: "Watermark", detail: "Per-viewer code in the picture of every room, traced in Piracy protection", pill: { tone: "teal", text: "On" } });
   return rows;
 }
 
-export default function StudioFilmDetail({ upload: u0, canEdit, rightsDeclared }: { upload: Upload; canEdit: boolean; rightsDeclared: boolean }) {
+const usd = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: cents >= 1e8 ? "compact" : "standard", maximumFractionDigits: cents >= 1e8 ? 1 : 0 }).format(cents / 100);
+const longAt = (iso: string) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short" }).format(new Date(iso));
+const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(iso));
+// A datetime-local value in the member's own zone.
+const localInput = (iso: string) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); };
+
+export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwner, rightsDeclared }: { upload: Upload; plan: PremierePlan | null; canEdit: boolean; isOwner: boolean; rightsDeclared: boolean }) {
+  const [plan, setPlan] = useState(p0);
+  const [moving, setMoving] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [dlgErr, setDlgErr] = useState("");
+  const [now] = useState(() => Date.now());
+  // Dates read in the member's own zone, so they are written only in the browser.
+  const client = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const longWhen = (iso: string) => (client ? longAt(iso) : "");
   const router = useRouter();
   const [u, setU] = useState(u0);
   const [d, setD] = useState({ title: u0.title, logline: u0.logline, genres: u0.genres, ageRating: u0.ageRating, castCrew: u0.castCrew, languages: u0.languages });
@@ -75,13 +89,34 @@ export default function StudioFilmDetail({ upload: u0, canEdit, rightsDeclared }
     } catch (e) { setErr((e as Error).message); }
   }
 
+  async function move() {
+    if (!moving) return;
+    setBusy(true); setDlgErr("");
+    try {
+      const r = await scall<{ plan: PremierePlan }>("POST", `uploads/${u.id}/reschedule`, { StartsAt: new Date(moving).toISOString() });
+      setPlan(r.plan); setMoving(null);
+      setMsg(`Moved to ${longWhen(r.plan.startsAt)}. ${r.plan.holders ? `${r.plan.holders.toLocaleString("en-GB")} ticket ${r.plan.holders === 1 ? "holder is" : "holders are"} being emailed.` : ""}`.trim());
+    } catch (e) { setDlgErr((e as Error).message); } finally { setBusy(false); }
+  }
+  async function withdraw() {
+    setBusy(true); setDlgErr("");
+    try {
+      const r = await scall<{ plan: PremierePlan }>("POST", `uploads/${u.id}/withdraw`, {});
+      setPlan(r.plan); setWithdrawing(null);
+      setMsg(r.plan.refundsDue ? `Withdrawn. ${r.plan.refundsDue.toLocaleString("en-GB")} ${r.plan.refundsDue === 1 ? "ticket is" : "tickets are"} being refunded.` : "Withdrawn. No tickets were sold, so there is nothing to refund.");
+    } catch (e) { setDlgErr((e as Error).message); } finally { setBusy(false); }
+  }
+
+  const live = plan && !plan.withdrawnAt;
+  const started = live && Date.parse(plan.startsAt) <= now;
+  const when = !plan ? "no premiere booked yet" : plan.withdrawnAt ? "premiere withdrawn" : started ? `premiered ${shortDay(plan.startsAt)}` : `premieres ${shortDay(plan.startsAt)}`;
   const rows = statusRows(u, rightsDeclared);
   return (
     <div className="pt-body stfd">
       <header className="bp-head">
         <div>
           <h1>{u.title}</h1>
-          <p>{[u.genres.split(",")[0]?.trim(), runtime, u.languages, "no premiere booked yet"].filter(Boolean).join(" · ")}</p>
+          <p>{[u.genres.split(",")[0]?.trim(), runtime, u.languages, when].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="pt-btns">
           <span className="vf-btn ghost stu-soon" aria-disabled="true">Preview as viewer <em className="soon-tag">Soon</em></span>
@@ -147,17 +182,26 @@ export default function StudioFilmDetail({ upload: u0, canEdit, rightsDeclared }
           <section className="bp-panel">
             <h2>Pre-sales so far</h2>
             <div className="stfd-k">
-              <div className="bp-kpi"><span>Seats sold</span><b>0</b><em className="muted">on sale once the premiere is booked</em></div>
-              <div className="bp-kpi"><span>Gross</span><b>–</b><em className="muted">70% to you</em></div>
+              <div className="bp-kpi"><span>Seats sold</span><b>{(plan?.seats ?? 0).toLocaleString("en-GB")}</b>
+                {!plan ? <em className="muted">on sale once the premiere is booked</em>
+                  : plan.withdrawnAt ? <em className="neg">{plan.refundsDue ? `${plan.refundsDue.toLocaleString("en-GB")} ${plan.refundsDue === 1 ? "refund" : "refunds"} going out` : "all refunded"}</em>
+                  : plan.week ? <em>+{plan.week.toLocaleString("en-GB")} this week</em> : <em className="muted">none in the last 7 days</em>}</div>
+              <div className="bp-kpi"><span>Gross</span><b>{plan ? usd(plan.grossCents) : "–"}</b><em className="muted">{plan?.sharePct ?? 70}% to you</em></div>
             </div>
           </section>
           <section className="bp-panel">
             <h2>Danger zone</h2>
             <div className="stfd-v">
-              <div><b>Move the premiere</b><small>No premiere booked yet. Ticket holders get a free change or a refund</small></div>
-              <button className="vf-btn sm sec" disabled>Reschedule</button>
+              <div><b>Move the premiere</b><small>{!plan ? "No premiere booked yet. Ticket holders get a free change or a refund" : plan.withdrawnAt ? "Withdrawn, so it cannot be moved" : started ? "It has already started" : `${client ? `Now ${longAt(plan.startsAt)}. ` : ""}Ticket holders get a free change or a refund`}</small></div>
+              <button className="vf-btn sm sec" disabled={!canEdit || !live || Boolean(started)} onClick={() => { setDlgErr(""); setMoving(localInput(new Date(Math.max(Date.parse(plan!.startsAt), Date.now() + 86_400_000 + 3_600_000)).toISOString())); }}>Reschedule</button>
             </div>
-            {canEdit && (
+            {plan && (
+              <div className="stfd-v">
+                <div><b>Withdraw the film</b><small>{plan.withdrawnAt ? `Withdrawn ${shortDay(plan.withdrawnAt)}. Every ticket is refunded automatically` : started ? "It has already started" : isOwner ? "Refunds every ticket automatically" : "Refunds every ticket automatically. Only the studio owner can do this"}</small></div>
+                <button className="vf-btn sm ghost" disabled={!isOwner || !live || Boolean(started)} onClick={() => { setDlgErr(""); setWithdrawing(""); }}>Withdraw</button>
+              </div>
+            )}
+            {canEdit && !plan && (
               <div className="stfd-v">
                 <div><b>Delete this draft</b><small>It has not premiered, so no one holds a ticket. Every uploaded file is deleted</small></div>
                 <button className="vf-btn sm ghost" onClick={remove}>Delete</button>
@@ -166,6 +210,41 @@ export default function StudioFilmDetail({ upload: u0, canEdit, rightsDeclared }
           </section>
         </div>
       </div>
+
+      {moving !== null && plan && (
+        <div className="exa-scrim" role="dialog" aria-modal="true" aria-labelledby="stfd-mv" onClick={(e) => e.target === e.currentTarget && !busy && setMoving(null)}>
+          <form className="stfd-dlg" onSubmit={(e) => { e.preventDefault(); void move(); }}>
+            <h2 id="stfd-mv">Move the premiere of {u.title}</h2>
+            <p>Now {longWhen(plan.startsAt)}. {plan.seats.toLocaleString("en-GB")} {plan.seats === 1 ? "seat" : "seats"} sold to {plan.holders.toLocaleString("en-GB")} ticket {plan.holders === 1 ? "holder" : "holders"}.</p>
+            <label className="vf-field"><span>New date and time (your zone)</span><div className="vf-box"><input type="datetime-local" value={moving} min={localInput(new Date(now + 86_400_000).toISOString())} onChange={(e) => setMoving(e.target.value)} required /></div></label>
+            <div className="stfd-note"><b>What ticket holders get</b><span>Every seat moves to the new time. Each holder gets an email and can take a full refund for 7 days. Pick a time at least 24 hours away.</span></div>
+            {dlgErr && <p className="vf-err" role="alert">{dlgErr}</p>}
+            <div className="stfd-dlg-btns">
+              <button type="button" className="vf-btn ghost" onClick={() => setMoving(null)} disabled={busy}>Cancel</button>
+              <button className="vf-btn red" disabled={busy || !moving}>{busy ? "Moving" : "Move premiere"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {withdrawing !== null && plan && (
+        <div className="exa-scrim" role="dialog" aria-modal="true" aria-labelledby="stfd-wd" onClick={(e) => e.target === e.currentTarget && !busy && setWithdrawing(null)}>
+          <form className="stfd-dlg" onSubmit={(e) => { e.preventDefault(); void withdraw(); }}>
+            <h2 id="stfd-wd">Withdraw {u.title}?</h2>
+            <p>The premiere comes off sale now and every ticket is refunded the way it was paid. Holders get an email as their refund goes out. This cannot be undone.</p>
+            <div className="stfd-dlg-k">
+              <div><span>Seats to refund</span><b>{plan.seats.toLocaleString("en-GB")}</b></div>
+              <div><span>Ticket money returned</span><b>{usd(plan.grossCents)}</b></div>
+            </div>
+            <label className="vf-field"><span>Type WITHDRAW to confirm</span><div className="vf-box"><input value={withdrawing} onChange={(e) => setWithdrawing(e.target.value)} autoComplete="off" autoFocus /></div></label>
+            <small className="stfd-dlg-hint">Only the studio owner can withdraw a film.</small>
+            {dlgErr && <p className="vf-err" role="alert">{dlgErr}</p>}
+            <div className="stfd-dlg-btns">
+              <button type="button" className="vf-btn ghost" onClick={() => setWithdrawing(null)} disabled={busy}>Keep it on sale</button>
+              <button className="vf-btn red" disabled={busy || withdrawing.trim().toUpperCase() !== "WITHDRAW"}>{busy ? "Withdrawing" : "Withdraw and refund"}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
