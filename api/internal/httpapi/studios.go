@@ -202,7 +202,7 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		reply(w, map[string]any{"plan": p}, err)
 	}))
 	// Seats of withdrawn premieres waiting for their refund (the web app pays them back).
-	mux.HandleFunc("GET /v1/refunds/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/refunds/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		list, err := s.Studios.RefundsDue(r.Context(), 20)
 		reply(w, map[string]any{"refunds": list}, err)
 	}))

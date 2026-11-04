@@ -227,6 +227,40 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // 29 Premiere moved to a new date (127:127)
+  premiere_moved: (m) => {
+    const film = S(m.data.film), studio = S(m.data.studio), at = S(m.data.startsAt), until = S(m.data.refundUntil);
+    if (!film || !at || !until) return null;
+    const short = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: zoneOf(m.country) }).format(new Date(at));
+    const long = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: zoneOf(m.country) }).format(new Date(at));
+    return done({
+      from: SENDER.tickets, tag: "NEW DATE", footer: FOOT_ACTION(),
+      subject: `${film} moved to ${short}, ${clock(at, m.country)}`, preview: "Your seat moves with it, or take a refund",
+      title: "Your premiere has a new date",
+      body: p(`${esc(studio || "The studio")} moved ${esc(film)} to ${esc(long)} at ${clock(at, m.country)} your time. Your seat moves automatically. If the new date does not work, take a full refund by ${esc(dayName(until, m.country))}. Ticket:`) +
+        refBox(S(m.data.ticket)) + button(href("/tickets"), "Keep my seat") +
+        small(`Need the refund instead? Open the ticket in <a href="${esc(href("/tickets"))}" style="color:#e5182e">My tickets</a> and choose Refund.`),
+      text: `${studio || "The studio"} moved ${film} to ${long} at ${clock(at, m.country)} your time. Your seat moves automatically. For a full refund by ${dayName(until, m.country)}, open ${href("/tickets")}.`,
+    });
+  },
+
+  // 30 Premiere cancelled, refund sent (127:149)
+  premiere_cancelled: (m) => {
+    const film = S(m.data.film), cur = S(m.data.currency) || "USD";
+    if (!film) return null;
+    const amount = money(m.data.gross ? N(m.data.netMinor) : withVat(N(m.data.netMinor), m.country), cur);
+    const credit = m.data.credit === true;
+    const where = credit ? "your E-Cinema credit" : "the card or account you paid with";
+    return done({
+      from: SENDER.billing, tag: "REFUNDED", footer: FOOT_ACTION(),
+      subject: `${film} is cancelled. ${amount} is on its way back`, preview: credit ? "Back in your E-Cinema credit now" : "Back to how you paid in 1 to 5 working days",
+      title: "We are sorry, this premiere is cancelled",
+      body: p(`The studio cancelled ${esc(film)}. We refunded ${esc(amount)} to ${where}${credit ? "" : ". It arrives in 1 to 5 working days"}. Refund reference:`) +
+        refBox(S(m.data.ref)) + button(href("/tickets"), credit ? "See my credit" : "See my tickets"),
+      text: `The studio cancelled ${film}. We refunded ${amount} to ${where}. Reference ${S(m.data.ref)}.`,
+    });
+  },
+
   // 48 Plan renews in 3 days (127:545)
   plan_renews: (m) => {
     const plan = PLAN[S(m.data.plan)], at = S(m.data.renewsAt);
@@ -525,7 +559,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
