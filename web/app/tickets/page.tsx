@@ -73,7 +73,7 @@ export default async function Tickets({ searchParams }: { searchParams: Promise<
 
         <div className="tk-note">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg>
-          <p>Cancel free until 7 days before a screening and get a full refund to how you paid. If a premiere is cancelled you are refunded automatically. Gifts you send arrive on the day you pick.</p>
+          <p>Cancel free until 7 days before a screening and get a full refund to how you paid. If a studio moves a premiere you can take a full refund for 7 days. If a premiere is cancelled you are refunded automatically. Gifts you send arrive on the day you pick.</p>
         </div>
       </main>
     </DashShell>
@@ -107,13 +107,14 @@ function TicketRow({ t, now, past }: { t: Row; now: number; past: boolean }) {
           <span className="b out">{t.seats} {t.seats === 1 ? "SEAT" : "SEATS"}</span>
           {t.quality && t.quality !== "hd" && <span className="b out">{t.quality === "4k" ? "4K HDR" : "VR SEAT"}</span>}
           {t.status === "paid" && t.createdAt && Date.parse(t.createdAt) < start - CANCEL_UNTIL && <span className="b white">PRE-ORDERED</span>}
+          {t.movedFrom && !past && <span className="b warn">NEW DATE</span>}
           {s.adult && <span className="b out">18+</span>}
         </div>
       </div>
       <div className="tk-actions">
         {t.status === "paid" && <Link href={`/receipts/${t.holdId}`} className="state-btn ghost">Receipt</Link>}
-        {t.status === "paid" && !past && start - now > CANCEL_UNTIL && (
-          <CancelSeat holdId={t.holdId} film={s.film} until={new Date(start - CANCEL_UNTIL).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })} />
+        {t.status === "paid" && !past && (start - now > CANCEL_UNTIL || (t.refundUntil && Date.parse(t.refundUntil) > now && start > now)) && (
+          <CancelSeat holdId={t.holdId} film={s.film} until={new Date(t.refundUntil && Date.parse(t.refundUntil) > start - CANCEL_UNTIL ? Date.parse(t.refundUntil) : start - CANCEL_UNTIL).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })} />
         )}
         {t.status === "held" ? <Link href={`/checkout?film=${s.id}`} className="state-btn primary">Finish payment</Link>
           : past ? null

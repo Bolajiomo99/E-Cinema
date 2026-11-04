@@ -200,11 +200,15 @@ type MyTicket struct {
 	OrderID    string    `json:"orderId,omitempty"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 	CreatedAt  time.Time `json:"createdAt"`
+	// RefundUntil is set when the studio moved the premiere: a full refund is open until then.
+	RefundUntil *time.Time `json:"refundUntil,omitempty"`
+	MovedFrom   *time.Time `json:"movedFrom,omitempty"`
 }
 
 // Mine lists an account's paid seats and its live holds, soonest screening first.
 func (st Store) Mine(ctx context.Context, accountID string) ([]MyTicket, error) {
-	rows, err := st.DB.Query(ctx, `SELECT h.id, h.showtime_id, h.seats, h.status, h.quality, COALESCE(h.paypal_order_id, ''), h.expires_at, h.created_at
+	rows, err := st.DB.Query(ctx, `SELECT h.id, h.showtime_id, h.seats, h.status, h.quality, COALESCE(h.paypal_order_id, ''), h.expires_at, h.created_at,
+	    CASE WHEN h.refund_until > now() THEN h.refund_until END, s.moved_from
 	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
 	  WHERE h.account_id = $1 AND (h.status = 'paid' OR (h.status = 'held' AND h.expires_at > now()))
 	  ORDER BY s.starts_at, h.created_at`, accountID)
@@ -215,7 +219,7 @@ func (st Store) Mine(ctx context.Context, accountID string) ([]MyTicket, error) 
 	out := []MyTicket{}
 	for rows.Next() {
 		var t MyTicket
-		if err := rows.Scan(&t.HoldID, &t.ShowtimeID, &t.Seats, &t.Status, &t.Quality, &t.OrderID, &t.ExpiresAt, &t.CreatedAt); err != nil {
+		if err := rows.Scan(&t.HoldID, &t.ShowtimeID, &t.Seats, &t.Status, &t.Quality, &t.OrderID, &t.ExpiresAt, &t.CreatedAt, &t.RefundUntil, &t.MovedFrom); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

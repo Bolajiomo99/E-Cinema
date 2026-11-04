@@ -69,7 +69,7 @@ export async function cancellable(session: string, holdId: string): Promise<{ ok
   return res.ok && body.captureId ? { ok: true, captureId: body.captureId } : { ok: false, status: res.status, error: body.error ?? "Could not cancel" };
 }
 
-export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; quality?: "hd" | "4k" | "vr"; orderId?: string; expiresAt: string; createdAt?: string };
+export type MyTicket = { holdId: string; showtimeId: string; seats: number; status: "held" | "paid"; quality?: "hd" | "4k" | "vr"; orderId?: string; expiresAt: string; createdAt?: string; refundUntil?: string; movedFrom?: string };
 
 async function viewer<T>(method: string, path: string, session: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
