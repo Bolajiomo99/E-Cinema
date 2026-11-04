@@ -130,6 +130,11 @@ func run() error {
 			} else if n > 0 {
 				slog.Info("gifted plans ended", "count", n)
 			}
+			if n, err := srv.Tickets.EnsureEncores(ctx, time.Now()); err != nil {
+				slog.Error("weekly encores", "err", err)
+			} else if n > 0 {
+				slog.Info("weekly encores added", "count", n)
+			}
 			if n, err := srv.Accounts.PurgeDeleted(ctx); err != nil {
 				slog.Error("purge deleted accounts", "err", err)
 			} else if n > 0 {

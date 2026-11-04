@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
@@ -382,5 +383,45 @@ func TestCancelAndRefund(t *testing.T) {
 	s.MarkPaid(ctx, "ORDER-CANCEL-2", "CAP-CANCEL-2")
 	if _, err := s.CanCancel(ctx, a, h2.ID); !errors.Is(err, tickets.ErrTooLateToCancel) {
 		t.Fatalf("inside 7 days: %v", err)
+	}
+}
+
+func TestEncores(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	clean := func() {
+		s.DB.Exec(ctx, `DELETE FROM showtimes WHERE encore_of = 'enc-test-2026-10-06'`)
+		s.DB.Exec(ctx, `DELETE FROM showtimes WHERE id = 'enc-test-2026-10-06'`)
+	}
+	clean()
+	t.Cleanup(clean)
+	if _, err := s.DB.Exec(ctx, `INSERT INTO showtimes (id, film, studio, starts_at, duration_min, capacity, price_cents, currency, encore_weekly)
+	  VALUES ('enc-test-2026-10-06', 'Encore Film', 'Test Studio', '2026-10-06T18:00:00Z', 90, 300, 499, 'USD', true)`); err != nil {
+		t.Fatal(err)
+	}
+	now, _ := time.Parse(time.RFC3339, "2026-10-20T12:00:00Z")
+	if _, err := s.EnsureEncores(ctx, now); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	var first, last string
+	if err := s.DB.QueryRow(ctx, `SELECT count(*), min(id), max(id) FROM showtimes WHERE encore_of = 'enc-test-2026-10-06'`).Scan(&n, &first, &last); err != nil {
+		t.Fatal(err)
+	}
+	if n != 9 || first != "enc-test-2026-10-20" || last != "enc-test-2026-12-15" {
+		t.Fatalf("encores = %d %s..%s", n, first, last)
+	}
+	var cap, price int
+	var at time.Time
+	s.DB.QueryRow(ctx, `SELECT capacity, price_cents, starts_at FROM showtimes WHERE id = 'enc-test-2026-10-27'`).Scan(&cap, &price, &at)
+	if cap != 300 || price != 499 || at.UTC().Format(time.RFC3339) != "2026-10-27T18:00:00Z" {
+		t.Fatalf("encore = %d %d %v", cap, price, at)
+	}
+	if _, err := s.EnsureEncores(ctx, now); err != nil {
+		t.Fatal(err)
+	}
+	s.DB.QueryRow(ctx, `SELECT count(*) FROM showtimes WHERE encore_of = 'enc-test-2026-10-06'`).Scan(&n)
+	if n != 9 {
+		t.Fatalf("second run added rows: %d", n)
 	}
 }
