@@ -1144,3 +1144,39 @@ func TestInvites(t *testing.T) {
 }
 
 func InviteHours(h int) time.Duration { return time.Duration(h) * time.Hour }
+
+func TestOverview(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	st := exec.Store{DB: p, CEOs: []string{"ox-ceo@example.com"}}
+	if _, err := st.Overview(ctx, "ox-cfo@example.com", time.Now()); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("non-ceo: %v", err)
+	}
+	o, err := st.Overview(ctx, "ox-ceo@example.com", time.Now())
+	if err != nil {
+		t.Fatalf("overview: %v", err)
+	}
+	for _, w := range o.Weeks {
+		if w.Stream != "tickets" && w.Stream != "shop" && w.Stream != "licensing" {
+			t.Fatalf("unexpected stream %+v", w)
+		}
+	}
+	weeks := map[string]bool{}
+	for _, w := range o.Weeks {
+		weeks[w.Week] = true
+	}
+	if len(weeks) > 12 {
+		t.Fatalf("%d weeks", len(weeks))
+	}
+}

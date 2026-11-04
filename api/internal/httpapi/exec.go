@@ -117,6 +117,11 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	// CEO global overview (Figma 117:684): revenue by stream, 12 weeks and this month.
+	mux.HandleFunc("GET /v1/me/exec/overview", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		o, err := s.Exec.Overview(r.Context(), a.Email, time.Now())
+		reply(w, o, err)
+	}))
 	// Money (Figma 50:253): the CEO, the CFO and anyone allowed to see money.
 	mux.HandleFunc("GET /v1/me/exec/money", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
