@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/studios"
 )
@@ -471,6 +473,9 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		}
 		if decodeN(w, r, 2<<10, &b) {
 			err := s.Studios.Review(r.Context(), r.PathValue("slug"), b.Approve, b.Note)
+			if err == nil && b.Approve {
+				s.studioApproved(r.PathValue("slug"))
+			}
 			reply(w, map[string]bool{"ok": err == nil}, err)
 		}
 	}))
@@ -490,4 +495,18 @@ func announceAllowed(showtime string) bool {
 	}
 	announced.at[showtime] = time.Now()
 	return true
+}
+
+// studioApproved queues email 19 (Figma 106:564) to the studio's owner.
+func (s *Server) studioApproved(slug string) {
+	if s.Studios.DB == nil {
+		return
+	}
+	ctx := context.Background()
+	var studio, email string
+	if s.Studios.DB.QueryRow(ctx, `SELECT st.name, m.email FROM studios st JOIN studio_members m ON m.studio = st.name AND m.role = 'owner'
+	  WHERE st.slug = $1 ORDER BY m.added_at LIMIT 1`, slug).Scan(&studio, &email) != nil {
+		return
+	}
+	_ = s.Notify.Queue(ctx, notify.Mail{Kind: "studio_approved", To: email, Name: studio, Dedupe: "studiook:" + slug, Data: map[string]any{"studio": studio}})
 }

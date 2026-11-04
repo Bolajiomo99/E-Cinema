@@ -191,6 +191,7 @@ func (s *Server) Routes() http.Handler {
 				return
 			}
 			s.note(app.Account, notify.New{Kind: "payment", Title: "Your E-Cinema licence is active", Body: "Licence " + *app.Licence + ". Open your partner dashboard to add products.", Link: "/partner", Dedupe: "licence:" + app.ID})
+			s.licenceMail(app.Account, "licence_approved", app.ID, map[string]any{"company": app.Company, "country": app.Country, "plan": app.Plan, "licence": *app.Licence})
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -285,6 +286,9 @@ func (s *Server) Routes() http.Handler {
 		if err := s.Tickets.RecordPayout(r.Context(), r.PathValue("id"), body.Status, body.BatchID); err != nil {
 			fail(w, err)
 			return
+		}
+		if body.Status == "sent" {
+			_ = s.Notify.PayoutMail(r.Context(), r.PathValue("id"))
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))

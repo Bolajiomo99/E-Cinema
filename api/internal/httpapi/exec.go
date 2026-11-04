@@ -11,6 +11,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/exec"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 )
 
 // Executive dashboards (Figma page "07 Executive").
@@ -87,6 +88,12 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 				return
 			}
 			out["invite"] = tok
+			// Email 45 (Figma 127:479): a nudge 24 hours before the link runs out, dropped if
+			// the invite is accepted or replaced first.
+			_ = s.Notify.CancelKind(r.Context(), "exec_invite_expiring", g.Email)
+			_ = s.Notify.Queue(r.Context(), notify.Mail{Kind: "exec_invite_expiring", To: g.Email, Name: g.Name, Dedupe: "execexp:" + tok[:12],
+				SendAfter: time.Now().Add(exec.InviteFor - 24*time.Hour),
+				Data:      map[string]any{"by": a.Name, "role": g.Role, "token": tok, "expiresAt": time.Now().Add(exec.InviteFor).Format(time.RFC3339)}})
 		}
 		reply(w, out, nil)
 	}))
@@ -108,7 +115,11 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		reply(w, map[string]bool{"ok": true}, s.Exec.ConfirmInviteCode(r.Context(), r.PathValue("token"), a.Email, b.Code, time.Now()))
 	}))
 	mux.HandleFunc("POST /v1/exec-invites/{token}/accept", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
-		reply(w, map[string]bool{"ok": true}, s.Exec.AcceptInvite(r.Context(), r.PathValue("token"), a.Email, a.ID, time.Now()))
+		err := s.Exec.AcceptInvite(r.Context(), r.PathValue("token"), a.Email, a.ID, time.Now())
+		if err == nil {
+			_ = s.Notify.CancelKind(r.Context(), "exec_invite_expiring", a.Email)
+		}
+		reply(w, map[string]bool{"ok": true}, err)
 	}))
 	mux.HandleFunc("DELETE /v1/me/exec/people/{email}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		if err := s.Exec.Revoke(r.Context(), a.Email, r.PathValue("email")); err != nil {
@@ -176,6 +187,7 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		s.studioApproved(r.PathValue("slug"))
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	// Live operations (Figma 82:852): what plays right now, from the watch-room hub.

@@ -80,6 +80,16 @@ func (s Store) Cancel(ctx context.Context, dedupe string) error {
 	return err
 }
 
+// CancelKind drops every unsent email of one kind to one address.
+func (s Store) CancelKind(ctx context.Context, kind, to string) error {
+	if s.DB == nil {
+		return nil
+	}
+	_, err := s.DB.Exec(ctx, `UPDATE mail_outbox SET failed_at = now(), last_error = 'cancelled'
+	  WHERE kind = $1 AND to_email = lower($2) AND sent_at IS NULL AND failed_at IS NULL`, kind, to)
+	return err
+}
+
 // DueMail claims up to limit emails that are ready. A claim lasts ten minutes, so a sender
 // that dies mid-batch does not lose them.
 func (s Store) DueMail(ctx context.Context, limit int) ([]Outgoing, error) {
@@ -162,6 +172,25 @@ func (s Store) refundMail(ctx context.Context, captureID string) error {
 	return err
 }
 
+// PayoutMail queues email 20 (Figma 106:599) to the studio's owner once a screening's 70%
+// share has been sent by PayPal.
+func (s Store) PayoutMail(ctx context.Context, showtimeID string) error {
+	if s.DB == nil {
+		return nil
+	}
+	_, err := s.DB.Exec(ctx, `INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
+	  SELECT 'studio_payout', m.email, p.studio,
+	    jsonb_build_object('studio', p.studio, 'film', st.film, 'startsAt', st.starts_at, 'seats', p.paid_seats,
+	      'grossMinor', p.gross_cents, 'shareMinor', p.studio_cents, 'currency', p.currency, 'sharePct', (s2.share_bps / 100),
+	      'payTo', regexp_replace(s2.payout_email, '^(.).*(@.*)$', '\1•••\2')),
+	    'payout:' || p.showtime_id
+	  FROM studio_payouts p JOIN showtimes st ON st.id = p.showtime_id JOIN studios s2 ON s2.name = p.studio
+	  JOIN LATERAL (SELECT email FROM studio_members WHERE studio = p.studio AND role = 'owner' ORDER BY added_at LIMIT 1) m ON true
+	  WHERE p.showtime_id = $1 AND p.status = 'sent' AND p.studio_cents > 0
+	  ON CONFLICT (dedupe) DO NOTHING`, showtimeID)
+	return err
+}
+
 // ScheduleMail queues the emails whose time has come: premiere reminders, "started, not joined
 // yet", the pre-order week-to-go note, plan renewal notices, gifts nobody claimed and the weekly
 // round-up. It runs every minute and returns how many it queued.
@@ -232,6 +261,15 @@ var scheduled = []string{
 	  FROM gifts g JOIN accounts a ON a.id = g.giver_id LEFT JOIN showtimes st ON st.id = g.showtime_id
 	  WHERE g.status = 'paid' AND g.delivered_at IS NOT NULL AND g.delivered_at <= $1::timestamptz - interval '3 days'
 	    AND (st.id IS NULL OR st.starts_at > $1::timestamptz) AND a.delete_after IS NULL
+	  ON CONFLICT (dedupe) DO NOTHING`,
+	// 42: 30 days before a merch licence ends.
+	`INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
+	  SELECT 'licence_renewal', a.email, b.name,
+	    jsonb_build_object('company', b.name, 'licence', b.licence, 'plan', b.plan, 'country', b.country, 'validUntil', b.valid_until),
+	    'licrenew:' || b.licence || ':' || b.valid_until
+	  FROM brand_licensees b JOIN accounts a ON a.id = b.account_id
+	  WHERE b.status = 'active' AND b.valid_until IS NOT NULL
+	    AND b.valid_until <= ($1::timestamptz + interval '30 days')::date AND b.valid_until > ($1::timestamptz + interval '29 days')::date
 	  ON CONFLICT (dedupe) DO NOTHING`,
 	// 21: Fridays from 09:00 UTC, the week's premieres for members who keep news email on.
 	`INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
