@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyWebhook, type PayPalEvent } from "@/lib/paypal-webhook";
 import { markPaid, markRefunded, SoldOutError } from "@/lib/api";
+import { accountApi } from "@/lib/auth";
 import { sweepGifts } from "@/lib/gifts";
 import { activateFromPayPal, endFromPayPal } from "@/lib/plan-activation";
 import type { Subscription } from "@/lib/paypal-subs";
@@ -65,6 +66,28 @@ export async function POST(req: Request) {
       }
     }
   }
+  // Disputes (Figma 285:373): kept so the CFO sees what is open, what is at stake and what is due.
+  if (event.event_type === "CUSTOMER.DISPUTE.CREATED" || event.event_type === "CUSTOMER.DISPUTE.RESOLVED") {
+    const d = (event.resource ?? {}) as {
+      dispute_id?: string; reason?: string; status?: string; seller_response_due_date?: string;
+      dispute_amount?: { currency_code?: string; value?: string };
+      disputed_transactions?: { seller_transaction_id?: string }[];
+      dispute_outcome?: { outcome_code?: string };
+    };
+    if (d.dispute_id) {
+      const r = await accountApi("POST", "/v1/paypal-disputes", {
+        id: d.dispute_id, captureId: d.disputed_transactions?.[0]?.seller_transaction_id ?? "",
+        currency: d.dispute_amount?.currency_code ?? "", amount: Math.round(Number(d.dispute_amount?.value ?? 0) * 100) || 0,
+        reason: d.reason ?? "", status: d.status ?? (event.event_type.endsWith("RESOLVED") ? "RESOLVED" : "OPEN"),
+        outcome: d.dispute_outcome?.outcome_code ?? "", due: d.seller_response_due_date || null,
+        resolved: event.event_type === "CUSTOMER.DISPUTE.RESOLVED",
+      });
+      if (r.status !== 200) {
+        console.error("Dispute ledger update failed", r.status);
+        return NextResponse.json({ error: "Retry later" }, { status: 503 });
+      }
+    }
+  }
   // Plan subscriptions: activation backs up the return page, the rest drop the plan to Free.
   if (event.event_type.startsWith("BILLING.SUBSCRIPTION.")) {
     const sub = event.resource as unknown as Subscription;
@@ -77,7 +100,6 @@ export async function POST(req: Request) {
     }
   }
   if (HANDLED.has(event.event_type)) {
-    // Ticket issuing, refunds, dispute holds and studio payout status are written here once the database exists.
     console.info("PayPal event", event.event_type, event.id);
   }
   return NextResponse.json({ received: true });

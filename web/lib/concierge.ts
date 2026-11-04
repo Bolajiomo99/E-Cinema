@@ -147,7 +147,7 @@ async function runTool(block: Anthropic.ToolUseBlock, out: AgentOutput, session?
     }
     let hold;
     try {
-      hold = await holdSeats(showtime.id, seats, randomUUID(), session);
+      hold = await holdSeats(showtime.id, seats, randomUUID(), session, "hd", "concierge");
     } catch (err) {
       if (err instanceof SoldOutError) return reply("Not enough seats left for that screening. Offer another one.", true);
       if (err instanceof AdultOnlyError) return reply("This is an 18+ screening and the viewer has not passed the face and ID check. Point them to /settings/account to do it.", true);

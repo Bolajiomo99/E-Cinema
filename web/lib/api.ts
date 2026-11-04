@@ -28,9 +28,9 @@ export type Hold = { id: string; totalCents: number; currency: string; expiresAt
 
 // With the buyer's session the API links the seats to their account, which is what lets
 // them into the watch room later.
-export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string, quality = "hd"): Promise<Hold | undefined> {
+export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string, quality = "hd", via: "web" | "concierge" = "web"): Promise<Hold | undefined> {
   if (!apiEnabled) return undefined;
-  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality, campaign: await campaignCode() }, session);
+  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality, campaign: await campaignCode(), via }, session);
 }
 
 // The studio campaign link (e-cinema.net/c/<code>) the buyer arrived through, so the studio can
