@@ -341,3 +341,17 @@ export async function execOverview(s: string): Promise<OverviewData | null> {
   const r = await accountApi("GET", "/v1/me/exec/overview", undefined, s);
   return r.status === 200 ? (r.body as OverviewData) : null;
 }
+
+// PayPal and AI agents (Figma 285:373).
+export type CurMinor = { currency: string; minor: number };
+export type PayPalData = {
+  days: number; revenue: CurMinor[]; revenuePrev: CurMinor[]; orders: number; conciergeOrders: number; conciergeHolds: number;
+  refunded: number; refundedPrev: number; paidPrev: number; disputesOpen: number; disputesStake: CurMinor[]; disputesDue48: number;
+  buckets: { start: string; product: string; currency: string; minor: number }[]; monthly: boolean;
+  films: { film: string; studio: string; seats: number; currency: string; gross: number; refunded: number; disputes: number }[];
+  watch: { tone: "amber" | "red" | "green"; title: string; body: string; href?: string }[];
+};
+export async function execPayPal(s: string, days: number): Promise<PayPalData | null> {
+  const r = await accountApi("GET", `/v1/me/exec/paypal?days=${days}`, undefined, s);
+  return r.status === 200 ? (r.body as PayPalData) : null;
+}

@@ -71,6 +71,7 @@ export default function ExecMoney({ v }: { v: MoneyView }) {
         </div>
         <div className="exc-chips" role="group" aria-label="Period">
           {[[30, "30 days"], [90, "Quarter"], [365, "Year"]].map(([d, t]) => <Link key={d} href={`/executive/money?days=${d}`} className={`exm-chip${v.days === d ? " on" : ""}`} aria-current={v.days === d ? "page" : undefined}>{t}</Link>)}
+          <Link className="exm-chip" href={`/executive/payments?days=${v.days}`}>PayPal and AI agents</Link>
           <button className="exm-export" onClick={exportPack}>Export board pack</button>
         </div>
       </header>
