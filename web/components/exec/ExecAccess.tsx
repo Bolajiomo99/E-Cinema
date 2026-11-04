@@ -55,7 +55,7 @@ export default function ExecAccess({ initial, now }: { initial: ExecPerson[]; no
       const r = await fetch("/api/executive/people", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, invite }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setMsg({ ok: false, text: j.error || "That did not save. Try again." }); return false; }
-      setMsg({ ok: true, text: j.added ? (j.emailed ? `Access granted. The invite went to ${f.email.trim().toLowerCase()}.` : `Access granted. Email is off here, so tell ${f.email.trim().toLowerCase()} to sign in to see it.`) : "Access changed. It applies on their next page." });
+      setMsg({ ok: true, text: j.added ? (j.emailed ? `Access granted. The invite went to ${f.email.trim().toLowerCase()}.` : `Access is waiting. Email is off here, so the one-time invite link could not be sent.`) : "Access changed. It applies on their next page." });
       await reload();
       return true;
     } finally { setBusy(false); }

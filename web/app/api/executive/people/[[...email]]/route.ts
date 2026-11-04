@@ -22,17 +22,20 @@ export async function PUT(req: NextRequest) {
   if (!s || !me) return json(401, { error: "Sign in first" });
   const body = (await req.json().catch(() => null)) as { email?: string; name?: string; role?: string; expiresOn?: string; invite?: boolean } | null;
   if (!body) return json(400, { error: "Bad request" });
-  const r = await accountApi("PUT", "/v1/me/exec/people", body, s);
+  const r = await accountApi("PUT", `/v1/me/exec/people${body.invite ? "?invite=1" : ""}`, body, s);
   if (r.status !== 200) return pass(r);
   let emailed = false;
+  const token = String((r.body as { invite?: string }).invite ?? "");
   // New people get the invite; a change only emails when the CEO asks for it again.
   if (emailEnabled && ((r.body as { added?: boolean }).added || body.invite)) {
     try {
-      await sendExecInvite(String(body.email).trim().toLowerCase(), String(body.name ?? ""), ROLE_LABEL[String(body.role)] ?? "Executive", me.name || "The CEO", String(body.expiresOn ?? ""));
+      await sendExecInvite(String(body.email).trim().toLowerCase(), String(body.name ?? ""), ROLE_LABEL[String(body.role)] ?? "Executive", me.name || "The CEO", String(body.expiresOn ?? ""), token);
       emailed = true;
     } catch { /* access is granted either way; the page says the email did not go */ }
-  }
-  return json(200, { ...(r.body as object), emailed });
+  } else if (token && process.env.E2E_LOG_CODES) console.log(`[e2e] exec invite for ${String(body.email).trim().toLowerCase()}: /invite/executive/${token}`);
+  const { invite: _drop, ...rest } = r.body as { invite?: string };
+  void _drop;
+  return json(200, { ...rest, emailed });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ email?: string[] }> }) {

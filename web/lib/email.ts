@@ -291,19 +291,33 @@ export async function sendQuoteRequest(org: string, email: string, guests: numbe
   );
 }
 
-export async function sendExecInvite(to: string, name: string, role: string, by: string, ends: string) {
-  const link = `${site()}/executive`;
+// Executive invite (Figma 99:1696). New people get a one-time link that works for 48 hours.
+export async function sendExecInvite(to: string, name: string, role: string, by: string, ends: string, token = "") {
+  const link = token ? `${site()}/invite/executive/${token}` : `${site()}/executive`;
   await send(
     to,
-    `${by} gave you ${role} access to E-Cinema`,
-    layout(`${role} access`, "Your executive access is ready",
-      p(`${name ? esc(name) + ", " : ""}${esc(by)} gave you <b>${esc(role)}</b> access to E-Cinema's executive dashboards.`) +
+    `${by} invited you to E-Cinema as ${role}`,
+    layout(`${role} access`, token ? "You are invited" : "Your executive access is ready",
+      p(`${name ? esc(name) + ", " : ""}${esc(by)} invited you to E-Cinema's executive dashboards as <b>${esc(role)}</b>.`) +
       facts([["Role", role], ["Access ends", ends || "When the CEO removes it"], ["Sign in with", to]]) +
-      button(link, "Open the dashboards") +
-      p("Sign in, or join with this same email address if you are new to E-Cinema. Your access shows up the moment you are signed in."),
+      button(link, token ? "Accept the invite" : "Open the dashboards") +
+      p(token ? "The link works once and ends in 48 hours. You confirm this email with a code, pass a face check and add a passkey. There is no password and no sign-up page." : "Your access shows up the moment you are signed in."),
       "EXECUTIVE",
-      "You got this email because the CEO of E-Cinema added your address under Access and roles. If you did not expect it, you can ignore it."),
-    `${by} gave you ${role} access to E-Cinema. Sign in with ${to} at ${link}${ends ? `. Access ends ${ends}.` : "."}`,
+      "You got this email because the CEO of E-Cinema added your address under Access and roles. If you did not expect it, ignore it and tell security@e-cinema.net."),
+    `${by} invited you to E-Cinema as ${role}. Accept: ${link}${token ? " (works once, ends in 48 hours)" : ""}${ends ? `. Access ends ${ends}.` : "."}`,
+  );
+}
+
+export async function sendExecInviteCode(to: string, code: string) {
+  await send(
+    to,
+    `${code} is your E-Cinema invite code`,
+    layout("Your code is inside. It ends in 10 minutes", "Confirm your email",
+      p(`Type this code on the invite page to confirm ${esc(to)} is yours.`) +
+      codeBox(code) +
+      note("Did not ask for this? Ignore this email and tell security@e-cinema.net. Nothing happens without the code."),
+      "EXECUTIVE"),
+    `Your E-Cinema invite code is ${code}. It works once and ends in 10 minutes.`,
   );
 }
 
