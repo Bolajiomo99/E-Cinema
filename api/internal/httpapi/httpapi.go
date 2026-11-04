@@ -121,6 +121,7 @@ func (s *Server) Routes() http.Handler {
 			ViewerRef string `json:"viewerRef"`
 			Quality   string `json:"quality"`
 			Campaign  string `json:"campaign"`
+			Via       string `json:"via"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.ViewerRef == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seats and viewerRef are required"})
@@ -140,6 +141,12 @@ func (s *Server) Routes() http.Handler {
 		if err != nil {
 			fail(w, err)
 			return
+		}
+		// Seats the AI concierge holds count towards its share (Figma 285:373).
+		if body.Via == "concierge" {
+			if err := s.Exec.MarkConcierge(r.Context(), h.ID); err != nil {
+				slog.Error("concierge tag", "hold", h.ID, "err", err)
+			}
 		}
 		// The campaign link the buyer arrived through, if any (Figma 39:779).
 		if err := s.Studios.Attribute(r.Context(), h.ID, body.Campaign); err != nil {

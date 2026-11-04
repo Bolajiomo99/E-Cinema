@@ -122,6 +122,25 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 		o, err := s.Exec.Overview(r.Context(), a.Email, time.Now())
 		reply(w, o, err)
 	}))
+	// PayPal and AI agents (Figma 285:373): the CEO, the CFO and anyone allowed to see money.
+	mux.HandleFunc("GET /v1/me/exec/paypal", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+		pp, err := s.Exec.PayPal(r.Context(), a.Email, days, time.Now())
+		reply(w, pp, err)
+	}))
+	// PayPal dispute events from the web's verified webhook.
+	mux.HandleFunc("POST /v1/paypal-disputes", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			ID, CaptureID, Currency, Reason, Status, Outcome string
+			Amount                                           int64
+			Due                                              *time.Time
+			Resolved                                         bool
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		reply(w, map[string]bool{"ok": true}, s.Exec.SaveDispute(r.Context(), b.ID, b.CaptureID, b.Currency, b.Reason, b.Status, b.Outcome, b.Amount, b.Due, b.Resolved, time.Now()))
+	}))
 	// Money (Figma 50:253): the CEO, the CFO and anyone allowed to see money.
 	mux.HandleFunc("GET /v1/me/exec/money", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		days, _ := strconv.Atoi(r.URL.Query().Get("days"))

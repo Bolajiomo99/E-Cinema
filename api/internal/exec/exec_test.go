@@ -1180,3 +1180,68 @@ func TestOverview(t *testing.T) {
 		t.Fatalf("%d weeks", len(weeks))
 	}
 }
+
+func TestPayPalPage(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(p.Close)
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() { p.Exec(ctx, `DELETE FROM paypal_disputes WHERE id LIKE 'PP-TEST-%'`) }
+	clean()
+	t.Cleanup(clean)
+	st := exec.Store{DB: p, CEOs: []string{"px-ceo@example.com"}}
+	now := time.Now()
+	if _, err := st.PayPal(ctx, "px-nobody@example.com", 30, now); !errors.Is(err, exec.ErrForbidden) {
+		t.Fatalf("stranger: %v", err)
+	}
+	before, err := st.PayPal(ctx, "px-ceo@example.com", 30, now)
+	if err != nil {
+		t.Fatalf("page: %v", err)
+	}
+	due := now.Add(24 * time.Hour)
+	if err := st.SaveDispute(ctx, "PP-TEST-1", "CAP-X", "usd", "ITEM_NOT_RECEIVED", "open", "", 1299, &due, false, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SaveDispute(ctx, "PP-TEST-2", "", "USD", "", "OPEN", "", 500, nil, false, now); err != nil {
+		t.Fatal(err)
+	}
+	mid, _ := st.PayPal(ctx, "px-ceo@example.com", 30, now)
+	if mid.DisputesOpen != before.DisputesOpen+2 || mid.DisputesDue48 != before.DisputesDue48+1 {
+		t.Fatalf("disputes %d/%d, before %d/%d", mid.DisputesOpen, mid.DisputesDue48, before.DisputesOpen, before.DisputesDue48)
+	}
+	found := false
+	for _, w := range mid.Watch {
+		if w.Tone == "red" && w.Title != "" && w.Body != "" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no dispute alert: %+v", mid.Watch)
+	}
+	// Resolution keeps what was known and closes it.
+	if err := st.SaveDispute(ctx, "PP-TEST-1", "", "", "", "RESOLVED", "RESOLVED_SELLER_FAVOUR", 0, nil, true, now); err != nil {
+		t.Fatal(err)
+	}
+	var amt int64
+	var capID string
+	p.QueryRow(ctx, `SELECT amount_cents, capture_id FROM paypal_disputes WHERE id = 'PP-TEST-1'`).Scan(&amt, &capID)
+	if amt != 1299 || capID != "CAP-X" {
+		t.Fatalf("resolution lost data: %d %q", amt, capID)
+	}
+	after, _ := st.PayPal(ctx, "px-ceo@example.com", 30, now)
+	if after.DisputesOpen != before.DisputesOpen+1 {
+		t.Fatalf("open after resolve = %d", after.DisputesOpen)
+	}
+	if err := st.SaveDispute(ctx, "", "", "", "", "OPEN", "", 0, nil, false, now); !errors.Is(err, exec.ErrBadInput) {
+		t.Fatalf("empty id: %v", err)
+	}
+}
