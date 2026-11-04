@@ -24,7 +24,10 @@ func (s Store) Captured(ctx context.Context, orderID string) error {
 	    '/gift', 'paid:' || $1
 	  FROM gifts g WHERE g.paypal_order_id = $1 AND g.status IN ('paid', 'redeemed')
 	  ON CONFLICT (account_id, dedupe) WHERE dedupe IS NOT NULL DO NOTHING`, orderID)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.ticketMail(ctx, orderID)
 }
 
 // Refunded notes a refund on a seat purchase.
@@ -37,7 +40,10 @@ func (s Store) Refunded(ctx context.Context, captureID string) error {
 	  FROM holds h JOIN showtimes st ON st.id = h.showtime_id
 	  WHERE h.paypal_capture_id = $1 AND h.account_id IS NOT NULL
 	  ON CONFLICT (account_id, dedupe) WHERE dedupe IS NOT NULL DO NOTHING`, captureID)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.refundMail(ctx, captureID)
 }
 
 // GiftRedeemed tells the giver their gift was opened.

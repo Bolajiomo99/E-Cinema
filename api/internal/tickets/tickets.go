@@ -163,7 +163,7 @@ func (st Store) AttachOrder(ctx context.Context, holdID, orderID string, netCent
 // It is idempotent: a repeated webhook for the same capture changes nothing.
 // A capture that arrives just after the hold expired still counts, because the money was taken.
 func (st Store) MarkPaid(ctx context.Context, orderID, captureID string) error {
-	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = $2
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = $2, paid_at = coalesce(paid_at, now())
 	  WHERE paypal_order_id = $1 AND (status = 'held' OR (status = 'paid' AND paypal_capture_id = $2))`, orderID, captureID)
 	if err == nil && tag.RowsAffected() == 0 {
 		// Not a seat: it may be one of the adult unlock stages.

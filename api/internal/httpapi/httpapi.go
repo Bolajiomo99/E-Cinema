@@ -297,6 +297,7 @@ func (s *Server) Routes() http.Handler {
 	s.downloadRoutes(mux)
 	s.insightRoutes(mux)
 	s.notifyRoutes(mux)
+	s.mailRoutes(mux)
 	if s.ChatHub == nil {
 		s.ChatHub = chat.NewHub()
 	}

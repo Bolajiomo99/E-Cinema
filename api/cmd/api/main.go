@@ -147,6 +147,23 @@ func run() error {
 			}
 		}
 	}()
+	// Emails whose time has come (reminders, renewals, the weekly round-up) are queued each minute.
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			if n, err := srv.Notify.ScheduleMail(ctx, time.Now()); err != nil {
+				slog.Error("schedule mail", "err", err)
+			} else if n > 0 {
+				slog.Info("mail queued", "count", n)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
 	httpSrv := &http.Server{
 		Addr:              ":" + env("PORT", "8080"),
 		Handler:           srv.Routes(),
