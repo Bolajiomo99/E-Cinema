@@ -333,3 +333,11 @@ export async function execSettings(s: string): Promise<SettingsData | null> {
   const r = await accountApi("GET", "/v1/me/exec/settings", undefined, s);
   return r.status === 200 ? (r.body as SettingsData) : null;
 }
+
+// CEO global overview (Figma 117:684).
+export type StreamAmount = { week?: string; stream: string; currency: string; gross: number };
+export type OverviewData = { weeks: StreamAmount[]; month: StreamAmount[]; membersToday: number };
+export async function execOverview(s: string): Promise<OverviewData | null> {
+  const r = await accountApi("GET", "/v1/me/exec/overview", undefined, s);
+  return r.status === 200 ? (r.body as OverviewData) : null;
+}

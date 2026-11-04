@@ -51,7 +51,7 @@ export default function ExecShell({ name, role, money, idleMinutes = 0, children
     reset();
     return () => { window.clearTimeout(timer); evs.forEach((e) => window.removeEventListener(e, reset)); };
   }, [idleMinutes]);
-  const on = (href: string) => path === href || (href !== "/executive" && path.startsWith(href + "/"));
+  const on = (href: string) => path === href || (href === "/executive" ? path === "/executive/overview" : path.startsWith(href + "/"));
   const ini = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "EC";
   const first = name.trim().split(/\s+/)[0] || "Executive";
   return (

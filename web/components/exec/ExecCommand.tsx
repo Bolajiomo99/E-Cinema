@@ -26,7 +26,7 @@ function change(now: number, before: number): { text: string; up: boolean | null
   return { text: `${Math.abs(p)}%`, up: p === 0 ? null : p > 0 };
 }
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DECIDE: Record<string, { title: (c: number) => string; note: string; href: string; act: string }> = {
+export const DECIDE: Record<string, { title: (c: number) => string; note: string; href: string; act: string }> = {
   studios: { title: (c) => `${c} studio${c === 1 ? "" : "s"} waiting for approval`, note: "Documents and rights are on the studio desk", href: "/studio/desk", act: "Review" },
   bans: { title: (c) => `${c} ban request${c === 1 ? "" : "s"} from studios`, note: "Leaked copies traced to a viewer", href: "/studio/desk", act: "Decide" },
   licences: { title: (c) => `${c} merch licence application${c === 1 ? "" : "s"}`, note: "Waiting on the licensing desk", href: "/licensing/desk", act: "Review" },
@@ -87,6 +87,7 @@ export default function ExecCommand({ page: p, hello, when, weekday }: { page: C
           {([["live", "Live"], ["today", "Today"], ["30", "30 days"], ["year", "Year"]] as [Range, string][]).map(([k, t]) => (
             <button key={k} className={range === k ? "on" : ""} aria-pressed={range === k} onClick={() => setRange(k)}>{t}</button>
           ))}
+          {c.role === "ceo" && <Link className="exc-ask exc-global" href="/executive/overview">Global overview</Link>}
           <span className="exc-ask" aria-disabled="true">Ask E-Cinema AI<em className="soon-tag">Soon</em></span>
         </div>
       </header>

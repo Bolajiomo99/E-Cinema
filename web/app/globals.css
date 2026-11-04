@@ -5468,3 +5468,40 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
   .inv-main { padding: 8px 16px 40px; align-items: flex-start; }
   .inv-card { margin: 0; max-width: none; }
 }
+
+/* CEO global overview (Figma 117:684) */
+.exov-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.exov .exc-tile b { font: 400 34px/38px "Bebas Neue", sans-serif; letter-spacing: .01em; }
+.exov-pdf { height: 44px !important; padding: 0 20px !important; border-radius: 8px !important; background: #1f1f26 !important; color: #f4f4f6 !important; font-size: 14px !important; margin-left: 8px; }
+.exov-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; margin-bottom: 14px; align-items: start; }
+.exov-row3 { display: grid; grid-template-columns: 1fr 1.2fr 1.05fr; gap: 14px; align-items: start; }
+.exov h2 { font: 600 16px/24px Manrope, sans-serif; margin: 0 0 16px; }
+.exov-bars { display: flex; align-items: flex-end; gap: 14px; height: 190px; padding: 0 6px; }
+.exov-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+.exov-bar i { display: block; width: 100%; }
+.exov-bar i:first-child { border-radius: 2px 2px 0 0; }
+.exov-key { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 13.5px; color: #d4d4dc; }
+.exov-key li { display: flex; align-items: center; gap: 8px; }
+.exov-key i { width: 10px; height: 10px; border-radius: 5px; flex: none; }
+.exov-mix { display: flex; gap: 18px; align-items: center; }
+.exov-mix svg { width: 128px; flex: none; }
+.exov-mix .exov-key { margin: 0; }
+.exov-gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.exov-gauge { text-align: center; }
+.exov-gauge svg { width: 100%; max-width: 100px; }
+.exov-gauge span { display: block; color: #a6a6b0; font-size: 12px; line-height: 17px; margin-top: 4px; }
+.exov-gauge.soon span { color: #6e6e7a; }
+.exov-hl { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; }
+.exov-hl b, .exov-need b { display: block; font-weight: 500; font-size: 14px; }
+.exov-hl small, .exov-need small { display: block; color: #8a8a96; font-size: 12.5px; margin-top: 3px; line-height: 18px; }
+.exov-hl span { flex: none; font: 600 11px Manrope, sans-serif; padding: 4px 9px; border-radius: 10px; }
+.exov-hl span.ok { background: #0f2e26; color: #2bd4a3; }
+.exov-hl span.bad { background: #3a1015; color: #ff8a94; }
+.exov-need { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; }
+.exov-need a { flex: none; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 8px; background: #26262e; color: #f4f4f6; font-size: 14px; text-decoration: none; }
+.exov-need a:focus-visible, .exov-pdf:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 1200px) { .exov-row, .exov-row3 { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .exov-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .exov-bars { gap: 6px; } }
+@media print { .pt-side, .exc-chips, .tabbar { display: none !important; } .exov { color: #000; } }
+.exc-global { text-decoration: none; opacity: 1; background: #1f1f26; color: #f4f4f6; cursor: pointer; }
+.exc-global:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
