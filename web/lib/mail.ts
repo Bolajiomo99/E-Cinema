@@ -551,6 +551,42 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
       text: `We could not renew your ${plan} plan. Update payment: ${href("/settings/plan")}`,
     });
   },
+  // 22 We miss you, a free seat to come back (106:657). Queued on Wednesdays for members who have
+  // not booked in 60 days; the seat is already in their credit.
+  winback: (m) => {
+    const film = S(m.data.film), at = S(m.data.startsAt), code = S(m.data.code), friend = S(m.data.friend), n = N(m.data.friends);
+    if (!film || !at || !code) return null;
+    const day = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: zoneOf(m.country) }).format(new Date(at));
+    const others = n - 1;
+    const lead = friend
+      ? `${esc(friend)}${others > 0 ? ` and ${others} ${others === 1 ? "friend" : "friends"}` : ""} ${n > 1 ? "have" : "has"} a room for ${esc(film)} on ${esc(day)}.`
+      : `${esc(film)} premieres on ${esc(day)} at ${clock(at, m.country)} your time.`;
+    return done({
+      from: SENDER.hello, tag: "COME BACK", footer: FOOT_NEWS(), news: true,
+      subject: friend ? `${friend} is going to ${film}. Come too, free` : `${film} on ${day}, and your seat is free`,
+      preview: "Here is a free seat to come back",
+      title: "Come back for a free seat",
+      body: p(`${lead} Your next premiere is on us.`) + refBox(code) +
+        button(href(`/checkout?film=${encodeURIComponent(S(m.data.showtimeId))}`), "Use my free seat") +
+        small("The seat is already in your E-Cinema credit. It pays for any premiere and never runs out."),
+      text: `${friend ? `${friend} has a room for ${film} on ${day}.` : `${film} premieres on ${day}.`} Your next premiere is on us: a free seat is in your E-Cinema credit (code ${code}), good for any premiere. ${href("/browse")}`,
+    });
+  },
+
+  // 31 Stream problem, credit added (127:171). Queued when an executive logs an outage on a screening.
+  outage_credit: (m) => {
+    const film = S(m.data.film), from = S(m.data.from), to = S(m.data.to), code = S(m.data.code);
+    if (!film || !from || !to || !code) return null;
+    const mins = Math.max(1, Math.round((Date.parse(to) - Date.parse(from)) / 60_000));
+    return done({
+      from: SENDER.tickets, tag: "OUR FAULT", footer: FOOT_ACTION(),
+      subject: `Sorry about the break in ${film}`, preview: "A free seat is in your wallet",
+      title: `We let you down for ${mins} ${mins === 1 ? "minute" : "minutes"}`,
+      body: p(`You lost the picture in ${esc(film)} from ${clock(from, m.country)} to ${clock(to, m.country)}. That should never happen. We added a free seat to your E-Cinema credit, good for any premiere. Credit code:`) +
+        refBox(code) + button(href("/browse"), "Use my free seat"),
+      text: `You lost the picture in ${film} from ${clock(from, m.country)} to ${clock(to, m.country)}. We added a free seat to your E-Cinema credit, good for any premiere. Credit code ${code}. ${href("/browse")}`,
+    });
+  },
 };
 
 // Facts an email cannot go out without (the rest check inside their template).
@@ -559,7 +595,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
