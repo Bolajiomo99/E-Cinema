@@ -231,7 +231,7 @@ var scheduled = []string{
 	      'lobby', (SELECT count(DISTINCT h2.account_id) FROM holds h2 WHERE h2.showtime_id = st.id AND h2.status = 'paid')),
 	    'remind:' || a.id || ':' || st.id
 	  FROM holds h JOIN showtimes st ON st.id = h.showtime_id JOIN accounts a ON a.id = h.account_id
-	  WHERE h.status = 'paid' AND a.delete_after IS NULL
+	  WHERE h.status = 'paid' AND a.delete_after IS NULL AND st.withdrawn_at IS NULL
 	    AND st.starts_at > $1::timestamptz AND st.starts_at <= $1::timestamptz + interval '1 hour'
 	  ON CONFLICT (dedupe) DO NOTHING`,
 	// 27: five minutes after the start, for ticket holders who have not pressed play.
@@ -252,7 +252,7 @@ var scheduled = []string{
 	      'ticket', 'EC-T-' || upper(left(replace(h.id::text, '-', ''), 8))),
 	    'preweek:' || a.id || ':' || st.id
 	  FROM holds h JOIN showtimes st ON st.id = h.showtime_id JOIN accounts a ON a.id = h.account_id
-	  WHERE h.status = 'paid' AND a.delete_after IS NULL AND h.paid_at < st.starts_at - interval '8 days'
+	  WHERE h.status = 'paid' AND a.delete_after IS NULL AND st.withdrawn_at IS NULL AND h.paid_at < st.starts_at - interval '8 days'
 	    AND st.starts_at > $1::timestamptz + interval '6 days' AND st.starts_at <= $1::timestamptz + interval '7 days'
 	  ON CONFLICT (dedupe) DO NOTHING`,
 	// 48: three days before a paid plan renews.
@@ -289,11 +289,47 @@ var scheduled = []string{
 	  SELECT 'weekly', a.email, a.name, jsonb_build_object('picks', p.picks), 'weekly:' || to_char($1::timestamptz, 'IYYY-IW') || ':' || a.id
 	  FROM (SELECT jsonb_agg(jsonb_build_object('film', x.film, 'showtimeId', x.id, 'startsAt', x.starts_at, 'studio', x.studio) ORDER BY x.starts_at) AS picks
 	        FROM (SELECT * FROM (SELECT DISTINCT ON (s.film) s.* FROM showtimes s
-	                WHERE NOT s.adult AND s.starts_at > $1::timestamptz AND s.starts_at <= $1::timestamptz + interval '7 days'
+	                WHERE NOT s.adult AND s.withdrawn_at IS NULL AND s.starts_at > $1::timestamptz AND s.starts_at <= $1::timestamptz + interval '7 days'
 	                ORDER BY s.film, s.starts_at) d ORDER BY d.starts_at LIMIT 3) x) p
 	  CROSS JOIN accounts a
 	  WHERE extract(isodow FROM $1::timestamptz AT TIME ZONE 'UTC') = 5 AND extract(hour FROM $1::timestamptz AT TIME ZONE 'UTC') >= 9
 	    AND p.picks IS NOT NULL AND a.delete_after IS NULL AND a.created_at < $1::timestamptz - interval '1 day'
 	    AND coalesce(a.prefs->>'n.features.email', 'true') <> 'false' AND a.email NOT LIKE 'smoke+%@e-cinema.net'
+	  ON CONFLICT (dedupe) DO NOTHING`,
+	// 22: Wednesdays from 10:00 UTC, members who have not booked for 60 days get one free seat for the
+	// next premiere that still has empty seats, naming someone they watched with before who is going.
+	// At most once every 180 days each, 50 a minute so the sender keeps up.
+	`WITH pick AS (
+	    SELECT s.id, s.film, s.starts_at, CASE WHEN s.currency = 'USD' THEN s.price_cents ELSE 500 END AS cents
+	    FROM showtimes s
+	    WHERE NOT s.adult AND s.withdrawn_at IS NULL AND s.starts_at > $1::timestamptz + interval '1 day' AND s.starts_at <= $1::timestamptz + interval '10 days'
+	      AND s.capacity > (SELECT coalesce(sum(h.seats), 0) FROM holds h WHERE h.showtime_id = s.id AND h.status IN ('paid', 'held'))
+	    ORDER BY s.starts_at LIMIT 1),
+	  who AS (
+	    SELECT a.id, a.email, a.name FROM accounts a
+	    WHERE extract(isodow FROM $1::timestamptz AT TIME ZONE 'UTC') = 3 AND extract(hour FROM $1::timestamptz AT TIME ZONE 'UTC') >= 10
+	      AND a.delete_after IS NULL AND a.banned_at IS NULL AND a.created_at < $1::timestamptz - interval '60 days'
+	      AND coalesce(a.prefs->>'n.features.email', 'true') <> 'false' AND a.email NOT LIKE 'smoke+%@e-cinema.net'
+	      AND EXISTS (SELECT 1 FROM holds h WHERE h.account_id = a.id AND h.status = 'paid')
+	      AND NOT EXISTS (SELECT 1 FROM holds h WHERE h.account_id = a.id AND h.status IN ('paid', 'refunded') AND h.created_at > $1::timestamptz - interval '60 days')
+	      AND NOT EXISTS (SELECT 1 FROM credits c WHERE c.account_id = a.id AND c.reason = 'winback' AND c.created_at > $1::timestamptz - interval '180 days')
+	    ORDER BY a.id LIMIT 50),
+	  mates AS (SELECT p.id AS party, p.host_id AS acct FROM parties p UNION SELECT m.party_id, m.account_id FROM party_members m),
+	  friends_going AS (
+	    SELECT DISTINCT w.id AS me, o.acct AS account_id FROM who w
+	    JOIN mates mine ON mine.acct = w.id JOIN mates o ON o.party = mine.party AND o.acct <> w.id
+	    JOIN holds h ON h.account_id = o.acct AND h.status = 'paid' JOIN pick ON pick.id = h.showtime_id),
+	  cred AS (
+	    INSERT INTO credits (account_id, delta_cents, reason, ref)
+	    SELECT who.id, pick.cents, 'winback', 'winback:' || who.id || ':' || to_char($1::timestamptz, 'IYYY-IW') FROM who CROSS JOIN pick
+	    ON CONFLICT (ref) DO NOTHING RETURNING account_id, delta_cents)
+	  INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
+	  SELECT 'winback', who.email, who.name,
+	    jsonb_build_object('film', pick.film, 'showtimeId', pick.id, 'startsAt', pick.starts_at, 'creditMinor', cred.delta_cents, 'currency', 'USD',
+	      'code', 'BACK-' || upper(left(md5(who.id::text || pick.id), 5)),
+	      'friend', (SELECT split_part(f.name, ' ', 1) FROM accounts f WHERE f.id = (SELECT x.account_id FROM friends_going x WHERE x.me = who.id LIMIT 1)),
+	      'friends', (SELECT count(*) FROM friends_going x WHERE x.me = who.id)),
+	    'winback:' || who.id || ':' || to_char($1::timestamptz, 'IYYY-IW')
+	  FROM who CROSS JOIN pick JOIN cred ON cred.account_id = who.id
 	  ON CONFLICT (dedupe) DO NOTHING`,
 }
