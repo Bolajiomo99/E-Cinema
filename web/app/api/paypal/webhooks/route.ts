@@ -18,6 +18,8 @@ const HANDLED = new Set([
   "BILLING.SUBSCRIPTION.CANCELLED",
   "BILLING.SUBSCRIPTION.EXPIRED",
   "BILLING.SUBSCRIPTION.SUSPENDED",
+  "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+  "PAYMENT.SALE.COMPLETED",
   "PAYMENT.PAYOUTS-ITEM.SUCCEEDED",
   "PAYMENT.PAYOUTS-ITEM.FAILED",
 ]);
@@ -97,6 +99,18 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error("Plan update failed", err instanceof Error ? err.message : err);
       return NextResponse.json({ error: "Retry later" }, { status: 503 });
+    }
+  }
+  // Plan payments: a receipt when a renewal is paid, a warning when it is declined (emails 11, 12).
+  if (event.event_type === "PAYMENT.SALE.COMPLETED" || event.event_type === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") {
+    const res = event.resource as unknown as { id?: string; billing_agreement_id?: string; amount?: { total?: string; currency?: string }; billing_info?: { last_failed_payment?: { amount?: { value?: string; currency_code?: string } } } };
+    const paid = event.event_type === "PAYMENT.SALE.COMPLETED";
+    const subscriptionId = paid ? res.billing_agreement_id : res.id;
+    const amount = paid ? res.amount?.total : res.billing_info?.last_failed_payment?.amount?.value;
+    const currency = paid ? res.amount?.currency : res.billing_info?.last_failed_payment?.amount?.currency_code;
+    if (subscriptionId) {
+      const r = await accountApi("POST", "/v1/internal/plans/payment", { subscriptionId, eventId: event.id, paid, amount: amount ?? "", currency: currency ?? "" });
+      if (r.status >= 500) return NextResponse.json({ error: "Retry later" }, { status: 503 });
     }
   }
   if (HANDLED.has(event.event_type)) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
@@ -19,6 +20,11 @@ import (
 // so the web app can send the "New sign-in" email with a working "This wasn't me" button.
 func (s *Server) signedInReply(w http.ResponseWriter, r *http.Request, acct accounts.Account, sess accounts.Session, device string) {
 	out := map[string]any{"account": acct, "session": sess}
+	if sess.Restored {
+		// Email 34 (Figma 127:237): signing in cancelled the scheduled deletion.
+		_ = s.Notify.Queue(r.Context(), notify.Mail{Kind: "account_restored", To: acct.Email, Name: acct.Name,
+			Dedupe: "restored:" + acct.ID + ":" + time.Now().UTC().Format("2006-01-02T15")})
+	}
 	if sess.Alert {
 		if device == "" {
 			device = "a new device"
@@ -297,6 +303,37 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"previous": prev})
+	}))
+	// A plan renewal paid or declined (PayPal subscription events): emails 11 and 12
+	// (Figma 106:332, 106:353) to the member.
+	mux.HandleFunc("POST /v1/internal/plans/payment", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			SubscriptionID, EventID, Amount, Currency string
+			Paid                                      bool
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if b.SubscriptionID == "" || b.EventID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "subscriptionId and eventId are required"})
+			return
+		}
+		var id, plan string
+		var renews *time.Time
+		if err := s.Accounts.DB.QueryRow(r.Context(), `SELECT id, plan, plan_renews_at FROM accounts WHERE paypal_subscription_id = $1`, b.SubscriptionID).Scan(&id, &plan, &renews); err != nil {
+			writeJSON(w, http.StatusOK, map[string]bool{"ok": false})
+			return
+		}
+		kind := "plan_failed"
+		if b.Paid {
+			kind = "plan_receipt"
+		}
+		data := map[string]any{"plan": plan, "amount": b.Amount, "currency": b.Currency, "receipt": "R-" + strings.ToUpper(b.EventID[len(b.EventID)-min(8, len(b.EventID)):])}
+		if renews != nil {
+			data["renewsAt"] = renews.Format(time.RFC3339)
+		}
+		_ = s.Notify.QueueAccount(r.Context(), id, notify.Mail{Kind: kind, Dedupe: "planpay:" + b.EventID, Data: data})
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}))
 	mux.HandleFunc("POST /v1/internal/plans/end", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ SubscriptionID string }

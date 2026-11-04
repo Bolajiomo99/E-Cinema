@@ -200,7 +200,19 @@ async function ensurePaypalWebhook(webUrl) {
   const url = `${webUrl}/api/paypal/webhooks`;
   const list = await (await fetch(`${base}/v1/notifications/webhooks`, { headers: auth })).json();
   const found = (list.webhooks ?? []).find((w) => w.url === url);
-  if (found) { console.log(`PayPal webhook already registered: ${found.id}`); return found.id; }
+  if (found) {
+    // Keep the event list in step with what the web app handles (new events are added here).
+    const have = new Set((found.event_types ?? []).map((e) => e.name));
+    if (PAYPAL_EVENTS.some((e) => !have.has(e))) {
+      const res = await fetch(`${base}/v1/notifications/webhooks/${found.id}`, {
+        method: "PATCH", headers: auth,
+        body: JSON.stringify([{ op: "replace", path: "/event_types", value: PAYPAL_EVENTS.map((name) => ({ name })) }]),
+      });
+      console.log(`PayPal webhook events ${res.ok ? "updated" : `not updated (${res.status})`}`);
+    }
+    console.log(`PayPal webhook already registered: ${found.id}`);
+    return found.id;
+  }
   const res = await fetch(`${base}/v1/notifications/webhooks`, {
     method: "POST", headers: auth,
     body: JSON.stringify({ url, event_types: PAYPAL_EVENTS.map((name) => ({ name })) }),
@@ -213,12 +225,13 @@ async function ensurePaypalWebhook(webUrl) {
 const PAYPAL_EVENTS = [
   "CHECKOUT.ORDER.APPROVED", "PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.REFUNDED",
   "CUSTOMER.DISPUTE.CREATED", "CUSTOMER.DISPUTE.RESOLVED", "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.CANCELLED",
+  "BILLING.SUBSCRIPTION.EXPIRED", "BILLING.SUBSCRIPTION.SUSPENDED", "BILLING.SUBSCRIPTION.PAYMENT.FAILED", "PAYMENT.SALE.COMPLETED",
   "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", "PAYMENT.PAYOUTS-ITEM.FAILED",
 ];
 const webUrlNow = existingWeb?.serviceDetails?.url;
-if (webUrlNow && !webEnv.PAYPAL_WEBHOOK_ID) {
-  const hookId = await ensurePaypalWebhook(webUrlNow);
-  if (hookId) webEnv.PAYPAL_WEBHOOK_ID = hookId;
+if (webUrlNow) {
+  const hookId = await ensurePaypalWebhook(webUrlNow).catch((e) => { console.log(`PayPal webhook check skipped: ${e.message}`); return null; });
+  if (hookId && !webEnv.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = hookId;
 }
 for (const [k, v] of Object.entries(webEnv)) if (!v) { console.log(`Skipping empty ${k}`); delete webEnv[k]; }
 
