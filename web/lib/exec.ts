@@ -241,12 +241,15 @@ export async function execLicensing(s: string): Promise<LicensingData | null> {
 
 // Security operations (Figma 117:1773).
 export type SecEvent = { at: string; title: string; detail: string; result: string };
-export type Incident = { id: number; title: string; kind: string; severity: string; note: string; status: string; by: string; openedAt: string; closedAt: string | null };
+export type Incident = {
+  id: number; title: string; kind: string; severity: string; note: string; status: string; by: string; openedAt: string; closedAt: string | null;
+  showtimeId?: string; film?: string; from?: string; to?: string; countries?: string[]; credited: number;
+};
 export type SecurityData = {
   blockedToday: number; breaches: number; takeovers: number; openCritical: number; lastPenTest: string | null;
   wrongPw24h: number; locked24h: number; banned30: number; leaks30: number;
   lockdown: boolean; lockdownBy: string; lockdownAt: string | null; passkeys: number; faceChecked: number;
-  events: SecEvent[]; incidents: Incident[]; canEdit: boolean;
+  events: SecEvent[]; incidents: Incident[]; screenings: { id: string; film: string; startsAt: string }[]; canEdit: boolean;
 };
 export async function execSecurity(s: string): Promise<SecurityData | null> {
   const r = await accountApi("GET", "/v1/me/exec/security", undefined, s);

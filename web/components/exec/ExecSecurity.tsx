@@ -15,7 +15,9 @@ const hm = (iso: string) => { const d = lagos(iso); return `${String(d.getUTCHou
 const dm = (iso: string) => { const d = lagos(iso); return `${d.getUTCDate()} ${M[d.getUTCMonth()]}`; };
 const num = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${Math.round(v / 1e3)}K` : v.toLocaleString("en-US"));
 const PILL: Record<string, [string, string]> = { blocked: ["Blocked", "ok"], allowed: ["Allowed", ""], done: ["Done", "ok"], open: ["Open", "bad"], closed: ["Closed", ""] };
-const EMPTY = { title: "", kind: "attack", severity: "medium", note: "" };
+const EMPTY = { title: "", kind: "attack", severity: "medium", note: "", showtimeId: "", from: "", to: "", countries: "" };
+// A datetime-local value in the executive's own zone.
+const localInput = (iso: string) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); };
 
 export default function ExecSecurity({ d }: { d: SecurityData }) {
   const router = useRouter();
@@ -34,7 +36,7 @@ export default function ExecSecurity({ d }: { d: SecurityData }) {
   type Row = { at: string; title: string; detail: string; result: string; inc?: Incident };
   const feed: Row[] = [
     ...d.events,
-    ...d.incidents.map((i) => ({ at: i.openedAt, title: `${KIND[i.kind] ?? i.kind}: ${i.title}`, detail: `${SEV[i.severity] ?? i.severity}${i.note ? ` · ${i.note}` : ""}`, result: i.status, inc: i })),
+    ...d.incidents.map((i) => ({ at: i.openedAt, title: `${KIND[i.kind] ?? i.kind}: ${i.title}`, detail: `${SEV[i.severity] ?? i.severity}${i.film ? ` · ${i.film}, ${i.credited.toLocaleString("en-US")} free ${i.credited === 1 ? "seat" : "seats"} credited` : ""}${i.note ? ` · ${i.note}` : ""}`, result: i.status, inc: i })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 10);
 
   async function call(url: string, method: string, body: unknown) {
@@ -51,7 +53,10 @@ export default function ExecSecurity({ d }: { d: SecurityData }) {
   }
   async function logIncident(e: React.FormEvent) {
     e.preventDefault();
-    if (await call("/api/executive/security/incidents", "POST", form)) { setForm(EMPTY); setBook(false); setMsg("Incident logged."); }
+    const outage = form.kind === "outage" && form.showtimeId;
+    const body = { ...form, from: outage && form.from ? new Date(form.from).toISOString() : "", to: outage && form.to ? new Date(form.to).toISOString() : "",
+      countries: form.countries.split(/[\s,]+/).map((c) => c.trim().toUpperCase()).filter(Boolean) };
+    if (await call("/api/executive/security/incidents", "POST", body)) { setForm(EMPTY); setBook(false); setMsg(outage ? "Outage logged. Free seats are being credited and the apology emails are on their way." : "Incident logged."); }
   }
   const defences: [string, string, string][] = [
     ["Web firewall and DDoS shield", "Render's edge absorbs floods. Cloudflare's firewall is not in front of the site yet", "part"],
@@ -165,10 +170,29 @@ export default function ExecSecurity({ d }: { d: SecurityData }) {
               <label className="epf-f"><span>Kind</span><select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>{Object.entries(KIND).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></label>
               <label className="epf-f"><span>Severity</span><select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>{Object.entries(SEV).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></label>
             </div>
+            {form.kind === "outage" && (
+              <div className="exsec-outage">
+                <b>Free seat for the people affected</b>
+                <span>Everyone who was watching this screening gets one seat of credit and an apology email. Leave countries empty for everyone. Leave the screening empty for an outage outside a screening.</span>
+                <label className="epf-f"><span>Screening</span>
+                  <select value={form.showtimeId} onChange={(e) => { const sc = d.screenings.find((x) => x.id === e.target.value); setForm({ ...form, showtimeId: e.target.value, from: sc ? localInput(sc.startsAt) : "", to: sc ? localInput(new Date(Date.parse(sc.startsAt) + 5 * 60_000).toISOString()) : "" }); }}>
+                    <option value="">No screening</option>
+                    {d.screenings.map((x) => <option key={x.id} value={x.id}>{x.film} · {dm(x.startsAt)}, {hm(x.startsAt)}</option>)}
+                  </select>
+                </label>
+                {form.showtimeId && (<>
+                  <div className="epf-two">
+                    <label className="epf-f"><span>Picture lost from</span><input type="datetime-local" required value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} /></label>
+                    <label className="epf-f"><span>Until</span><input type="datetime-local" required value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} /></label>
+                  </div>
+                  <label className="epf-f"><span>Countries hit (optional)</span><input value={form.countries} onChange={(e) => setForm({ ...form, countries: e.target.value })} placeholder="NG, GH" maxLength={200} /></label>
+                </>)}
+              </div>
+            )}
             <label className="epf-f"><span>Note (optional)</span><textarea rows={3} maxLength={1000} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
             <p className="epf-hint">Pen tests and bug bounty rounds are saved as finished records.</p>
             {err && <p className="epf-err" role="alert">{err}</p>}
-            <div className="epf-acts"><button type="button" className="exa-ghost" onClick={() => setBook(false)}>Close</button><button type="submit" className="exa-red" disabled={busy}>{busy ? "Saving…" : "Log incident"}</button></div>
+            <div className="epf-acts"><button type="button" className="exa-ghost" onClick={() => setBook(false)}>Close</button><button type="submit" className="exa-red" disabled={busy}>{busy ? "Saving…" : form.kind === "outage" && form.showtimeId ? "Log incident and credit seats" : "Log incident"}</button></div>
           </form>
         </div>
       )}
