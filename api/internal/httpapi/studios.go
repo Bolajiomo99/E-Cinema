@@ -185,6 +185,42 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"premiere": p}, err)
 		}
 	}))
+	// Danger zone (Figma 99:247): the premiere's real pre-sales, moving it and withdrawing it.
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/plan", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Studios.PlanOf(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]any{"plan": p}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/reschedule", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ StartsAt time.Time }
+		if decodeN(w, r, 1<<10, &b) {
+			p, err := s.Studios.Reschedule(r.Context(), a.ID, a.Email, r.PathValue("id"), b.StartsAt, time.Now())
+			reply(w, map[string]any{"plan": p}, err)
+		}
+	}))
+	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/withdraw", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		p, err := s.Studios.Withdraw(r.Context(), a.ID, a.Email, r.PathValue("id"), time.Now())
+		reply(w, map[string]any{"plan": p}, err)
+	}))
+	// Seats of withdrawn premieres waiting for their refund (the web app pays them back).
+	mux.HandleFunc("GET /v1/refunds/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.Studios.RefundsDue(r.Context(), 20)
+		reply(w, map[string]any{"refunds": list}, err)
+	}))
+	mux.HandleFunc("POST /v1/refunds/{id}/free", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		reply(w, map[string]bool{"ok": true}, s.Studios.SettleFreeSeat(r.Context(), r.PathValue("id")))
+	}))
+	mux.HandleFunc("POST /v1/refunds/{id}/credit", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var acct string
+		if err := s.Studios.DB.QueryRow(r.Context(), `SELECT account_id::text FROM holds WHERE id = $1 AND refund_due`, r.PathValue("id")).Scan(&acct); err != nil {
+			fail(w, studios.ErrNotFound)
+			return
+		}
+		_, err := s.Gifts.RefundCredit(r.Context(), acct, r.PathValue("id"))
+		if err == nil {
+			_ = s.Notify.RefundedHold(r.Context(), r.PathValue("id"))
+		}
+		reply(w, map[string]bool{"ok": true}, err)
+	}))
 	// Notifications (Figma 99:552).
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())

@@ -359,7 +359,7 @@ func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	    coalesce((SELECT f.info FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded' LIMIT 1), ''),
 	    p.early_save, p.formats, EXISTS (SELECT 1 FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded')
 	  FROM studio_premieres p JOIN studio_uploads u ON u.id = p.upload JOIN showtimes s ON s.id = p.showtime_id
-	  WHERE p.published_at IS NOT NULL AND s.starts_at + make_interval(mins => s.duration_min) > now() - interval '1 day'
+	  WHERE p.published_at IS NOT NULL AND s.withdrawn_at IS NULL AND s.starts_at + make_interval(mins => s.duration_min) > now() - interval '1 day'
 	  ORDER BY s.starts_at LIMIT 200`)
 	if err != nil {
 		return nil, err

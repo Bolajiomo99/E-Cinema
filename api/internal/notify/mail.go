@@ -158,17 +158,30 @@ func (s Store) ticketMail(ctx context.Context, orderID string) error {
 	return err
 }
 
-// refundMail queues the "refund on its way" email for a refunded seat.
+// refundMail queues the "refund on its way" email for each seat a capture refunded: email 30
+// (Figma 127:149) when the studio withdrew the premiere, otherwise email 13 (106:384).
 func (s Store) refundMail(ctx context.Context, captureID string) error {
+	return s.refundMailWhere(ctx, `h.paypal_capture_id = $1`, captureID)
+}
+
+// RefundedHold queues the refund email for one seat (credit refunds have no capture).
+func (s Store) RefundedHold(ctx context.Context, holdID string) error {
+	if s.DB == nil {
+		return nil
+	}
+	return s.refundMailWhere(ctx, `h.id::text = $1`, holdID)
+}
+
+func (s Store) refundMailWhere(ctx context.Context, where, arg string) error {
 	_, err := s.DB.Exec(ctx, `INSERT INTO mail_outbox (kind, to_email, to_name, data, dedupe)
-	  SELECT 'refund', a.email, a.name,
-	    jsonb_build_object('what', st.film || ' · ' || h.seats || CASE WHEN h.seats = 1 THEN ' seat' ELSE ' seats' END,
-	      'netMinor', coalesce(h.net_cents, h.seats * st.price_cents), 'currency', st.currency,
+	  SELECT CASE WHEN st.withdrawn_at IS NOT NULL THEN 'premiere_cancelled' ELSE 'refund' END, a.email, a.name,
+	    jsonb_build_object('what', st.film || ' · ' || h.seats || CASE WHEN h.seats = 1 THEN ' seat' ELSE ' seats' END, 'film', st.film,
+	      'netMinor', coalesce(h.net_cents, h.seats * st.price_cents), 'currency', st.currency, 'credit', coalesce(h.paypal_refund_id, '') LIKE 'CREDIT-%',
 	      'ref', 'EC-T-' || upper(left(replace(h.id::text, '-', ''), 8)), 'link', '/tickets'),
 	    'refund:' || h.id
 	  FROM holds h JOIN showtimes st ON st.id = h.showtime_id JOIN accounts a ON a.id = h.account_id
-	  WHERE h.paypal_capture_id = $1 AND h.status = 'refunded'
-	  ON CONFLICT (dedupe) DO NOTHING`, captureID)
+	  WHERE `+where+` AND h.status = 'refunded' AND coalesce(h.paypal_refund_id, '') NOT LIKE 'NONE-%'
+	  ON CONFLICT (dedupe) DO NOTHING`, arg)
 	return err
 }
 

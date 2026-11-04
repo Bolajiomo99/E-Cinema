@@ -339,7 +339,7 @@ func (st Store) RefundCredit(ctx context.Context, accountID, holdID string) (int
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = 'CREDIT-REFUND-' || id, refunded_at = now()
+		if _, err := tx.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = 'CREDIT-REFUND-' || id, refunded_at = now(), refund_due = false
 		  WHERE id = $1 AND account_id = $2 AND status = 'paid' AND paypal_capture_id = 'CREDIT-' || id`, holdID, accountID); err != nil {
 			return err
 		}

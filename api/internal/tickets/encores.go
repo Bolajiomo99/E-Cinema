@@ -17,7 +17,7 @@ func (st Store) EnsureEncores(ctx context.Context, now time.Time) (int64, error)
 	  SELECT regexp_replace(b.id, '-[0-9]{4}-[0-9]{2}-[0-9]{2}$', '') || '-' || to_char(slot AT TIME ZONE 'UTC', 'YYYY-MM-DD'),
 	         b.film, b.studio, slot, b.duration_min, b.capacity, b.price_cents, b.currency, b.adult, b.id
 	  FROM showtimes b, LATERAL generate_series(b.starts_at + interval '7 days', $1::timestamptz + make_interval(secs => $2), interval '7 days') slot
-	  WHERE b.encore_weekly AND b.starts_at <= $1 AND slot > $1::timestamptz - interval '1 day'
+	  WHERE b.encore_weekly AND b.withdrawn_at IS NULL AND b.starts_at <= $1 AND slot > $1::timestamptz - interval '1 day'
 	  ON CONFLICT (id) DO NOTHING`, now, EncoreAhead.Seconds())
 	if err != nil {
 		return 0, err

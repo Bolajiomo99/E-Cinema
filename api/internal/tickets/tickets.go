@@ -99,7 +99,7 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 		var adult, ended, closed bool
 		err := tx.QueryRow(ctx, `SELECT capacity, price_cents, currency, adult, starts_at + make_interval(mins => duration_min) <= now(),
 		    starts_at + make_interval(mins => greatest(duration_min - $2, 15)) <= now()
-		  FROM showtimes WHERE id = $1 FOR UPDATE`, showtimeID, DoorsCloseMin).Scan(&capacity, &price, &currency, &adult, &ended, &closed)
+		  FROM showtimes WHERE id = $1 AND withdrawn_at IS NULL FOR UPDATE`, showtimeID, DoorsCloseMin).Scan(&capacity, &price, &currency, &adult, &ended, &closed)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -163,7 +163,8 @@ func (st Store) AttachOrder(ctx context.Context, holdID, orderID string, netCent
 // It is idempotent: a repeated webhook for the same capture changes nothing.
 // A capture that arrives just after the hold expired still counts, because the money was taken.
 func (st Store) MarkPaid(ctx context.Context, orderID, captureID string) error {
-	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = $2, paid_at = coalesce(paid_at, now())
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'paid', paypal_capture_id = $2, paid_at = coalesce(paid_at, now()),
+	    refund_due = EXISTS (SELECT 1 FROM showtimes w WHERE w.id = holds.showtime_id AND w.withdrawn_at IS NOT NULL)
 	  WHERE paypal_order_id = $1 AND (status = 'held' OR (status = 'paid' AND paypal_capture_id = $2))`, orderID, captureID)
 	if err == nil && tag.RowsAffected() == 0 {
 		// Not a seat: it may be one of the adult unlock stages.
@@ -286,11 +287,11 @@ func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancel
 	var c Cancellable
 	var status string
 	var startsAt time.Time
-	var gifted bool
+	var gifted, moved bool
 	err := st.DB.QueryRow(ctx, `SELECT h.id, COALESCE(h.paypal_capture_id, ''), h.status, s.starts_at,
-	    h.lottery OR EXISTS (SELECT 1 FROM gifts g WHERE g.hold_id = h.id)
+	    h.lottery OR EXISTS (SELECT 1 FROM gifts g WHERE g.hold_id = h.id), coalesce(h.refund_until > now(), false)
 	  FROM holds h JOIN showtimes s ON s.id = h.showtime_id
-	  WHERE h.id = $1 AND h.account_id = $2`, holdID, accountID).Scan(&c.HoldID, &c.CaptureID, &status, &startsAt, &gifted)
+	  WHERE h.id = $1 AND h.account_id = $2`, holdID, accountID).Scan(&c.HoldID, &c.CaptureID, &status, &startsAt, &gifted, &moved)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNoHold
 	}
@@ -304,6 +305,10 @@ func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancel
 	if gifted {
 		return c, ErrGiftedSeat
 	}
+	// A studio moved the premiere: a full refund for 7 days, until it starts.
+	if moved && time.Until(startsAt) > 0 {
+		return c, nil
+	}
 	if time.Until(startsAt) <= CancelWindow {
 		return c, ErrTooLateToCancel
 	}
@@ -312,7 +317,7 @@ func (st Store) CanCancel(ctx context.Context, accountID, holdID string) (Cancel
 
 // MarkRefunded frees the seats of a refunded capture. Repeats for the same refund change nothing.
 func (st Store) MarkRefunded(ctx context.Context, captureID, refundID string) error {
-	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = $2, refunded_at = now()
+	tag, err := st.DB.Exec(ctx, `UPDATE holds SET status = 'refunded', paypal_refund_id = $2, refunded_at = now(), refund_due = false
 	  WHERE paypal_capture_id = $1 AND (status = 'paid' OR (status = 'refunded' AND paypal_refund_id = $2))`, captureID, refundID)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNoHold
