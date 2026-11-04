@@ -1,7 +1,7 @@
 import "server-only";
 import { FONT, button, esc, facts, layout, p, site } from "@/lib/email";
 import { marketOf } from "@/lib/premiere-types";
-import { vatRate } from "@/lib/plans";
+import { countryName as countryLabel, vatRate } from "@/lib/plans";
 
 // The designs on Figma page 08 Emails (106:5), one per outbox kind. The API queues the facts
 // (api/internal/notify/mail.go); this file turns them into the email. Each template returns
@@ -57,7 +57,14 @@ const zoneOf = (country: string) => marketOf(country)?.zone ?? "Africa/Lagos";
 function money(minor: number, currency: string) {
   const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
   const v = minor / 10 ** digits;
-  return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-GB", { style: "currency", currency, maximumFractionDigits: Number.isInteger(v) ? 0 : 2, minimumFractionDigits: Number.isInteger(v) ? 0 : 2 }).format(v);
+  return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : currency === "USD" ? "en-US" : "en-GB", { style: "currency", currency, maximumFractionDigits: Number.isInteger(v) ? 0 : 2, minimumFractionDigits: Number.isInteger(v) ? 0 : 2 }).format(v);
+}
+// A PayPal amount ("4500.00") in the same style.
+function major(amount: string, currency: string) {
+  const v = Number(amount);
+  if (!amount || !currency || !Number.isFinite(v)) return "";
+  const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
+  return money(Math.round(v * 10 ** digits), currency);
 }
 const withVat = (minor: number, country: string) => Math.round(minor * (1 + vatRate(country)));
 function when(iso: string, country: string, opts: { year?: boolean; zone?: boolean } = {}) {
@@ -209,7 +216,7 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
   // 13 Refund processed (106:384)
   refund: (m) => {
     const cur = S(m.data.currency) || "USD";
-    const amount = money(withVat(N(m.data.netMinor), m.country), cur);
+    const amount = money(m.data.gross ? N(m.data.netMinor) : withVat(N(m.data.netMinor), m.country), cur);
     return done({
       from: SENDER.billing, tag: "REFUND",
       subject: `Refund on its way: ${amount}`, preview: "Back to how you paid in 1 to 5 working days",
@@ -263,12 +270,268 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
       text: `This week on E-Cinema:\n${rows.map((r) => `- ${r.title}, ${r.sub}`).join("\n")}\n\n${href("/browse")}\n\nEmail settings: ${href("/settings/notifications")}`,
     });
   },
+  // 17 Kids purchase needs approval (106:499)
+  kids_request: (m) => {
+    const kid = S(m.data.profile), what = S(m.data.what);
+    if (!kid || !what) return null;
+    return done({
+      from: SENDER.family, tag: "FAMILY",
+      subject: `${kid} wants ${what}`, preview: "Approve or decline in one tap",
+      title: `Approve ${kid}’s request?`,
+      body: facts([["Profile", N(m.data.age) ? `${kid}, ${N(m.data.age)}` : kid], ["Wants", what]]) +
+        button(href(`/family?request=${encodeURIComponent(S(m.data.request))}`), "Approve or decline") +
+        small("Only a grown-up on this account can decide. Nothing is bought until you approve."),
+      text: `${kid} wants ${what}. Approve or decline: ${href("/family")}`,
+    });
+  },
+
+  // 14 Order shipped (106:416)
+  order_shipped: (m) => {
+    const items = (Array.isArray(m.data.items) ? m.data.items : []).map(S).filter(Boolean);
+    if (!S(m.data.order)) return null;
+    const eta = S(m.data.eta);
+    return done({
+      from: SENDER.orders, tag: "ORDER",
+      subject: items.length === 1 ? `Your ${items[0]} is on the way` : `Order ${S(m.data.order)} is on the way`, preview: eta ? `Arriving ${when(eta, m.country)}, track it live` : "Track it live",
+      title: "On the way",
+      body: facts([
+        ["Order", S(m.data.order)],
+        ["Items", items.join(" · ")],
+        ...(S(m.data.rider) ? [["Rider", `${S(m.data.rider)}${S(m.data.vehicle) ? ` · ${S(m.data.vehicle)}` : ""}`] as [string, string]] : []),
+        ...(eta ? [["Arriving", when(eta, m.country)] as [string, string]] : []),
+      ]) + button(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`), "Track my order"),
+      text: `Order ${S(m.data.order)} is on the way. Track it: ${href(`/shop/orders?o=${S(m.data.orderId)}`)}`,
+    });
+  },
+
+  // 15 Order delivered (106:438)
+  order_delivered: (m) => {
+    const items = (Array.isArray(m.data.items) ? m.data.items : []).map(S).filter(Boolean);
+    if (!S(m.data.order)) return null;
+    const at = S(m.data.at);
+    return done({
+      from: SENDER.orders, tag: "ORDER",
+      subject: items.length === 1 ? `Delivered: your ${items[0]}` : `Delivered: order ${S(m.data.order)}`, preview: "You can return anything within 14 days",
+      title: "Delivered",
+      body: p(`Your order ${esc(S(m.data.order))} arrived${at ? ` at ${clock(at, m.country)}` : ""}. Enjoy it, and tell other fans what you think with a review.`) +
+        button(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`), "See my order") +
+        small(`Something wrong? <a href="${esc(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`))}" style="color:#7a7a84">Return it</a> within 14 days.`),
+      text: `Order ${S(m.data.order)} was delivered. Returns within 14 days: ${href("/shop/orders")}`,
+    });
+  },
+
+  // 19 Studio approved (106:564)
+  studio_approved: (m) => {
+    const studio = S(m.data.studio);
+    if (!studio) return null;
+    return done({
+      from: SENDER.studios, tag: "STUDIO",
+      subject: `${studio} is approved on E-Cinema`, preview: "Upload your first film",
+      title: `Welcome, ${studio}`,
+      body: p("Your rights papers are verified. You keep 70% of every ticket, paid after each screening ends.") +
+        steps(["Upload your film master", "Approve AI dubs line by line", "Set prices and open pre-sales"]) +
+        button(href("/studio"), "Open Studio portal"),
+      text: `${studio} is approved on E-Cinema. Open the Studio portal: ${href("/studio")}`,
+    });
+  },
+
+  // 20 Studio payout sent (106:599)
+  studio_payout: (m) => {
+    const cur = S(m.data.currency) || "USD", film = S(m.data.film);
+    if (!film) return null;
+    const share = money(N(m.data.shareMinor), cur);
+    return done({
+      from: SENDER.payouts, tag: "PAYOUT",
+      subject: `Payout sent: ${share}`, preview: `${film}, ${N(m.data.sharePct) || 70}% share`,
+      title: "Your payout is on its way",
+      body: facts([
+        ["Screening", `${film} · ${when(S(m.data.startsAt), m.country)}`],
+        ["Seats sold", N(m.data.seats).toLocaleString("en-GB")],
+        ["Gross tickets", money(N(m.data.grossMinor), cur)],
+        [`Your ${N(m.data.sharePct) || 70}%`, share],
+        ["To", `PayPal · ${S(m.data.payTo)}`],
+      ]) + button(href("/studio/payouts"), "View statement"),
+      text: `Payout sent: ${share} for ${film}. Statement: ${href("/studio/payouts")}`,
+    });
+  },
+
+  // 35 Report received (127:259)
+  report_received: (m) => done({
+    from: SENDER.rewards, tag: "REPORT RECEIVED", footer: FOOT_ACTION(),
+    subject: "We got your report about a fake seller", preview: "An investigator will check within 5 working days",
+    title: "Thank you for your report",
+    body: p(`We received your report about ${S(m.data.selling) ? `“${esc(S(m.data.selling))}”` : "a seller"}${S(m.data.place) ? ` on ${esc(S(m.data.place))}` : ""}. An investigator checks it within 5 working days. Your name is never shared with the seller. Report number:`) +
+      refBox(S(m.data.report)) + button(href("/rewards"), "Track my report"),
+    text: `We got your report ${S(m.data.report)}. Track it: ${href("/rewards")}`,
+  }),
+
+  // 24 Report reward paid (118:2917)
+  report_paid: (m) => {
+    const ngn = N(m.data.rewardNgn);
+    const reward = ngn ? money(ngn * 100, "NGN") : "";
+    return done({
+      from: SENDER.rewards, tag: "REWARD PAID", footer: FOOT_ACTION(),
+      subject: reward ? `Your report was confirmed: ${reward} paid` : "Your report was confirmed", preview: "Thank you for protecting E-Cinema",
+      title: "Your report stopped a fake seller",
+      body: p(`Our investigator confirmed the seller${S(m.data.place) ? ` on ${esc(S(m.data.place))}` : ""} was not licensed.${reward ? ` We paid ${esc(reward)}` : ""}${N(m.data.points) ? `${reward ? " and" : " We added"} ${N(m.data.points)} points` : ""}${reward || N(m.data.points) ? " to your wallet." : ""} Your name was never shared. Report number:`) +
+        refBox(S(m.data.report)) + button(href("/rewards"), "See my rewards"),
+      text: `Your report ${S(m.data.report)} was confirmed. ${href("/rewards")}`,
+    });
+  },
+
+  // 36 Report not confirmed (127:281)
+  report_closed: (m) => done({
+    from: SENDER.rewards, tag: "NOT CONFIRMED", footer: FOOT_ACTION(),
+    subject: "Your report could not be confirmed", preview: "No reward this time, and no penalty",
+    title: "We could not confirm this one",
+    body: p("There was not enough proof this time, so this report is closed with no reward. Honest reports never cost points. Report number:") +
+      refBox(S(m.data.report)) + button(href("/rewards"), "See my reports"),
+    text: `Your report ${S(m.data.report)} could not be confirmed. ${href("/rewards")}`,
+  }),
+
+  // 37 Licence application received (127:303)
+  licence_received: (m) => done({
+    from: SENDER.licensing, tag: "APPLICATION", footer: FOOT_ACTION(),
+    subject: "We got your licence application", preview: "We review it within 10 working days",
+    title: `Thanks for applying${S(m.data.company) ? `, ${S(m.data.company)}` : ""}`,
+    body: p("We are checking your company papers, a sample of your printing and your shop locations. We reply within 10 working days. You cannot sell E-Cinema merch until it is approved. Application:") +
+      refBox(S(m.data.app)) + button(href("/licensing/apply"), "See my application"),
+    text: `We got your licence application ${S(m.data.app)}. ${href("/licensing/apply")}`,
+  }),
+
+  // 38 Licence needs changes (127:325)
+  licence_changes: (m) => done({
+    from: SENDER.licensing, tag: "CHANGES NEEDED", footer: FOOT_ACTION(),
+    subject: "Your licence application needs changes", preview: S(m.data.note).slice(0, 90) || "Upload what is missing in your portal",
+    title: "Almost there",
+    body: p(`${esc(S(m.data.note) || "We need a few more documents.")} Update your application and we will finish the review. Application:`) +
+      refBox(S(m.data.app)) + button(href("/licensing/apply"), "Upload documents"),
+    text: `Your licence application needs changes: ${S(m.data.note)}. ${href("/licensing/apply")}`,
+  }),
+
+  // 25 Licence approved (118:2939)
+  licence_approved: (m) => {
+    const plan = S(m.data.plan), company = S(m.data.company);
+    return done({
+      from: SENDER.licensing, tag: "LICENCE APPROVED", footer: FOOT_ACTION(),
+      subject: "Your E-Cinema merch licence is approved", preview: "Your licensee portal is ready",
+      title: `Welcome${company ? `, ${company}` : ""}`,
+      body: p(`You can now sell official E-Cinema merch${S(m.data.country) ? ` in ${esc(countryLabel(S(m.data.country)))}` : ""}${plan ? ` on the ${esc(plan[0].toUpperCase() + plan.slice(1))} plan` : ""}. Submit each product for approval before printing, and use our authenticity labels on every item. Licence number:`) +
+        refBox(S(m.data.licence)) + button(href("/partner"), "Open my portal"),
+      text: `Your E-Cinema merch licence ${S(m.data.licence)} is approved. ${href("/partner")}`,
+    });
+  },
+
+  // 39 Product design approved (127:347)
+  design_approved: (m) => done({
+    from: SENDER.licensing, tag: "DESIGN APPROVED", footer: FOOT_ACTION(),
+    subject: `Approved: ${S(m.data.product)}`, preview: "You can start printing",
+    title: "Your design is approved",
+    body: p(`${esc(S(m.data.product))} is approved. Order authenticity labels before printing; every item must carry one. Design number:`) +
+      refBox(S(m.data.design)) + button(href("/partner/codes"), "Order labels"),
+    text: `${S(m.data.product)} is approved. Order labels: ${href("/partner/codes")}`,
+  }),
+
+  // 40 Product design rejected (127:369)
+  design_rejected: (m) => done({
+    from: SENDER.licensing, tag: S(m.data.status) === "changes" ? "CHANGES NEEDED" : "NOT APPROVED", footer: FOOT_ACTION(),
+    subject: `Not approved: ${S(m.data.product)}`, preview: S(m.data.note).slice(0, 90),
+    title: "This design needs fixing",
+    body: p(`${esc(S(m.data.note))} Use the brand kit in your portal, then submit again. Nothing is charged for a resubmission. Design number:`) +
+      refBox(S(m.data.design)) + button(href("/partner/products"), "Open my products"),
+    text: `${S(m.data.product)} was not approved: ${S(m.data.note)}. ${href("/partner/products")}`,
+  }),
+
+  // 42 Licence renewal due (127:413)
+  licence_renewal: (m) => {
+    const until = S(m.data.validUntil);
+    if (!until) return null;
+    const day = new Date(`${until.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+    return done({
+      from: SENDER.licensing, tag: "RENEW", footer: FOOT_ACTION(),
+      subject: "Your licence ends in 30 days", preview: "Renew to keep selling without a break",
+      title: "Time to renew your licence",
+      body: p(`Your ${esc(S(m.data.plan))} licence ends on ${esc(day)}. Renew now to keep your products, codes and shop listings live. Licence:`) +
+        refBox(S(m.data.licence)) + button(href("/partner/licence"), "Renew licence"),
+      text: `Your licence ${S(m.data.licence)} ends on ${day}. Renew: ${href("/partner/licence")}`,
+    });
+  },
+
+  // 45 Executive invite expiring (127:479)
+  exec_invite_expiring: (m) => {
+    const token = S(m.data.token), ends = S(m.data.expiresAt);
+    if (!token || !ends || Date.parse(ends) < Date.now()) return null;
+    return done({
+      from: SENDER.exec, tag: "INVITE", footer: FOOT_ACTION(),
+      subject: "Your E-Cinema invite expires tomorrow", preview: "Sign in with a passkey to accept",
+      title: "Your invite ends in 24 hours",
+      body: p(`${esc(S(m.data.by) || "E-Cinema")} invited you to the E-Cinema executive dashboard. Accept before ${esc(when(ends, m.country, { zone: true }))} by confirming your email, a face check and a passkey.`) +
+        button(href(`/invite/executive/${encodeURIComponent(token)}`), "Accept invite") +
+        small("The link works once. If it runs out, ask for a new one."),
+      text: `Your E-Cinema invite ends ${when(ends, m.country, { zone: true })}. Accept: ${href(`/invite/executive/${token}`)}`,
+    });
+  },
+
+  // 34 Account restored (127:237)
+  account_restored: () => done({
+    from: SENDER.security, tag: "RESTORED",
+    subject: "Welcome back, your account is restored", preview: "Deletion cancelled, everything is where you left it",
+    title: "Your account is back",
+    body: p("You signed in before the deletion date, so we cancelled it. Your tickets, wallet, friends and history are all here.") +
+      button(href("/home"), "Open E-Cinema") +
+      small("Did not sign in yourself? Change your password and sign out all devices in Settings."),
+    text: `Your account is restored. ${href("/home")}`,
+  }),
+
+  // 11 Payment receipt (106:332)
+  plan_receipt: (m) => {
+    const plan = PLAN[S(m.data.plan)] ?? "E-Cinema";
+    const amount = major(S(m.data.amount), S(m.data.currency));
+    const next = S(m.data.renewsAt);
+    return done({
+      from: SENDER.billing, tag: "RECEIPT",
+      subject: `Receipt: ${plan} plan${amount ? `, ${amount}` : ""}`, preview: `Paid ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
+      title: "Thanks for your payment",
+      body: facts([
+        ["Plan", plan],
+        ...(amount ? [["Amount", `${amount} incl. VAT`] as [string, string]] : []),
+        ["Paid with", "PayPal"],
+        ...(next && Date.parse(next) > Date.now() ? [["Next renewal", dayName(next, m.country)] as [string, string]] : []),
+        ["Receipt", S(m.data.receipt)],
+      ]) + button(href("/settings/plan"), "See plan and payments"),
+      text: `Receipt ${S(m.data.receipt)}: ${plan} plan ${amount}. ${href("/settings/plan")}`,
+    });
+  },
+
+  // 12 Payment failed (106:353)
+  plan_failed: (m) => {
+    const plan = PLAN[S(m.data.plan)] ?? "E-Cinema";
+    const amount = major(S(m.data.amount), S(m.data.currency));
+    return done({
+      from: SENDER.billing, tag: "BILLING",
+      subject: `We could not renew your ${plan} plan`, preview: "Update your payment to keep your plan",
+      title: "Your payment did not go through",
+      body: p(`PayPal could not take ${amount ? esc(amount) + " " : "the payment "}for ${esc(plan)}. PayPal will try again; update the card or bank in your PayPal account to keep your plan.`) +
+        button(href("/settings/plan"), "Update payment") +
+        small("You can also switch plans or pay with another method in Plan and payments."),
+      text: `We could not renew your ${plan} plan. Update payment: ${href("/settings/plan")}`,
+    });
+  },
+};
+
+// Facts an email cannot go out without (the rest check inside their template).
+const NEEDS: Record<string, string[]> = {
+  report_received: ["report"], report_paid: ["report"], report_closed: ["report"],
+  licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
+  design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
+  licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
+  gift_waiting: ["gift"], refund: ["what"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
 export function renderMail(m: Outgoing): Rendered | null {
   const t = T[m.kind];
-  if (!t) return null;
+  if (!t || (NEEDS[m.kind] ?? []).some((k) => !S(m.data?.[k]))) return null;
   try {
     return t({ ...m, data: m.data ?? {} });
   } catch {
