@@ -4,12 +4,12 @@ import "server-only";
 // Layout follows the Figma "08 Emails" page (106:84 reset code, 106:117 password changed).
 export const emailEnabled = Boolean(process.env.RESEND_API_KEY);
 const FROM = "E-Cinema <security@e-cinema.net>";
-const site = () => process.env.WEB_URL || "https://e-cinema.net";
+export const site = () => process.env.WEB_URL || "https://e-cinema.net";
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const FONT = "Manrope,'Segoe UI',Helvetica,Arial,sans-serif";
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const FONT = "Manrope,'Segoe UI',Helvetica,Arial,sans-serif";
 
-function layout(preview: string, title: string, body: string, tag = "SECURITY", footer?: string) {
+export function layout(preview: string, title: string, body: string, tag = "SECURITY", footer?: string | { html: string }, banner?: string) {
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;background:#ececef;font-family:${FONT};color:#16161a">
 <div style="display:none;max-height:0;overflow:hidden">${esc(preview)}</div>
@@ -18,30 +18,31 @@ function layout(preview: string, title: string, body: string, tag = "SECURITY", 
 <tr><td style="background:#0b0b0d;padding:24px 28px"><table role="presentation" width="100%"><tr>
 <td><img src="${site()}/email/logo.png" width="116" height="34" alt="E-CINEMA" style="display:block;border:0"></td>
 <td align="right" style="font:700 12px/1 ${FONT};letter-spacing:1px;color:#a6a6b0">${esc(tag)}</td></tr></table></td></tr>
+${banner ? `<tr><td style="background:#2a0a0f;background-image:linear-gradient(90deg,#4a0d16,#0b0b0d);padding:96px 28px 28px;font:400 40px/1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:1px;color:#ffffff">${esc(banner)}</td></tr>` : ""}
 <tr><td style="padding:36px 36px 32px">
 <h1 style="margin:0 0 20px;font:800 28px/1.2 ${FONT};color:#16161a">${esc(title)}</h1>
 ${body}
 </td></tr>
 <tr><td style="background:#f4f4f6;padding:24px 36px;font:500 12px/1.6 ${FONT};color:#7a7a84">
-<p style="margin:0 0 8px">${footer ? esc(footer) : "This is a service message about your account. You cannot unsubscribe from security, payment and order emails."}</p>
+<p style="margin:0 0 8px">${footer ? (typeof footer === "string" ? esc(footer) : footer.html) : "This is a service message about your account. You cannot unsubscribe from security, payment and order emails."}</p>
 <p style="margin:0 0 8px">Online Cinema Ltd, trading as E-Cinema · Lagos, Nigeria · e-cinema.net · Help: help@e-cinema.net</p>
 <p style="margin:0">We never ask for your password, code or card number by email, phone or chat.</p>
 </td></tr></table></td></tr></table></body></html>`;
 }
 
-const p = (t: string) => `<p style="margin:0 0 20px;font:500 16px/1.55 ${FONT};color:#3a3a42">${t}</p>`;
-const button = (href: string, label: string) =>
+export const p = (t: string) => `<p style="margin:0 0 20px;font:500 16px/1.55 ${FONT};color:#3a3a42">${t}</p>`;
+export const button = (href: string, label: string) =>
   `<p style="margin:0 0 20px"><a href="${esc(href)}" style="display:inline-block;background:#e5182e;color:#ffffff;text-decoration:none;font:600 16px/1 ${FONT};padding:16px 24px;border-radius:8px">${esc(label)}</a></p>`;
-const codeBox = (code: string) =>
+export const codeBox = (code: string) =>
   `<div style="margin:0 0 20px;background:#f4f4f6;border-radius:12px;padding:22px;text-align:center;font:400 40px/1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:2px;color:#16161a">${code.slice(0, 3)} ${code.slice(3)}</div>`;
-const note = (t: string) =>
+export const note = (t: string) =>
   `<div style="margin:0;background:#f8efe4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
-const facts = (rows: [string, string][]) =>
+export const facts = (rows: [string, string][]) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #e2e2e6;border-radius:10px;border-collapse:separate;overflow:hidden">${rows
     .map(([k, v], i) => `<tr style="background:${i % 2 ? "#ffffff" : "#f4f4f6"}"><td style="padding:12px 16px;font:500 14px ${FONT};color:#7a7a84">${esc(k)}</td><td align="right" style="padding:12px 16px;font:600 14px ${FONT};color:#16161a">${esc(v)}</td></tr>`)
     .join("")}</table>`;
 
-async function send(to: string, subject: string, html: string, text: string, from = FROM) {
+export async function send(to: string, subject: string, html: string, text: string, from = FROM) {
   if (!emailEnabled) throw new Error("Email is not switched on here");
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
