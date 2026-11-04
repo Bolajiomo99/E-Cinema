@@ -57,7 +57,7 @@ func TestMail(t *testing.T) {
 	}
 	kinds := func() map[string]int {
 		m := map[string]int{}
-		rows, _ := p.Query(ctx, `SELECT kind FROM mail_outbox WHERE failed_at IS NULL`)
+		rows, _ := p.Query(ctx, `SELECT kind FROM mail_outbox WHERE failed_at IS NULL AND to_email LIKE 'mail-%'`)
 		for rows.Next() {
 			var k string
 			rows.Scan(&k)

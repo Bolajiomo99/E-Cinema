@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,6 +42,7 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		s.welcome(acct.ID, acct.Email, acct.Name)
 		writeJSON(w, http.StatusCreated, map[string]any{"account": acct, "session": sess})
 	}))
 	mux.HandleFunc("POST /v1/sessions", s.internal(func(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +148,9 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			return
 		}
 		acct, sess, created, err := s.Accounts.SignInExternal(r.Context(), b.Provider, b.Subject, b.Email, b.EmailVerified, b.Name, b.Device)
+		if err == nil && created {
+			s.welcome(acct.ID, acct.Email, acct.Name)
+		}
 		if err != nil {
 			fail(w, err)
 			return
@@ -477,4 +482,9 @@ func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 	return true
+}
+
+// welcome queues email 01 (Figma 106:39), the first email every member gets.
+func (s *Server) welcome(id, email, name string) {
+	_ = s.Notify.Queue(context.Background(), notify.Mail{Kind: "welcome", To: email, Name: name, Dedupe: "welcome:" + id})
 }

@@ -86,6 +86,11 @@ func (s Store) DueMail(ctx context.Context, limit int) ([]Outgoing, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
+	// Accounts the deploy smoke test signs up never get email.
+	if _, err := s.DB.Exec(ctx, `UPDATE mail_outbox SET sent_at = now(), last_error = 'test account'
+	  WHERE sent_at IS NULL AND failed_at IS NULL AND to_email LIKE 'smoke+%@e-cinema.net'`); err != nil {
+		return nil, err
+	}
 	rows, err := s.DB.Query(ctx, `WITH due AS (
 	    SELECT id FROM mail_outbox
 	    WHERE sent_at IS NULL AND failed_at IS NULL AND send_after <= now()
