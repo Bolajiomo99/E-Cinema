@@ -5426,3 +5426,45 @@ label.exa-tog { flex-direction: row; justify-content: space-between; align-items
 .exst-log small { display: block; color: #8a8a96; font-size: 12px; margin-top: 2px; }
 @media (max-width: 1100px) { .exst-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .exst-table .exrc-tr { grid-template-columns: 1fr auto; } .exst-table .exrc-tr > span:nth-child(2), .exst-table .exrc-tr > span:nth-child(3) { display: none; } .exst-table .exrc-th { display: none; } }
+
+/* Executive invite (Figma 99:1696) */
+.inv { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; background: #0a0a0c; color: #f4f4f6; font-family: Manrope, sans-serif; }
+.inv-art { display: flex; flex-direction: column; justify-content: flex-end; padding: 0 64px 72px; background: linear-gradient(90deg, #3a0a10 0%, #16080b 55%, #0a0a0c 100%); }
+.inv-art .wordmark { align-self: flex-start; font-size: 34px; }
+.inv-art h2 { font: 400 64px/1 "Bebas Neue", sans-serif; margin: 14px 0 18px; letter-spacing: .01em; }
+.inv-art p { max-width: 420px; margin: 0; color: #c8c8d0; font-size: 16px; line-height: 26px; }
+.inv-main { display: flex; align-items: center; padding: 48px 16px; }
+.inv-card { width: 100%; max-width: 416px; margin-left: 9%; }
+.inv-card h1 { font: 700 32px/40px Manrope, sans-serif; margin: 0 0 14px; }
+.inv-lead { color: #c8c8d0; font-size: 15px; line-height: 23px; margin: 0 0 18px; }
+.inv-steps { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.inv-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.inv-steps i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #1f1f26; display: grid; place-items: center; color: #fff; margin-top: 1px; }
+.inv-steps i svg { width: 14px; height: 14px; }
+.inv-steps li.done i { background: #22c55e; }
+.inv-steps li.now i { background: #e3182d; }
+.inv-steps li.now i::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.inv-steps b { display: block; font-weight: 600; font-size: 14px; }
+.inv-steps small { display: block; color: #8a8a96; font-size: 12.5px; margin-top: 3px; }
+.inv-steps li.todo b { color: #8a8a96; font-weight: 500; }
+.inv-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 50px; border: 0; border-radius: 8px; background: #e3182d; color: #fff; font: 600 15px Manrope, sans-serif; cursor: pointer; text-decoration: none; }
+.inv-btn:disabled { opacity: .55; cursor: default; }
+.inv-btn:focus-visible, .inv-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.inv-alt { color: #a6a6b0; font-size: 13.5px; margin: 12px 0 0; }
+.inv-alt a { color: #f4f4f6; }
+.inv-code { display: flex; flex-direction: column; gap: 10px; }
+.inv-code label span { display: block; color: #a6a6b0; font-size: 13px; margin-bottom: 6px; }
+.inv-code input { width: 100%; height: 50px; border-radius: 8px; border: 1px solid #2c2c35; background: #141418; color: #f4f4f6; font: 600 22px Manrope, sans-serif; letter-spacing: .35em; text-align: center; box-sizing: border-box; }
+.inv-link { background: none; border: 0; color: #c8c8d0; font: 500 13.5px Manrope, sans-serif; cursor: pointer; text-decoration: underline; align-self: center; }
+.inv-warn { color: #ff8a94; font-size: 14px; line-height: 21px; margin: 12px 0 0; }
+.inv-note { display: flex; gap: 12px; align-items: flex-start; margin: 18px 0 0; padding: 14px 16px; border: 1px solid #23232b; border-radius: 10px; background: #111115; color: #8a8a96; font-size: 12.5px; line-height: 19px; }
+.inv-note svg { flex: none; width: 18px; height: 18px; color: #a6a6b0; margin-top: 2px; }
+.inv-face { margin-top: 4px; }
+@media (max-width: 860px) {
+  .inv { grid-template-columns: 1fr; }
+  .inv-art { padding: 28px 16px 24px; justify-content: flex-start; background: linear-gradient(180deg, #3a0a10, #0a0a0c); }
+  .inv-art h2 { font-size: 44px; margin: 10px 0 8px; }
+  .inv-art p { font-size: 14px; line-height: 22px; }
+  .inv-main { padding: 8px 16px 40px; align-items: flex-start; }
+  .inv-card { margin: 0; max-width: none; }
+}
