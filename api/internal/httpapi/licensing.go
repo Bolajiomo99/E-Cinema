@@ -68,6 +68,9 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /v1/me/licence-application/submit", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		app, err := s.Licensing.Submit(r.Context(), a.ID, verified(a))
+		if err == nil {
+			s.licenceMail(a.ID, "licence_received", app.ID, map[string]any{"company": app.Company, "country": app.Country, "app": appRef(app.ID)})
+		}
 		reply(w, app, err)
 	}))
 	mux.HandleFunc("POST /v1/me/licence-application/payment", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
@@ -104,6 +107,9 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 				title, body = "Your licence application needs changes", app.ReviewNote
 			}
 			s.note(app.Account, notify.New{Kind: "payment", Title: title, Body: body, Link: "/licensing/apply", Dedupe: "licapp:" + app.ID + ":" + app.Status})
+			if !b.Approve {
+				s.licenceMail(app.Account, "licence_changes", app.ID+":"+app.Status, map[string]any{"company": app.Company, "note": app.ReviewNote, "app": appRef(app.ID)})
+			}
 		}
 		reply(w, app, err)
 	}))
@@ -111,6 +117,9 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 		var b struct{ Status, Note string }
 		if decodeN(w, r, 4<<10, &b) {
 			p, err := s.Licensing.DecideProduct(r.Context(), r.PathValue("id"), b.Status, b.Note)
+			if err == nil && (p.Status == "live" || p.Status == "rejected" || p.Status == "changes") {
+				s.productMail(p)
+			}
 			reply(w, p, err)
 		}
 	}))
@@ -250,6 +259,36 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 			reply(w, map[string]bool{"ok": true}, s.Licensing.SetPayout(r.Context(), l, b.Bank, b.Number, b.Name, verified(a)))
 		}
 	}))
+}
+
+// appRef is the application number shown in licensing emails.
+func appRef(id string) string {
+	return "LIC-" + strings.ToUpper(strings.ReplaceAll(id, "-", "")[:6])
+}
+
+// licenceMail queues a licensing email (Figma 118:2939, 127:303, 127:325) to the applicant.
+func (s *Server) licenceMail(accountID, kind, key string, data map[string]any) {
+	go func() {
+		_ = s.Notify.QueueAccount(context.Background(), accountID, notify.Mail{Kind: kind, Dedupe: kind + ":" + key, Data: data})
+	}()
+}
+
+// productMail queues email 39 or 40 (Figma 127:347, 127:369) to the licence holder.
+func (s *Server) productMail(p licensing.Product) {
+	go func() {
+		ctx := context.Background()
+		var email, company string
+		if s.Licensing.DB.QueryRow(ctx, `SELECT a.email, b.name FROM brand_licensees b JOIN accounts a ON a.id = b.account_id WHERE b.licence = $1`, p.Licence).Scan(&email, &company) != nil {
+			return
+		}
+		kind := "design_approved"
+		if p.Status != "live" {
+			kind = "design_rejected"
+		}
+		_ = s.Notify.Queue(ctx, notify.Mail{Kind: kind, To: email, Name: company, Dedupe: "design:" + p.ID + ":" + p.Status + ":" + p.Note,
+			Data: map[string]any{"company": company, "product": p.Name, "note": p.Note, "status": p.Status,
+				"design": "DSN-" + p.Licence + "-" + strings.ToUpper(strings.ReplaceAll(p.ID, "-", "")[:4])}})
+	}()
 }
 
 func (s *Server) note(accountID string, n notify.New) {

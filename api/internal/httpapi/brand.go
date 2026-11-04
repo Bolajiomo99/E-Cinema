@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/brand"
@@ -53,6 +54,7 @@ func (s *Server) brandRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		s.reportMail(rep, "report_received")
 		writeJSON(w, http.StatusCreated, rep)
 	}))
 	mux.HandleFunc("GET /v1/brand/reports/open", s.internal(func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +109,24 @@ func (s *Server) reportDecided(r brand.Report) {
 	}
 	go func() {
 		_ = s.Notify.Add(context.Background(), r.Account, notify.New{Kind: kind, Title: title, Body: body, Link: "/rewards", Dedupe: "brand:" + r.ID + ":" + r.Status})
+	}()
+	switch r.Status {
+	case "confirmed":
+		s.reportMail(r, "report_paid")
+	case "rejected":
+		s.reportMail(r, "report_closed")
+	}
+}
+
+// reportMail queues emails 35, 24 and 36 (Figma 127:259, 118:2917, 127:281) to the reporter.
+func (s *Server) reportMail(r brand.Report, kind string) {
+	if r.Account == "" {
+		return
+	}
+	data := map[string]any{"place": r.Place, "selling": r.Selling, "outcome": r.Outcome, "rewardNgn": r.RewardNGN, "points": r.Points,
+		"report": "RPT-" + strings.ToUpper(strings.ReplaceAll(r.ID, "-", "")[:6])}
+	go func() {
+		_ = s.Notify.QueueAccount(context.Background(), r.Account, notify.Mail{Kind: kind, Dedupe: "brandmail:" + r.ID + ":" + kind, Data: data})
 	}()
 }
 

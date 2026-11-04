@@ -36,6 +36,7 @@ func (s *Server) orderChanged(o shop.Order) {
 			s.ChatHub.Send([]string{o.AccountID}, chat.Event{Type: "order", Order: raw})
 		}
 	}
+	s.orderMail(o)
 	if n, ok := orderNote[o.Status]; ok {
 		go func() {
 			_ = s.Notify.Add(context.Background(), o.AccountID, notify.New{
@@ -43,6 +44,48 @@ func (s *Server) orderChanged(o shop.Order) {
 			})
 		}()
 	}
+}
+
+// orderMail queues emails 14 and 15 (Figma 106:416, 106:438) when an order sets off and
+// arrives, and the refund email when a paid order is cancelled or a return comes back.
+func (s *Server) orderMail(o shop.Order) {
+	items := make([]string, 0, len(o.Items))
+	for _, it := range o.Items {
+		name := it.Name
+		if it.Variant != "" {
+			name += ", " + it.Variant
+		}
+		if it.Qty > 1 {
+			name = fmt.Sprintf("%d × %s", it.Qty, name)
+		}
+		items = append(items, name)
+	}
+	data := map[string]any{"order": o.Number, "orderId": o.ID, "items": items, "city": o.Address.City}
+	kind := ""
+	switch o.Status {
+	case "out":
+		kind = "order_shipped"
+		if o.Rider != nil {
+			data["rider"], data["vehicle"], data["eta"] = o.Rider.Name, o.Rider.Vehicle, o.Rider.ETA
+		}
+	case "delivered":
+		kind = "order_delivered"
+		if o.DeliveredAt != nil {
+			data["at"] = o.DeliveredAt.Format(time.RFC3339)
+		}
+	case "cancelled", "returned":
+		if o.Method != "paypal" || o.ChargeCents == 0 {
+			return
+		}
+		kind = "refund"
+		data = map[string]any{"what": "Shop order " + o.Number, "netMinor": o.ChargeCents, "currency": o.ChargeCurrency, "gross": true,
+			"ref": o.Number, "link": "/shop/orders?o=" + o.ID}
+	default:
+		return
+	}
+	go func() {
+		_ = s.Notify.QueueAccount(context.Background(), o.AccountID, notify.Mail{Kind: kind, Dedupe: "shop:" + o.ID + ":" + o.Status, Data: data})
+	}()
 }
 
 // Shop (Figma 53:925, 96:1194, 53:1111, 89:894).

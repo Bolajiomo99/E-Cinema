@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 )
 
 // Family and kids (Figma 89:1020): profiles, parental controls, the parent PIN, screen time
@@ -92,6 +93,9 @@ func (s *Server) familyRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		// Email 17 (Figma 106:499): the grown-up decides from the family page.
+		_ = s.Notify.Queue(r.Context(), notify.Mail{Kind: "kids_request", To: a.Email, Name: a.Name, Dedupe: "kidsreq:" + req.ID,
+			Data: map[string]any{"profile": p.Name, "age": p.Age, "what": req.What, "request": req.ID}})
 		writeJSON(w, http.StatusCreated, req)
 	}))
 
