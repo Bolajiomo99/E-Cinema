@@ -198,6 +198,25 @@ func TestShop(t *testing.T) {
 	if _, err := st.Cancel(ctx, free, cod.ID); !errors.Is(err, shop.ErrTooLate) {
 		t.Fatalf("someone else cancelling: %v", err)
 	}
+
+	// Paystack and Flutterwave: charged in naira on the provider's page, pending until confirmed.
+	if _, err := st.Reorder(ctx, pro, paid.ID); err != nil {
+		t.Fatal(err)
+	}
+	q, _ = st.Quote(ctx, pro, "")
+	if _, err := st.Place(ctx, pro, shop.Placing{Method: "paystack", ExpectTotalNGN: q.TotalNGN, ChargeCents: q.TotalNGN * 100, PayPalOrderID: "FLW-00000000000000000001"}); !errors.Is(err, shop.ErrBadInput) {
+		t.Fatalf("wrong reference prefix: %v", err)
+	}
+	ps := must2(st.Place(ctx, pro, shop.Placing{Method: "paystack", ExpectTotalNGN: q.TotalNGN, ChargeCurrency: "USD", ChargeCents: q.TotalNGN * 100, PayPalOrderID: "PSK-00000000000000000001"}))
+	if ps.Status != "pending" || ps.ChargeCurrency != "NGN" {
+		t.Fatalf("paystack order = %+v", ps)
+	}
+	if got, err := st.MarkPaid(ctx, "PSK-00000000000000000001", "PSK-00000000000000000001~4242"); err != nil || got == nil || got.Status != "placed" {
+		t.Fatalf("paystack paid = %+v, %v", got, err)
+	}
+	if c, _ := st.Cart(ctx, pro); len(c) != 0 {
+		t.Fatal("cart not emptied after Paystack")
+	}
 	must2(st.Cancel(ctx, pro, cod.ID))
 
 	// A free member abroad: no discount, world delivery, no VAT, and Nigeria-only items flagged.

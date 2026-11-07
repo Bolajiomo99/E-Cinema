@@ -421,7 +421,8 @@ type Order struct {
 	Items          []Item     `json:"items"`
 }
 
-// Placing an order: Method is paypal (with the PayPal order and what it charges) or cod.
+// Placing an order: Method is paypal (with the PayPal order and what it charges), paystack or
+// flutterwave (with the provider reference and the naira charge), or cod.
 type Placing struct {
 	Method         string `json:"method"`
 	Country        string `json:"country"`
@@ -461,6 +462,13 @@ func (st Store) Place(ctx context.Context, accountID string, p Placing) (Order, 
 			return Order{}, fmt.Errorf("%w: missing payment", ErrBadInput)
 		}
 		status, paypalID = "pending", &p.PayPalOrderID
+	case "paystack", "flutterwave":
+		// Hosted checkout in naira; the reference waits as pending until the provider confirms it.
+		prefix := map[string]string{"paystack": "PSK-", "flutterwave": "FLW-"}[p.Method]
+		if !strings.HasPrefix(p.PayPalOrderID, prefix) || p.ChargeCents <= 0 {
+			return Order{}, fmt.Errorf("%w: missing payment", ErrBadInput)
+		}
+		status, paypalID, p.ChargeCurrency = "pending", &p.PayPalOrderID, "NGN"
 	default:
 		return Order{}, fmt.Errorf("%w: choose how to pay", ErrBadInput)
 	}
