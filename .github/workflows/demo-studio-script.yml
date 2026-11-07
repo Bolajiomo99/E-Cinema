@@ -1,0 +1,46 @@
+name: Demo studio script
+
+# Puts the English subtitles of the stand-in film (Tears of Steel, (c) Blender Foundation,
+# CC BY 3.0, mango.blender.org) in private R2 as the subtitle file of Lagoon Gate Pictures'
+# "Tide of Lagos" upload, so the studio's AI dubbing has a real script to translate.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/demo-studio-script.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      KEY: studio-uploads/4c6f6764-0000-4000-8000-000000000001/4c6f6764-0000-4000-8000-000000000101.srt
+    steps:
+      - name: Download the subtitles
+        run: |
+          set -euo pipefail
+          for url in \
+            https://download.blender.org/demo/movies/ToS/subtitles/TOS-en.srt \
+            https://download.blender.org/demo/movies/ToS/subtitles/tears_of_steel-en.srt; do
+            echo "trying $url"
+            if curl -fL --retry 3 -o subs.srt "$url"; then break; fi
+          done
+          test -s subs.srt
+          # Some copies start with a byte order mark or use CRLF; the dub worker reads both.
+          echo "bytes: $(stat -c %s subs.srt)"
+          echo "cues: $(grep -c -- '-->' subs.srt)"
+          head -20 subs.srt
+      - name: Upload to private R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN1 }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCOUNT_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ACCOUNT_TOKEN }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+          account=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/zones?name=e-cinema.net" | jq -r '.result[0].account.id')
+          ep="https://$account.r2.cloudflarestorage.com"
+          aws s3 cp subs.srt "s3://e-cinema-media/$KEY" --endpoint-url "$ep" --content-type application/x-subrip --only-show-errors
+          aws s3 ls "s3://e-cinema-media/$KEY" --endpoint-url "$ep"
