@@ -7,7 +7,8 @@ import { MONTHS, money } from "@/lib/studio-types";
 
 // Figma "Studio / Analytics": Audience (37:1652) and Reach (37:2861). Every number is the studio's
 // own: watch time, reviews, rewatch parties, tickets and refunds. Parts that need player reports
-// we do not collect yet say "Soon" instead of showing made-up numbers.
+// we do not collect yet say "Soon" instead of showing made-up numbers. Retention, hours and
+// devices come from the reports the player sends each minute.
 
 type Count = { key: string; seats: number };
 export type AnalyticsData = {
@@ -21,7 +22,50 @@ export type AnalyticsData = {
   cohorts: { month: string; size: number; back: number[] }[];
   money: { grossCents: number; platformCents: number; refundCents: number; shareCents: number; perViewerCents: number; buyers: number };
   funnel: { orders: number; seats: number; gifts: number };
+  // From player reports, for screenings in the period: share still watching at 0%, 5% … 100%.
+  audience?: { viewers: number; retention: number[]; hours: number[][]; devices: Record<string, number> } | null;
 };
+
+const DEVICES: [string, string][] = [["android", "Android"], ["ios", "iPhone"], ["web", "Web"], ["tv", "TV"], ["tablet", "Tablet"], ["vr", "VR"]];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function Retention({ a }: { a: NonNullable<AnalyticsData["audience"]> }) {
+  const W = 520, H = 160;
+  const pts = a.retention.map((v, i) => ({ x: (i / 20) * W, y: H - v * (H - 8) - 4 }));
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  let drop = 1;
+  for (let i = 2; i < a.retention.length; i++) if (a.retention[i - 1] - a.retention[i] > a.retention[drop - 1] - a.retention[drop]) drop = i;
+  const fell = a.retention[drop - 1] - a.retention[drop];
+  return (
+    <>
+      <svg className="stan-curve" viewBox={`0 0 ${W} ${H + 18}`} role="img" aria-label={`Retention: ${pct(a.retention[10])} still watching at half-way, ${pct(a.retention[20])} at the end`}>
+        {[0.25, 0.5, 0.75].map((g) => <line key={g} x1={0} x2={W} y1={H - g * (H - 8) - 4} y2={H - g * (H - 8) - 4} className="grid" />)}
+        <path d={`${line} L${W},${H} L0,${H} Z`} className="area" />
+        <path d={line} className="line" />
+        {["0%", "25%", "50%", "75%", "100%"].map((t, i) => <text key={t} x={(i / 4) * W} y={H + 14} textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"}>{t}</text>)}
+      </svg>
+      <p className="stan-note">
+        Of {n(a.viewers)} {a.viewers === 1 ? "viewer" : "viewers"} who pressed play, {pct(a.retention[10])} were still watching half-way and {pct(a.retention[20])} reached the end.
+        {fell >= 0.05 ? ` The most people left between ${(drop - 1) * 5}% and ${drop * 5}% of the runtime.` : ""}
+      </p>
+    </>
+  );
+}
+
+function Hours({ hours }: { hours: number[][] }) {
+  const max = Math.max(1, ...hours.flat());
+  return (
+    <div className="stan-hours" role="table" aria-label="Viewers by local day and hour">
+      {hours.map((row, d) => (
+        <div key={d} role="row" className="stan-hr">
+          <span role="rowheader">{DAYS[d]}</span>
+          {row.map((v, h) => <i key={h} role="cell" title={`${DAYS[d]} ${String(h).padStart(2, "0")}:00 · ${n(v)}`} style={{ opacity: v ? 0.15 + 0.85 * (v / max) : 1 }} className={v ? "on" : ""} />)}
+        </div>
+      ))}
+      <div className="stan-hr ax" aria-hidden><span />{[0, 6, 12, 18].map((h) => <small key={h} style={{ gridColumn: `${h + 2} / span 6` }}>{String(h).padStart(2, "0")}:00</small>)}</div>
+    </div>
+  );
+}
 
 const LAND = dots();
 const n = (v: number) => v.toLocaleString("en-US");
@@ -36,7 +80,7 @@ const PLAN_LABEL: Record<string, string> = { free: "Free", pro: "Pro", vip: "VIP
 const PLAN_COLORS: Record<string, string> = { free: "#c81d2e", pro: "#e3182d", vip: "#9b1826", student: "#7c1520", enterprise: "#6a121c" };
 const TABS = [
   { key: "audience", label: "Audience" },
-  { key: "retention", label: "Retention", soon: true },
+  { key: "retention", label: "Retention", on: "audience", anchor: "retention" },
   { key: "reach", label: "Reach" },
   { key: "languages", label: "Languages", on: "reach", anchor: "languages" },
   { key: "money", label: "Money", on: "reach", anchor: "money" },
@@ -62,15 +106,6 @@ function Tile({ label, value, sub, up, soon }: { label: string; value: string; s
       <b>{value}</b>
       <span className={up === undefined ? "" : up ? "g" : "r"}>{sub}</span>
     </div>
-  );
-}
-
-function SoonPanel({ title, why, className = "" }: { title: string; why: string; className?: string }) {
-  return (
-    <section className={`bp-panel stan-soon ${className}`}>
-      <h2>{title} <em className="soon-tag">Soon</em></h2>
-      <p className="pt-hint">{why}</p>
-    </section>
   );
 }
 
@@ -183,9 +218,7 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
       </header>
 
       <nav className="bp-chips stan-tabs" aria-label="Analytics views">
-        {TABS.map((t) => t.soon
-          ? <button key={t.key} type="button" disabled title="Coming soon">{t.label} <em className="soon-tag">Soon</em></button>
-          : <Link key={t.key} className={`stpr-film${tab === t.key ? " on" : ""}`} href={`${q(t.on ?? t.key)}${t.anchor ? `#${t.anchor}` : ""}`} aria-current={tab === t.key ? "page" : undefined}>{t.label}</Link>)}
+        {TABS.map((t) => <Link key={t.key} className={`stpr-film${tab === t.key ? " on" : ""}`} href={`${q(t.on ?? t.key)}${t.anchor ? `#${t.anchor}` : ""}`} aria-current={tab === t.key ? "page" : undefined}>{t.label}</Link>)}
       </nav>
 
       {tab === "audience" ? (
@@ -199,7 +232,10 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
           </div>
 
           <div className="stcr-row">
-            <SoonPanel className="stan-ret" title="Audience retention" why="The minute-by-minute curve, and where people leave, needs second-by-second reports from the player. We will draw it once those are switched on." />
+            <section className="bp-panel stan-ret" id="retention" aria-label="Audience retention">
+              <h2>Audience retention</h2>
+              {d.audience?.viewers ? <Retention a={d.audience} /> : <p className="pt-hint">The curve of who keeps watching appears once viewers of this period&apos;s screenings press play.</p>}
+            </section>
             <section className="bp-panel stan-who" aria-label="Who watched">
               <h2>Who watched</h2>
               {ageTotal ? (
@@ -218,8 +254,14 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
           </div>
 
           <div className="stan-three">
-            <SoonPanel title="When people watch (local time)" why="Needs the hour each person pressed play. We record the day today, so the hour grid comes with player reports." />
-            <SoonPanel title="Devices" why="Android, web, TV cast and tablet split comes with player reports." />
+            <section className="bp-panel" aria-label="When people watch">
+              <h2>When people watch (local time)</h2>
+              {d.audience?.viewers ? <Hours hours={d.audience.hours} /> : <p className="pt-hint">The hour grid fills in as viewers press play.</p>}
+            </section>
+            <section className="bp-panel" aria-label="Devices">
+              <h2>Devices</h2>
+              {d.audience?.viewers ? <Bars items={DEVICES.map(([k, label]) => ({ label, value: d.audience?.devices[k] ?? 0 }))} color="#26b5a0" /> : <p className="pt-hint">Devices appear as viewers press play.</p>}
+            </section>
             <section className="bp-panel" aria-label="Plans">
               <h2>Plans</h2>
               {d.viewers ? <Bars items={plans} /> : <p className="pt-hint">Plans appear once people watch in this period.</p>}

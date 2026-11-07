@@ -14,6 +14,8 @@ export type ControlData = {
   live: { watching: number; countries: number; byCountry: Record<string, number>; chatByCountry: Record<string, number> };
   peak: { watching: number; at: string };
   studio: string;
+  // Player reports: the last five minutes while the room is open, the whole screening otherwise.
+  quality?: { reports: number; inSync: number | null; rebuffer: number | null; driftMs: number | null; startMs: number | null; startP95Ms: number | null; countries?: Record<string, { reports: number; driftMs: number }> };
 };
 type Mood = { positive: number; summary: string; points: { at: string; positive: number }[]; read: number };
 
@@ -28,15 +30,20 @@ function span(ms: number) {
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
 }
 
-function Soon({ label }: { label: string }) {
+function Tile({ label, value, note, tone }: { label: string; value: string | null; note: string; tone?: "g" | "r" | "" }) {
   return (
-    <div className="stcr-tile soon">
-      <small>{label} <em className="soon-tag">Soon</em></small>
-      <b>–</b>
-      <span>Players report this once live telemetry is on</span>
+    <div className={`stcr-tile${value === null ? " soon" : ""}`}>
+      <small>{label}</small>
+      <b>{value ?? "–"}</b>
+      <span className={tone ?? ""}>{note}</span>
     </div>
   );
 }
+const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+// Green, amber or red for a health dot; "off" when nothing has been reported.
+const tone = (v: number | null | undefined, good: (x: number) => boolean, ok: (x: number) => boolean) => (v == null ? "off" : good(v) ? "" : ok(v) ? "warn" : "bad");
+const driftColor = (ms: number) => (ms <= 250 ? "#22c55e" : ms <= 1000 ? "#f5a524" : "#ff4d5e");
 
 export default function StudioControl({ upload, films, initial, canEdit }: { upload: string; films: { id: string; title: string }[]; initial: ControlData; canEdit: boolean }) {
   const [d, setD] = useState(initial);
@@ -57,6 +64,11 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
   const max = ranked[0]?.[1] ?? 1;
   const chatPerMin = Object.values(d.live.chatByCountry ?? {}).reduce((a, b) => a + b, 0) / 10;
   const open = c.reports.filter((r) => r.status === "open");
+  const q = d.quality;
+  const spanText = live ? "in the last 5 minutes" : "across the screening";
+  const [mapMode, setMapMode] = useState<"viewers" | "drift">("viewers");
+  const drifted = Object.entries(q?.countries ?? {}).filter(([cc, v]) => v.reports > 0 && COUNTRIES[cc]).sort((a, b) => b[1].reports - a[1].reports);
+  const maxReports = drifted[0]?.[1].reports ?? 1;
 
   const refresh = useCallback(async () => {
     try { setD(await scall<ControlData>("GET", `uploads/${upload}/control`)); } catch { /* next tick */ }
@@ -143,9 +155,12 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
           <b>{n(d.live.countries)}</b>
           <span className="g">{ranked.length ? `${ranked.slice(0, 3).map(([cc]) => countryName(cc, true)).join(", ")} ${ranked.length > 1 ? "lead" : "watching"}` : "Waiting for the first viewer"}</span>
         </div>
-        <Soon label="In sync (±250 ms)" />
-        <Soon label="Rebuffering" />
-        <Soon label="Avg start time" />
+        <Tile label="In sync (±250 ms)" value={q?.inSync != null ? pct(q.inSync) : null} tone={q?.inSync != null ? (q.inSync >= 0.95 ? "g" : "r") : ""}
+          note={q?.reports ? `${n(q.reports)} player ${q.reports === 1 ? "report" : "reports"} ${spanText}` : "No player reports yet"} />
+        <Tile label="Rebuffering" value={q?.rebuffer != null ? pct(q.rebuffer) : null} tone={q?.rebuffer != null ? (q.rebuffer < 0.01 ? "g" : "r") : ""}
+          note={q?.rebuffer != null ? `of watch time spent loading ${spanText}` : "No player reports yet"} />
+        <Tile label="Avg start time" value={q?.startMs != null ? secs(q.startMs) : null} tone={q?.startMs != null ? (q.startMs <= 3000 ? "g" : "r") : ""}
+          note={q?.startP95Ms != null ? `95% start within ${secs(q.startP95Ms)}` : "Measured when viewers join"} />
       </div>
 
       <div className="stcr-row">
@@ -153,15 +168,15 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
           <div className="stcr-ph">
             <h2>Viewers right now</h2>
             <div className="bp-chips">
-              <button type="button" className="on" aria-pressed="true">Viewers</button>
+              <button type="button" className={mapMode === "viewers" ? "on" : ""} aria-pressed={mapMode === "viewers"} onClick={() => setMapMode("viewers")}>Viewers</button>
               <button type="button" disabled title="Coming soon">Sentiment <em className="soon-tag">Soon</em></button>
-              <button type="button" disabled title="Coming soon">Sync drift <em className="soon-tag">Soon</em></button>
+              <button type="button" className={mapMode === "drift" ? "on" : ""} aria-pressed={mapMode === "drift"} onClick={() => setMapMode("drift")}>Sync drift</button>
             </div>
           </div>
           <div className="stcr-world">
             <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={ranked.length ? `${ranked.length} countries watching` : "No one is watching right now"}>
               {LAND.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3.4} className="stcr-dot" />)}
-              {ranked.map(([cc, v]) => {
+              {mapMode === "viewers" && ranked.map(([cc, v]) => {
                 const p = project(COUNTRIES[cc].lat, COUNTRIES[cc].lon);
                 const r = 9 + 16 * Math.sqrt(v / max);
                 return (
@@ -172,24 +187,42 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
                   </g>
                 );
               })}
+              {mapMode === "drift" && drifted.map(([cc, v]) => {
+                const p = project(COUNTRIES[cc].lat, COUNTRIES[cc].lon);
+                const r = 9 + 16 * Math.sqrt(v.reports / maxReports), col = driftColor(v.driftMs);
+                return (
+                  <g key={cc}>
+                    <title>{`${countryName(cc)}: ${n(v.driftMs)} ms average drift`}</title>
+                    <circle cx={p.x} cy={p.y} r={r} fill={col} fillOpacity={0.25} />
+                    <circle cx={p.x} cy={p.y} r={5} fill={col} />
+                  </g>
+                );
+              })}
             </svg>
           </div>
-          <ul className="stcr-legend">
-            {ranked.slice(0, 5).map(([cc, v]) => <li key={cc}><i />{countryName(cc)} · {n(v)}</li>)}
-            {!ranked.length && <li className="none">Countries appear as viewers join the room.</li>}
-          </ul>
+          {mapMode === "viewers" ? (
+            <ul className="stcr-legend">
+              {ranked.slice(0, 5).map(([cc, v]) => <li key={cc}><i />{countryName(cc)} · {n(v)}</li>)}
+              {!ranked.length && <li className="none">Countries appear as viewers join the room.</li>}
+            </ul>
+          ) : (
+            <ul className="stcr-legend">
+              {drifted.slice(0, 5).map(([cc, v]) => <li key={cc}><i style={{ background: driftColor(v.driftMs) }} />{countryName(cc)} · {n(v.driftMs)} ms</li>)}
+              {!drifted.length && <li className="none">Drift shows once players in the room send reports.</li>}
+            </ul>
+          )}
         </section>
 
         <div className="stcr-side">
           <section className="bp-panel stcr-health" aria-label="Delivery health">
             <h2>Delivery health</h2>
             <div className="stcr-cells">
-              <div><small>CDN edge <em className="soon-tag">Soon</em></small><b><i className="off" />Not reported yet</b></div>
-              <div><small>Sync service <em className="soon-tag">Soon</em></small><b><i className="off" />Not reported yet</b></div>
+              <div><small>CDN edge</small><b><i className={tone(q?.rebuffer, (x) => x < 0.01, (x) => x < 0.03)} />{q?.rebuffer != null ? `${pct(q.rebuffer)} rebuffering` : "Not reported yet"}</b></div>
+              <div><small>Sync service</small><b><i className={tone(q?.inSync, (x) => x >= 0.95, (x) => x >= 0.8)} />{q?.inSync != null ? `${pct(q.inSync)} in sync` : "Not reported yet"}</b></div>
               <div><small>Chat gateway</small><b><i />{chatPerMin >= 10 ? n(Math.round(chatPerMin)) : chatPerMin.toFixed(1)} msgs/min</b></div>
               <div><small>ISP health <em className="soon-tag">Soon</em></small><b><i className="off" />Not reported yet</b></div>
             </div>
-            <p className="pt-hint">Automatic fixes (moving viewers to a nearer edge, pre-buffering) switch on with live player reports.</p>
+            <p className="pt-hint">From the players in the room, {spanText}. Automatic fixes (moving viewers to a nearer edge, pre-buffering) <em className="soon-tag">Soon</em></p>
           </section>
 
           <section className="bp-panel stcr-mood" aria-label="Audience mood">

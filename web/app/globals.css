@@ -5595,3 +5595,17 @@ button.stu-toggle i { transition: left .15s, background .15s; }
 .stu-toggle.on { background: #e3182d; }
 .stu-toggle.on i { left: 21px; background: #fff; }
 button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.stcr-cells b i.warn { background: #f5a524; }
+.stcr-cells b i.bad { background: #ff4d5e; }
+.stcr-tile span.r { color: #ff4d5e; }
+.stan-curve { width: 100%; height: auto; display: block; }
+.stan-curve .grid { stroke: #24242b; stroke-width: 1; }
+.stan-curve .area { fill: rgba(227,24,45,.14); }
+.stan-curve .line { fill: none; stroke: #e3182d; stroke-width: 2.5; stroke-linejoin: round; }
+.stan-curve text { fill: #6e6e7a; font: 500 11px Manrope, sans-serif; }
+.stan-hours { display: flex; flex-direction: column; gap: 3px; }
+.stan-hr { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; }
+.stan-hr > span { font: 500 11px/14px Manrope, sans-serif; color: #6e6e7a; }
+.stan-hr > i { display: block; height: 14px; border-radius: 2px; background: #1d1d23; }
+.stan-hr > i.on { background: #e3182d; }
+.stan-hr.ax small { font: 500 10px/14px Manrope, sans-serif; color: #6e6e7a; }
