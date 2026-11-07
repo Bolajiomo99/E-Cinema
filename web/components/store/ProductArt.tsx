@@ -1,8 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 import type { CSSProperties } from "react";
 
-// Product picture. Real photos come from media storage once the team uploads them; until then
-// each product gets drawn art in the shop's colours instead of a stock photo that is not ours.
+// Product picture: an uploaded photo first, then the product photo from the Figma shop design
+// (public/shop), then drawn art in the shop's colours for anything new.
+const PHOTO: Record<string, string> = {
+  "vr-headset": "vr-headset", "over-ear-headset": "over-ear-headset", earbuds: "earbuds", "power-bank": "power-bank",
+  "popcorn-box": "popcorn-drink-box", "logo-tshirt": "logo-tshirt", "premiere-cap": "premiere-cap", "tote-bag": "tote-bag",
+  umbrella: "umbrella", "table-water": "table-water", "strawberry-yoghurt": "strawberry-yoghurt", "premiere-hoodie": "premiere-hoodie",
+  "steel-bottle": "steel-bottle", "popcorn-bucket": "popcorn-bucket", "gift-card": "gift-card",
+};
+export const productPhoto = (id: string, images?: string[]) => images?.[0] ?? (PHOTO[id] ? `/shop/${PHOTO[id]}.jpg` : "");
 const LOOK: Record<string, { from: string; to: string; glyph: string }> = {
   "vr-headset": { from: "#2a1550", to: "#0c0a18", glyph: "vr" },
   "over-ear-headset": { from: "#1d2a3a", to: "#0a0d12", glyph: "headset" },
@@ -40,7 +47,8 @@ const G: Record<string, React.ReactNode> = {
 };
 
 export default function ProductArt({ id, name, images, className, style, size = 96 }: { id: string; name: string; images?: string[]; className?: string; style?: CSSProperties; size?: number }) {
-  if (images?.[0]) return <img className={`pa ${className ?? ""}`} style={style} src={images[0]} alt={name} loading="lazy" />;
+  const photo = productPhoto(id, images);
+  if (photo) return <img className={`pa ${className ?? ""}`} style={style} src={photo} alt={name} loading="lazy" />;
   const look = LOOK[id] ?? { from: "#26262e", to: "#0a0a0c", glyph: "gift" };
   return (
     <div className={`pa ${className ?? ""}`} role="img" aria-label={name} style={{ ...style, background: `radial-gradient(120% 90% at 30% 20%, ${look.from}, ${look.to})` }}>

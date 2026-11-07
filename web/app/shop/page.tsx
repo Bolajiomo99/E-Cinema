@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import TopNav from "@/components/dash/TopNav";
 import { DashShell } from "@/components/dash/DashShell";
@@ -45,7 +46,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             </div>
           </div>
           <Link href="/shop/vr-headset" className="sh-hero-img" aria-label="See the VR headset">
-            <ProductArt id={hero.id} name={hero.name} images={hero.images} size={120} />
+            <img src="/shop/hero-vr.jpg" alt="The E-Cinema VR headset" />
           </Link>
         </header>
       )}
