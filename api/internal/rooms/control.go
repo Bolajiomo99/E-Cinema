@@ -34,8 +34,9 @@ type Phrase struct {
 
 // Said is one recent world-chat line, for the audience mood reading.
 type Said struct {
-	Body string    `json:"body"`
-	At   time.Time `json:"at"`
+	Body    string    `json:"body"`
+	At      time.Time `json:"at"`
+	Country string    `json:"country"` // where the writer is, for the sentiment map
 }
 
 type Control struct {
@@ -100,14 +101,14 @@ func (st Store) Control(ctx context.Context, showtimeID string) (Control, error)
 	if err != nil {
 		return c, err
 	}
-	rows, err = st.DB.Query(ctx, `SELECT body, created_at FROM (SELECT body, created_at, id FROM room_messages
+	rows, err = st.DB.Query(ctx, `SELECT body, created_at, country FROM (SELECT body, created_at, coalesce(country, '') AS country, id FROM room_messages
 	  WHERE showtime_id = $1 AND party_id IS NULL AND NOT hidden AND kind = 'text' ORDER BY id DESC LIMIT 300) t ORDER BY id`, showtimeID)
 	if err != nil {
 		return c, err
 	}
 	c.Recent, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Said, error) {
 		var s Said
-		err := r.Scan(&s.Body, &s.At)
+		err := r.Scan(&s.Body, &s.At, &s.Country)
 		return s, err
 	})
 	return c, err
