@@ -347,3 +347,36 @@ func (s Store) IssueLockToken(ctx context.Context, accountID string) (string, er
 		accountID, hashToken(token), lockTokenFor.String())
 	return token, err
 }
+
+// IssueEmailCode makes a code that confirms the account's email (Figma email 02, 106:60). It
+// always goes by email, never by text, since the email is what it proves.
+func (s Store) IssueEmailCode(ctx context.Context, accountID string) (CodeIssued, error) {
+	var email, name string
+	var done bool
+	if err := s.DB.QueryRow(ctx, `SELECT email, name, email_verified_at IS NOT NULL FROM accounts WHERE id = $1`, accountID).Scan(&email, &name, &done); err != nil {
+		return CodeIssued{}, err
+	}
+	if done {
+		return CodeIssued{}, fmt.Errorf("%w: this email is already confirmed", ErrBadInput)
+	}
+	return s.issue(ctx, accountID, email, name, "", "email")
+}
+
+// ConfirmEmail spends one try of the email code and marks the email confirmed.
+func (s Store) ConfirmEmail(ctx context.Context, accountID, code string) error {
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := s.checkCode(ctx, tx, accountID, "email", code); err != nil {
+		if errors.Is(err, ErrBadCode) || errors.Is(err, ErrPaused) || errors.Is(err, ErrCodeExpired) {
+			_ = tx.Commit(ctx) // keep the spent try
+		}
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE accounts SET email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1`, accountID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

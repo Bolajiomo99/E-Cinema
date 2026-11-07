@@ -354,6 +354,30 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"id": id, "accountId": a.ID})
 	}))
+	// Email 02 (Figma 106:60): the code that confirms a new account's email. The web app sends it.
+	mux.HandleFunc("POST /v1/me/email/code", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		out, err := s.Accounts.IssueEmailCode(r.Context(), a.ID)
+		if errors.Is(err, accounts.ErrPaused) {
+			writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": err.Error(), "pausedFor": out.PausedFor})
+			return
+		}
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}))
+	mux.HandleFunc("POST /v1/me/email/confirm", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ Code string }
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Accounts.ConfirmEmail(r.Context(), a.ID, b.Code); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"emailVerified": true})
+	}))
 	mux.HandleFunc("GET /v1/devices", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		list, err := s.Accounts.Devices(r.Context(), a.ID, sid)
 		if err != nil {

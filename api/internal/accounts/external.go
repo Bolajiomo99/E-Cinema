@@ -37,7 +37,7 @@ func (s Store) SignInExternal(ctx context.Context, provider, subject, email stri
 			if name == "" {
 				name = strings.Split(email, "@")[0]
 			}
-			if err = tx.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id`,
+			if err = tx.QueryRow(ctx, `INSERT INTO accounts (email, name, password_hash, email_verified_at) VALUES ($1, $2, $3, now()) RETURNING id`,
 				email, cleanDevice(name), noPassword).Scan(&accountID); err != nil {
 				return Account{}, Session{}, false, err
 			}

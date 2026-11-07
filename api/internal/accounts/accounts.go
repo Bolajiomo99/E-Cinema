@@ -71,6 +71,7 @@ type Account struct {
 	FaceVerified  bool      `json:"faceVerified"`
 	IDVerified    bool      `json:"idVerified"`
 	CreatedAt     time.Time `json:"createdAt"`
+	EmailVerified bool      `json:"emailVerified"`
 }
 
 type Session struct {
@@ -125,11 +126,11 @@ func normEmail(e string) (string, bool) {
 	return e, true
 }
 
-const accountCols = `id, email, name, coalesce(phone, ''), phone_verified_at IS NOT NULL, face_verified_at IS NOT NULL, id_verified_at IS NOT NULL, created_at`
+const accountCols = `id, email, name, coalesce(phone, ''), phone_verified_at IS NOT NULL, face_verified_at IS NOT NULL, id_verified_at IS NOT NULL, created_at, email_verified_at IS NOT NULL`
 
 func scanAccount(row pgx.Row) (Account, error) {
 	var a Account
-	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Phone, &a.PhoneVerified, &a.FaceVerified, &a.IDVerified, &a.CreatedAt)
+	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.Phone, &a.PhoneVerified, &a.FaceVerified, &a.IDVerified, &a.CreatedAt, &a.EmailVerified)
 	return a, err
 }
 
