@@ -307,6 +307,8 @@ const wfEnv = {
   PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+  // Studio bank payouts go out as Flutterwave transfers (a test key moves only test money).
+  FLW_SECRET_KEY: process.env.FLUTTERWAVE_SECRET_KEY,
   ...r2Env,
 };
 const wfVars = Object.entries(wfEnv).filter(([, v]) => v).map(([key, value]) => ({ key, value: String(value) }));
