@@ -10,7 +10,9 @@ const BIN = process.env.API_BIN;
 const skip = !DB || !BIN ? "TEST_DATABASE_URL and API_BIN are required" : false;
 
 const sql = (q) => execFileSync("psql", [DB, "-v", "ON_ERROR_STOP=1", "-qAtc", q], { encoding: "utf8" }).trim();
-let api, paypal;
+let api, paypal, flw;
+const transfers = [];
+let transferOutcome = "SUCCESSFUL";
 const payouts = [];
 const seen = new Set();
 
@@ -35,6 +37,34 @@ before(async () => {
     });
   }).listen(0);
   await new Promise((r) => paypal.once("listening", r));
+  // Fake Flutterwave: rates at 1 USD = 1,500 NGN, transfers settle on the first status check.
+  flw = createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      res.setHeader("content-type", "application/json");
+      const u = new URL(req.url, "http://x");
+      if (req.headers.authorization !== "Bearer FLWSECK_TEST-fake") { res.statusCode = 401; return res.end("{}"); }
+      if (u.pathname === "/transfers/rates") {
+        const amount = Number(u.searchParams.get("amount"));
+        return res.end(JSON.stringify({ status: "success", data: { rate: 1500, source: { currency: "USD", amount }, destination: { currency: "NGN", amount: amount * 1500 } } }));
+      }
+      if (req.method === "POST" && u.pathname === "/transfers") {
+        const t = JSON.parse(body);
+        if (transfers.some((x) => x.reference === t.reference)) { res.statusCode = 400; return res.end(JSON.stringify({ status: "error", message: "Transfer with this reference already exists" })); }
+        if (t.account_number === "0000000000") { res.statusCode = 400; return res.end(JSON.stringify({ status: "error", message: "Invalid account number" })); }
+        transfers.push({ ...t, id: 9000 + transfers.length });
+        return res.end(JSON.stringify({ status: "success", data: { id: 9000 + transfers.length - 1, status: "NEW" } }));
+      }
+      const m = u.pathname.match(/^\/transfers\/(\d+)$/);
+      if (m) return res.end(JSON.stringify({ status: "success", data: { id: Number(m[1]), status: transferOutcome, complete_message: transferOutcome === "FAILED" ? "Account closed" : "Successful" } }));
+      res.statusCode = 404; res.end("{}");
+    });
+  }).listen(0);
+  await new Promise((r) => flw.once("listening", r));
+  process.env.FLW_API_BASE = `http://127.0.0.1:${flw.address().port}`;
+  process.env.FLW_SECRET_KEY = "FLWSECK_TEST-fake";
+  process.env.FLW_POLL_MS = "10";
 
   const port = 18000 + Math.floor(Math.random() * 1000);
   api = spawn(BIN, [], { env: { ...process.env, DATABASE_URL: DB, INTERNAL_API_TOKEN: "test-token", PORT: String(port) }, stdio: "ignore" });
@@ -66,6 +96,7 @@ before(async () => {
 after(() => {
   api?.kill();
   paypal?.close();
+  flw?.close();
 });
 
 const ctx = { metadata: {}, run: (t, ...args) => t.func(ctx, ...args) };
@@ -94,4 +125,40 @@ test("a retry after PayPal already accepted the batch is recorded as sent, not p
   assert.equal(r.status, "sent");
   assert.equal(payouts.length, 1);
   assert.equal(sql(`SELECT status FROM studio_payouts WHERE showtime_id = 'wf-ended'`), "sent");
+});
+
+test("a studio paid by bank gets a Flutterwave transfer in its own currency, retried on refusal", { skip }, async () => {
+  const { payStudio } = await import("../dist/payouts.js");
+  sql(`DELETE FROM studio_payouts WHERE showtime_id = 'wf-bank'; DELETE FROM holds WHERE showtime_id = 'wf-bank';
+       DELETE FROM showtimes WHERE id = 'wf-bank'; DELETE FROM studios WHERE name = 'WF Bank Studio';
+       INSERT INTO studios (name, slug, status, payout_email, payout_method, payout_bank, payout_bank_code, payout_number, payout_name, payout_currency, share_bps)
+       VALUES ('WF Bank Studio', 'wf-bank-studio', 'verified', '', 'bank', 'Access Bank', '044', '0690000031', 'WF Bank Studio Ltd', 'NGN', 7000);
+       INSERT INTO showtimes VALUES ('wf-bank', 'Harmattan', 'WF Bank Studio', now() - interval '4 hours', 120, 100, 1000, 'USD');
+       INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at, paypal_order_id, paypal_capture_id)
+       VALUES ('wf-bank', 2, 'v1', 'paid', now(), 'WFBANK1', 'WFBANKCAP1');`);
+  try {
+    // First the bank refuses: the payout is marked failed and the next try uses a new reference.
+    transferOutcome = "FAILED";
+    let r = await payStudio.func(ctx, "wf-bank");
+    assert.equal(r.status, "failed");
+    assert.equal(transfers.length, 1);
+    assert.equal(transfers[0].reference, "ecinema-wf-bank");
+    assert.equal(transfers[0].amount, 21000); // 2 x 10.00 USD x 70% = 14.00 USD at 1,500
+    assert.equal(transfers[0].currency, "NGN");
+    assert.equal(transfers[0].account_bank, "044");
+    assert.equal(sql(`SELECT status || ' ' || attempts FROM studio_payouts WHERE showtime_id = 'wf-bank'`), "failed 1");
+
+    transferOutcome = "SUCCESSFUL";
+    r = await payStudio.func(ctx, "wf-bank");
+    assert.equal(r.status, "sent");
+    assert.equal(transfers.length, 2);
+    assert.equal(transfers[1].reference, "ecinema-wf-bank-1");
+    assert.equal(sql(`SELECT status || ' ' || transfer_id || ' ' || paid_currency || ' ' || paid_minor FROM studio_payouts WHERE showtime_id = 'wf-bank'`), "sent 9001 NGN 2100000");
+    r = await payStudio.func(ctx, "wf-bank");
+    assert.equal(r.status, "sent");
+    assert.equal(transfers.length, 2, "never paid twice");
+  } finally {
+    sql(`DELETE FROM studio_payouts WHERE showtime_id = 'wf-bank'; DELETE FROM holds WHERE showtime_id = 'wf-bank';
+         DELETE FROM showtimes WHERE id = 'wf-bank'; DELETE FROM studios WHERE name = 'WF Bank Studio';`);
+  }
 });

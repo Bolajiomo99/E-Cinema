@@ -12,6 +12,13 @@ export interface Statement {
   senderBatchId: string;
   status: "unpaid" | "pending" | "sent" | "failed" | "nothing_due";
   paypalBatchId?: string;
+  method?: "paypal" | "bank";
+  bankCode?: string;
+  accountNumber?: string;
+  accountName?: string;
+  payoutCurrency?: string;
+  reference?: string;
+  transferId?: string;
 }
 
 function env(name: string): string {
