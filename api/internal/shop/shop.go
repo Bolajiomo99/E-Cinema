@@ -419,6 +419,7 @@ type Order struct {
 	ReturnAt       *time.Time `json:"returnAt,omitempty"`
 	ReturnedAt     *time.Time `json:"returnedAt,omitempty"`
 	Items          []Item     `json:"items"`
+	Plan           *Plan      `json:"plan,omitempty"`
 }
 
 // Placing an order: Method is paypal (with the PayPal order and what it charges), paystack or
@@ -462,6 +463,15 @@ func (st Store) Place(ctx context.Context, accountID string, p Placing) (Order, 
 			return Order{}, fmt.Errorf("%w: missing payment", ErrBadInput)
 		}
 		status, paypalID = "pending", &p.PayPalOrderID
+	case "instalments":
+		// Pay in 6: the first part on Paystack's page (which saves the card), then monthly.
+		if q.TotalNGN < InstalmentMinNGN {
+			return Order{}, fmt.Errorf("%w: instalments are for orders of ₦%d or more", ErrBadInput, InstalmentMinNGN)
+		}
+		if !strings.HasPrefix(p.PayPalOrderID, "PSK-") {
+			return Order{}, fmt.Errorf("%w: missing payment", ErrBadInput)
+		}
+		status, paypalID, p.ChargeCurrency, p.ChargeCents = "pending", &p.PayPalOrderID, "NGN", FirstPart(q.TotalNGN)*100
 	case "paystack", "flutterwave":
 		// Hosted checkout in naira; the reference waits as pending until the provider confirms it.
 		prefix := map[string]string{"paystack": "PSK-", "flutterwave": "FLW-"}[p.Method]
@@ -486,6 +496,12 @@ func (st Store) Place(ctx context.Context, accountID string, p Placing) (Order, 
 		p.ChargeCurrency, p.ChargeCents, paypalID, addr).Scan(&id)
 	if err != nil {
 		return Order{}, err
+	}
+	if p.Method == "instalments" {
+		if _, err = tx.Exec(ctx, `INSERT INTO shop_instalments (order_id, parts, part_ngn, total_ngn) VALUES ($1, $2, $3, $4)`,
+			id, InstalmentParts, FirstPart(q.TotalNGN), q.TotalNGN); err != nil {
+			return Order{}, err
+		}
 	}
 	for _, l := range q.Lines {
 		var show *string
@@ -581,7 +597,10 @@ func (st Store) items(ctx context.Context, orders []Order) error {
 		}
 		orders[at[oid]].Items = append(orders[at[oid]].Items, it)
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return st.plans(ctx, orders, ids, at)
 }
 
 func (st Store) order(ctx context.Context, where string, args ...any) (Order, error) {

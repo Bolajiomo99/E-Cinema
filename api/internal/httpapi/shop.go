@@ -349,4 +349,75 @@ func (s *Server) shopRoutes(mux *http.ServeMux) {
 		s.orderChanged(o)
 		writeJSON(w, http.StatusOK, map[string]any{"order": o, "captureId": o.CaptureID})
 	}))
+
+	// Pay in 6: the web worker saves the card after the first part, then charges the rest.
+	mux.HandleFunc("POST /v1/shop/instalments/start", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Reference string `json:"reference"`
+			AuthCode  string `json:"authCode"`
+			Email     string `json:"email"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if err := s.Shop.StartPlan(r.Context(), b.Reference, b.AuthCode, b.Email); err != nil {
+			fail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	mux.HandleFunc("POST /v1/shop/instalments/due", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		due, err := s.Shop.DueParts(r.Context(), 50)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"due": due})
+	}))
+	mux.HandleFunc("POST /v1/shop/instalments/{order}/result", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Part      int    `json:"part"`
+			OK        bool   `json:"ok"`
+			Reference string `json:"reference"`
+			Error     string `json:"error"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		o, err := s.Shop.PartResult(r.Context(), r.PathValue("order"), b.Part, b.OK, b.Reference, b.Error)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if o.AccountID != "" && o.Plan != nil {
+			title, body := "", ""
+			switch {
+			case b.OK && o.Plan.Status == "done":
+				title, body = fmt.Sprintf("%s is fully paid", o.Number), "All six parts are paid. Thank you."
+			case b.OK:
+				title, body = fmt.Sprintf("Part %d of %d paid for %s", o.Plan.Paid, o.Plan.Parts, o.Number), fmt.Sprintf("₦%d was charged to your saved card.", PartPaid(o.Plan))
+			case o.Plan.Status == "failed":
+				title, body = fmt.Sprintf("We could not take part %d for %s", b.Part, o.Number), "Three tries failed. Contact help@e-cinema.net to pay the rest another way."
+			default:
+				title, body = fmt.Sprintf("Part %d for %s did not go through", b.Part, o.Number), "We will try your card again tomorrow."
+			}
+			go func() {
+				_ = s.Notify.Add(context.Background(), o.AccountID, notify.New{Kind: "payment", Title: title, Body: body, Link: "/shop/orders?o=" + o.ID, Dedupe: fmt.Sprintf("plan:%s:%d:%t:%s", o.ID, b.Part, b.OK, b.Reference)})
+			}()
+			if s.ChatHub != nil {
+				if raw, err := json.Marshal(o); err == nil {
+					s.ChatHub.Send([]string{o.AccountID}, chat.Event{Type: "order", Order: raw})
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"plan": o.Plan})
+	}))
+}
+
+// PartPaid is the amount of the part just paid.
+func PartPaid(p *shop.Plan) int {
+	if p.Paid == p.Parts {
+		return p.PaidNGN - p.PartNGN*(p.Parts-1)
+	}
+	return p.PartNGN
 }

@@ -3,6 +3,7 @@ package shop_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -217,6 +218,53 @@ func TestShop(t *testing.T) {
 	if c, _ := st.Cart(ctx, pro); len(c) != 0 {
 		t.Fatal("cart not emptied after Paystack")
 	}
+
+	// Pay in 6: first part on Paystack, the saved card pays the rest a month apart.
+	if _, err := st.Reorder(ctx, pro, paid.ID); err != nil {
+		t.Fatal(err)
+	}
+	q, _ = st.Quote(ctx, pro, "")
+	if q.TotalNGN < shop.InstalmentMinNGN {
+		t.Fatalf("total %d too small for the instalment test", q.TotalNGN)
+	}
+	ins := must2(st.Place(ctx, pro, shop.Placing{Method: "instalments", ExpectTotalNGN: q.TotalNGN, PayPalOrderID: "PSK-00000000000000000002"}))
+	if ins.Status != "pending" || ins.ChargeCents != shop.FirstPart(q.TotalNGN)*100 || ins.Plan == nil || ins.Plan.Status != "waiting" {
+		t.Fatalf("instalment order = %+v plan %+v", ins, ins.Plan)
+	}
+	if err := st.StartPlan(ctx, "PSK-00000000000000000002", "AUTH_test1", "shop-pro@example.com"); err != nil {
+		t.Fatal(err) // not paid yet: nothing to start, but the plan exists
+	}
+	must2(ptr(st.MarkPaid(ctx, "PSK-00000000000000000002", "PSK-00000000000000000002~77")))
+	if err := st.StartPlan(ctx, "PSK-00000000000000000002", "nope", "shop-pro@example.com"); !errors.Is(err, shop.ErrBadInput) {
+		t.Fatalf("bad auth code: %v", err)
+	}
+	must(st.StartPlan(ctx, "PSK-00000000000000000002", "AUTH_test1", "shop-pro@example.com"))
+	if due, _ := st.DueParts(ctx, 50); len(due) != 0 {
+		t.Fatalf("due before a month: %+v", due)
+	}
+	if _, err := p.Exec(ctx, `UPDATE shop_instalments SET next_due = now() - interval '1 minute' WHERE order_id = $1`, ins.ID); err != nil {
+		t.Fatal(err)
+	}
+	var mine shop.DuePart
+	due, _ := st.DueParts(ctx, 50)
+	for _, d := range due {
+		if d.OrderID == ins.ID {
+			mine = d
+		}
+	}
+	if mine.Part != 2 || mine.AuthCode != "AUTH_test1" || mine.AmountNGN != shop.FirstPart(q.TotalNGN) {
+		t.Fatalf("due = %+v", due)
+	}
+	o2 := must2(ptr(st.PartResult(ctx, ins.ID, 2, false, mine.Reference, "Insufficient funds")))
+	if o2.Plan.Status != "active" || o2.Plan.Paid != 1 || o2.Plan.LastError == "" {
+		t.Fatalf("after a failed part: %+v", o2.Plan)
+	}
+	for part := 2; part <= shop.InstalmentParts; part++ {
+		o2 = must2(ptr(st.PartResult(ctx, ins.ID, part, true, fmt.Sprintf("ref-%d", part), "")))
+	}
+	if o2.Plan.Status != "done" || o2.Plan.PaidNGN != q.TotalNGN || o2.Plan.NextDue != nil {
+		t.Fatalf("finished plan = %+v (total %d)", o2.Plan, q.TotalNGN)
+	}
 	must2(st.Cancel(ctx, pro, cod.ID))
 
 	// A free member abroad: no discount, world delivery, no VAT, and Nigeria-only items flagged.
@@ -226,4 +274,11 @@ func TestShop(t *testing.T) {
 	if q.DiscountNGN != 0 || q.DeliveryNGN != shop.DeliveryWorld || q.VATNGN != 0 || len(q.Problems) != 1 {
 		t.Fatalf("abroad = %+v", q)
 	}
+}
+
+func ptr(o *shop.Order, err error) (shop.Order, error) {
+	if o == nil {
+		return shop.Order{}, err
+	}
+	return *o, err
 }
