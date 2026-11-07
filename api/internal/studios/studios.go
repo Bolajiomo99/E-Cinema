@@ -722,6 +722,11 @@ type PayoutRow struct {
 	Status      string    `json:"status"`
 	BatchID     string    `json:"batchId"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+	// Bank transfers: how it was sent, the transfer id and what landed in the account.
+	Method       string `json:"method"`
+	TransferID   string `json:"transferId"`
+	PaidCurrency string `json:"paidCurrency"`
+	PaidMinor    int64  `json:"paidMinor"`
 }
 
 func (st Store) Payouts(ctx context.Context, acct, email string) (Studio, []PayoutRow, error) {
@@ -737,7 +742,8 @@ func (st Store) Payouts(ctx context.Context, acct, email string) (Studio, []Payo
 }
 
 func (st Store) payoutsOf(ctx context.Context, studio string) ([]PayoutRow, error) {
-	rows, err := st.DB.Query(ctx, `SELECT p.showtime_id, s.film, s.starts_at, p.paid_seats, p.gross_cents, p.studio_cents, p.currency, p.status, coalesce(p.paypal_batch_id, ''), p.updated_at
+	rows, err := st.DB.Query(ctx, `SELECT p.showtime_id, s.film, s.starts_at, p.paid_seats, p.gross_cents, p.studio_cents, p.currency, p.status, coalesce(p.paypal_batch_id, ''), p.updated_at,
+	    p.method, p.transfer_id, p.paid_currency, p.paid_minor
 	  FROM studio_payouts p JOIN showtimes s ON s.id = p.showtime_id WHERE p.studio = $1 ORDER BY s.starts_at DESC LIMIT 200`, studio)
 	if err != nil {
 		return nil, err
@@ -746,7 +752,7 @@ func (st Store) payoutsOf(ctx context.Context, studio string) ([]PayoutRow, erro
 	out := []PayoutRow{}
 	for rows.Next() {
 		var p PayoutRow
-		if err := rows.Scan(&p.ShowtimeID, &p.Film, &p.StartsAt, &p.Seats, &p.GrossCents, &p.StudioCents, &p.Currency, &p.Status, &p.BatchID, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ShowtimeID, &p.Film, &p.StartsAt, &p.Seats, &p.GrossCents, &p.StudioCents, &p.Currency, &p.Status, &p.BatchID, &p.UpdatedAt, &p.Method, &p.TransferID, &p.PaidCurrency, &p.PaidMinor); err != nil {
 			return nil, err
 		}
 		out = append(out, p)

@@ -4,7 +4,7 @@ export type Studio = {
   name: string; slug: string; legalName: string; regCountry: string; regNumber: string; city: string; website: string;
   status: "draft" | "submitted" | "verified" | "rejected"; reviewNote: string;
   docsKey: string; docsOk: boolean;
-  payoutMethod: "paypal" | "bank"; payoutEmail: string; payoutBank: string; payoutNumber: string; payoutName: string; payoutCurrency: string;
+  payoutMethod: "paypal" | "bank"; payoutEmail: string; payoutBank: string; payoutBankCode?: string; payoutNumber: string; payoutName: string; payoutCurrency: string;
   shareBps: number; rightsNote: string; rightsAt: string | null; termsAt: string | null; verifiedAt: string | null; createdAt: string;
   bio?: string; // the studio's own words on its public page
   dubReview?: boolean; // new dubbed languages wait for a person's approval
@@ -29,6 +29,7 @@ export type Overview = {
 export type PayoutRow = {
   showtimeId: string; film: string; startsAt: string; seats: number; grossCents: number; studioCents: number;
   currency: string; status: string; batchId: string; updatedAt: string;
+  method?: "paypal" | "bank"; transferId?: string; paidCurrency?: string; paidMinor?: number;
 };
 export type Member = { email: string; name: string; role: Role; joined: boolean; addedAt: string; me: boolean };
 

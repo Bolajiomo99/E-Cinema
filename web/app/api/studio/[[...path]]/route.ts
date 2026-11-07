@@ -7,6 +7,7 @@ import { json, sameOrigin } from "@/lib/room-gate";
 import { draftNotice } from "@/lib/leak-notice";
 import { askStudio, type Turn } from "@/lib/studio-ai";
 import { isStaff } from "@/lib/store";
+import { accountName, banksFor, BANK_COUNTRIES } from "@/lib/flw-banks";
 import type { Studio } from "@/lib/studio-types";
 
 // The studio portal (Figma 34:49 to 39:1184): onboarding, the studio's own numbers, its team,
@@ -38,6 +39,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   if (!s) return json(401, { error: "Sign in first", signIn: true });
   if (!p.length) return pass(await accountApi("GET", "/v1/me/studio", undefined, s));
   if (p.length === 1 && PAGES.has(p[0])) return pass(await accountApi("GET", `/v1/me/studio/${p[0]}`, undefined, s));
+  if (p[0] === "banks" && p.length === 2 && BANK_COUNTRIES[p[1]]) {
+    const banks = await banksFor(p[1]);
+    return banks ? json(200, { banks, ...BANK_COUNTRIES[p[1]] }) : json(503, { error: "The bank list is not available right now. Try again in a minute." });
+  }
   if (p[0] === "docs") {
     const r = await accountApi("GET", "/v1/me/studio", undefined, s);
     const st = (r.body as { studio: Studio | null }).studio;
@@ -82,6 +87,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   const p = (await params).path ?? [];
   const s = await session();
   if (!s) return json(401, { error: "Sign in first", signIn: true });
+
+  // Account name check for a bank payout account (Nigerian banks answer through Flutterwave).
+  if (p.length === 2 && p[0] === "banks" && p[1] === "resolve") {
+    if (limited(s + ":bank", 15)) return json(429, { error: "Slow down: too many account checks in a minute" });
+    const b = (await req.json().catch(() => ({}))) as { bankCode?: unknown; number?: unknown };
+    const code = typeof b.bankCode === "string" ? b.bankCode.toUpperCase() : "";
+    const number = typeof b.number === "string" ? b.number.replace(/\s+/g, "") : "";
+    if (!/^[0-9A-Z]{2,10}$/.test(code) || !/^[0-9]{10}$/.test(number)) return json(400, { error: "Enter the 10-digit account number and pick the bank" });
+    const name = await accountName(code, number);
+    return name ? json(200, { name }) : json(404, { error: "The bank did not find that account. Check the number and the bank." });
+  }
 
   // API keys (Figma 39:1073).
   if (p.length === 1 && p[0] === "keys") {
