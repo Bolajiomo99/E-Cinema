@@ -66,6 +66,11 @@ export async function markPaid(orderId: string, captureId: string) {
   if (apiEnabled) await call(`/v1/payments/captured`, { orderId, captureId });
 }
 
+// Pay in 6: saves the card Paystack kept after the first part, so later parts can be charged.
+export async function startInstalments(reference: string, authCode: string, email: string) {
+  if (apiEnabled) await call(`/v1/shop/instalments/start`, { reference, authCode, email });
+}
+
 export async function markRefunded(captureId: string, refundId: string) {
   if (apiEnabled) await call(`/v1/payments/refunded`, { captureId, refundId });
 }

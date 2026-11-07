@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { AdultOnlyError, RegionError, attachOrder, holdSeats, markPaid, myTickets, releaseHold, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, RegionError, attachOrder, holdSeats, markPaid, myTickets, releaseHold, SoldOutError, startInstalments } from "@/lib/api";
 import { accountApi, currentAccount } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
 import { kidsGate } from "@/lib/family";
@@ -72,5 +72,10 @@ export async function finishSeat(p: Provider, reference: string): Promise<{ paid
   const shopOrder = v.meta.kind === "shop" ? v.meta.orderId ?? "" : undefined;
   if (!covers(v)) return { paid: false, showtimeId, shopOrder, why: v.why ?? "The payment did not cover the order" };
   await markPaid(reference, `${reference}~${v.txId}`);
+  // Pay in 6: keep the card Paystack saved so the next five parts can be charged to it.
+  if (v.meta.plan === "instalments") {
+    if (v.card?.reusable) await startInstalments(reference, v.card.code, v.card.email).catch((e) => console.error("instalments start failed", e instanceof Error ? e.message : e));
+    else console.error("instalments: Paystack did not save a reusable card for", reference);
+  }
   return { paid: true, showtimeId, shopOrder };
 }

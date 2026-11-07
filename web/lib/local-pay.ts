@@ -11,7 +11,7 @@ export const PREFIX: Record<Provider, string> = { paystack: "PSK", flutterwave: 
 export const providerReady = (p: Provider) => switchOn(`pay.${p}`) && Boolean(p === "paystack" ? process.env.PAYSTACK_SECRET_KEY : process.env.FLUTTERWAVE_SECRET_KEY);
 
 export type Started = { url: string; reference: string };
-export type Verified = { ok: boolean; reference: string; txId: string; amountKobo: number; currency: string; meta: Record<string, string>; why?: string };
+export type Verified = { ok: boolean; reference: string; txId: string; amountKobo: number; currency: string; meta: Record<string, string>; why?: string; card?: { code: string; reusable: boolean; email: string } };
 
 const psKey = () => process.env.PAYSTACK_SECRET_KEY ?? "";
 const flKey = () => process.env.FLUTTERWAVE_SECRET_KEY ?? "";
@@ -54,11 +54,12 @@ export async function verifyPayment(p: Provider, reference: string): Promise<Ver
   const none: Verified = { ok: false, reference, txId: "", amountKobo: 0, currency: "", meta: {} };
   if (p === "paystack") {
     const r = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${psKey()}` }, signal: AbortSignal.timeout(15000) });
-    const j = (await r.json().catch(() => ({}))) as { data?: { status?: string; id?: number; amount?: number; currency?: string; reference?: string; gateway_response?: string; metadata?: Record<string, unknown> } };
+    const j = (await r.json().catch(() => ({}))) as { data?: { status?: string; id?: number; amount?: number; currency?: string; reference?: string; gateway_response?: string; metadata?: Record<string, unknown>; authorization?: { authorization_code?: string; reusable?: boolean }; customer?: { email?: string } } };
     const d = j.data;
     if (!r.ok || !d) return { ...none, why: "We could not confirm the payment with Paystack" };
     const meta = Object.fromEntries(Object.entries(d.metadata ?? {}).map(([k, v]) => [k, String(v)]));
-    return { ok: d.status === "success" && d.reference === reference, reference, txId: String(d.id ?? ""), amountKobo: d.amount ?? 0, currency: d.currency ?? "", meta, why: d.status === "success" ? undefined : d.gateway_response || "The payment did not go through" };
+    const card = d.authorization?.authorization_code ? { code: d.authorization.authorization_code, reusable: Boolean(d.authorization.reusable), email: d.customer?.email ?? "" } : undefined;
+    return { ok: d.status === "success" && d.reference === reference, reference, txId: String(d.id ?? ""), amountKobo: d.amount ?? 0, currency: d.currency ?? "", meta, card, why: d.status === "success" ? undefined : d.gateway_response || "The payment did not go through" };
   }
   const r = await fetch(`https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${flKey()}` }, signal: AbortSignal.timeout(15000) });
   const j = (await r.json().catch(() => ({}))) as { data?: { status?: string; id?: number; amount?: number; charged_amount?: number; currency?: string; tx_ref?: string; processor_response?: string; meta?: Record<string, unknown> | null } };
@@ -97,3 +98,20 @@ export function flutterwaveSigned(hash: string | null): boolean {
 
 // "PSK-abc" -> paystack.
 export const providerOf = (ref: string): Provider | null => (ref.startsWith("PSK-") ? "paystack" : ref.startsWith("FLW-") ? "flutterwave" : null);
+
+// Pay in 6: charges a later part to the card Paystack saved with the first part. Asks first
+// whether this reference already went through, so a lost report never charges a part twice.
+export async function chargeSavedCard(o: { code: string; email: string; amountKobo: number; reference: string; meta: Record<string, string> }): Promise<{ ok: boolean; why?: string }> {
+  const seen = await verifyPayment("paystack", o.reference).catch(() => null);
+  if (seen?.ok) return { ok: true };
+  const r = await fetch("https://api.paystack.co/transaction/charge_authorization", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${psKey()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ authorization_code: o.code, email: o.email, amount: o.amountKobo, currency: "NGN", reference: o.reference, metadata: o.meta }),
+    signal: AbortSignal.timeout(20000),
+  }).catch(() => null);
+  if (!r) return { ok: false, why: "Paystack did not answer" };
+  const j = (await r.json().catch(() => ({}))) as { status?: boolean; message?: string; data?: { status?: string; gateway_response?: string } };
+  if (r.ok && j.status && j.data?.status === "success") return { ok: true };
+  return { ok: false, why: j.data?.gateway_response || j.message || "The card was declined" };
+}
