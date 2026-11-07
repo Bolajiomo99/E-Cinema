@@ -25,6 +25,7 @@ export type Showtime = {
   studioFilm?: string; // set on premieres a studio published from its portal
   local?: Record<string, { currency: string; minor: number }>; // studio's price per country
   blocked?: string[]; // countries the studio does not sell this film in
+  studentPrice?: boolean; // the studio gives verified students 30% off (Studio / Premieres rules)
   studioSlug?: string; // the studio's public page, for live studio premieres
   encoreOf?: string; // a weekly encore of this lineup screening, or a studio's sell-out encore
 };
@@ -32,7 +33,7 @@ export type Showtime = {
 const blue = "rgba(70,150,255,.45)", amber = "rgba(255,140,40,.45)", red = "rgba(227,24,45,.45)";
 
 // Mirrors the showtimes table in the API (migrations 001 and 008), in start order.
-export const showtimes: Showtime[] = [
+const BASE: Showtime[] = [
   { id: "tide-of-lagos-2026-11-01", film: "Tide of Lagos", studio: "Lagoon Gate Pictures", startsAt: "2026-11-01T16:00:00Z", price: { currency: "USD", value: "4.99" }, shopQuery: "lagos beach towel",
     year: 2026, genres: ["Drama"], runtimeMin: 112, rating: "PG-13", category: "Nollywood", language: "Yoruba", dubs: 26, poster: { from: "#0c2a3a", via: "#06121a", to: "#000", glow: blue } },
   { id: "monsoon-hearts-2026-11-01", film: "Monsoon Hearts", studio: "Saffron Reel Studios", startsAt: "2026-11-01T19:00:00Z", price: { currency: "USD", value: "4.99" }, shopQuery: "monsoon rain umbrella",
@@ -86,7 +87,13 @@ export const endsAt = (s: Showtime) => Date.parse(s.startsAt) + (s.runtimeMin ??
 // weekday and time every week, up to 8 weeks ahead, so there is always something on sale until
 // studios publish their own films. The API creates the rows 9 weeks ahead. The window is anchored
 // to the UTC day so the server and the browser build the same list.
-const LINEUP = showtimes.slice();
+const LINEUP = BASE.slice();
+
+// The live list is shared through globalThis: Next.js loads this module more than once on the
+// server (instrumentation keeps it fresh, pages read it), and each copy must see the same films.
+const g = globalThis as typeof globalThis & { __ecShowtimes?: Showtime[] };
+const fresh = !g.__ecShowtimes;
+export const showtimes: Showtime[] = (g.__ecShowtimes ??= BASE.slice());
 const WEEK = 7 * 864e5;
 export function encores(now: number): Showtime[] {
   const day = Math.floor(now / 864e5) * 864e5;
@@ -109,7 +116,7 @@ export function nextPerFilm(list: Showtime[]): Showtime[] {
   return list.filter((s) => (seen.has(s.film) ? false : (seen.add(s.film), true)));
 }
 const withEncores = (now: number) => [...LINEUP, ...encores(now).filter((e) => !LINEUP.some((b) => b.id === e.id))];
-showtimes.splice(0, showtimes.length, ...withEncores(Date.now()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)));
+if (fresh) showtimes.splice(0, showtimes.length, ...withEncores(Date.now()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)));
 
 // Premieres studios publish from the portal (Figma 35:514) join the list on the server, kept
 // fresh by lib/live-catalog.ts. Client bundles only carry the fixed lineup above.
