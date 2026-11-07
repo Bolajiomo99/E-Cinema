@@ -15,7 +15,7 @@ import { useWatchBeat } from "@/components/insights/useWatchBeat";
 export type RoomMessage = ChatMessage;
 
 type Showtime = { id: string; film: string; studio: string; startsAt: string; durationMin: number };
-type Phase = "connecting" | "waiting" | "playing" | "ended";
+type Phase = "connecting" | "waiting" | "playing" | "paused" | "ended";
 type Floater = { id: number; emoji: string; left: number };
 
 const CATCH_UP_AFTER = 5 * 60; // seconds into the film before a late arrival gets "what you missed"
@@ -30,6 +30,10 @@ export function useServerClock(url: string) {
   const [phase, setPhase] = useState<Phase>("connecting");
   const [syncMs, setSyncMs] = useState<number | null>(null);
   const offset = useRef(0);
+  // Emergency pause (Studio / Live control room): time the studio has held the film, and while
+  // it is held, the film-clock moment everyone is frozen on.
+  const pausedMs = useRef(0);
+  const frozen = useRef<number | null>(null);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -53,7 +57,9 @@ export function useServerClock(url: string) {
       };
       ws.onmessage = (e) => {
         const now = Date.now();
-        const m = JSON.parse(e.data) as { c: number; s: number; state: Phase };
+        const m = JSON.parse(e.data) as { c: number; s: number; o?: number; state: Phase };
+        pausedMs.current = m.o ?? 0;
+        frozen.current = m.state === "paused" ? m.s - pausedMs.current : null;
         const rtt = now - m.c;
         samples.push({ rtt, offset: m.s + rtt / 2 - now });
         if (samples.length > 8) samples.shift();
@@ -79,7 +85,9 @@ export function useServerClock(url: string) {
   }, [url]);
 
   const now = useCallback(() => Date.now() + offset.current, []);
-  return { phase, syncMs, now };
+  // Where the film itself is: the server clock less any time it was paused.
+  const filmNow = useCallback(() => frozen.current ?? Date.now() + offset.current - pausedMs.current, []);
+  return { phase, syncMs, now, filmNow };
 }
 
 // The room's live connection: chat, reactions and the head count. It asks the web server
@@ -227,7 +235,7 @@ export default function WatchRoom({
   myReview?: { stars: number; tags: string[]; body: string } | null;
   vrSeat?: boolean;
 }) {
-  const { phase, syncMs, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
+  const { phase, syncMs, now, filmNow } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, initialMessages, initialWatching, initialRoomMessages, initialPolls);
   const [talkLeft, setTalkLeft] = useState(initialTalkLeft);
   const startMs = Date.parse(showtime.startsAt);
@@ -246,7 +254,7 @@ export default function WatchRoom({
   const [caughtUp, setCaughtUp] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
 
-  const elapsedSec = nowMs === null ? 0 : Math.max(0, Math.min(totalSec, (nowMs - startMs) / 1000));
+  const elapsedSec = nowMs === null ? 0 : Math.max(0, Math.min(totalSec, (filmNow() - startMs) / 1000));
   const untilStart = nowMs === null ? null : Math.max(0, (startMs - nowMs) / 1000);
 
   // One heartbeat drives the countdown, the progress bar and drift correction.
@@ -293,11 +301,17 @@ export default function WatchRoom({
   useEffect(() => {
     const v = video.current;
     if (!v || !stream || phase !== "playing" || !joined) return;
-    const pos = ((now() - startMs) / 1000) % stream.durationSec;
+    const pos = ((filmNow() - startMs) / 1000) % stream.durationSec;
     if (v.readyState >= 2 && !v.paused) drifts.current.push(Math.abs(v.currentTime - pos) * 1000);
     if (v.readyState >= 1 && Math.abs(v.currentTime - pos) > DRIFT_LIMIT) v.currentTime = pos;
     if (v.paused) v.play().catch(() => setJoined(false));
-  }, [nowMs, phase, joined, stream, now, startMs]);
+  }, [nowMs, phase, joined, stream, filmNow, startMs]);
+
+  // The studio's emergency pause holds the picture for everyone until it lets go.
+  useEffect(() => {
+    const v = video.current;
+    if (v && phase === "paused" && !v.paused) v.pause();
+  }, [phase]);
 
   // The watermark wanders, so it cannot simply be cropped out of a recording.
   useEffect(() => {
@@ -333,7 +347,7 @@ export default function WatchRoom({
   // Remember that the film was running, so a later reconnect reads as a dropped connection
   // rather than the pre-show lobby.
   useEffect(() => {
-    if (phase === "playing" && !wasLive) setWasLive(true);
+    if ((phase === "playing" || phase === "paused") && !wasLive) setWasLive(true);
   }, [phase, wasLive]);
   const dropped = wasLive && phase === "connecting" && !audioOnly;
 
@@ -342,8 +356,8 @@ export default function WatchRoom({
     if (!joinedAt.current) joinedAt.current = performance.now();
     const v = video.current;
     if (v && stream) {
-      v.currentTime = ((now() - startMs) / 1000) % stream.durationSec;
-      v.play().catch(() => setJoined(false));
+      v.currentTime = ((filmNow() - startMs) / 1000) % stream.durationSec;
+      if (phase !== "paused") v.play().catch(() => setJoined(false));
     }
   };
 
@@ -353,7 +367,7 @@ export default function WatchRoom({
   const inLobby = (phase === "waiting" || phase === "connecting") && !wasLive && !room.signedOut;
 
   const wallClock = nowMs === null ? "" : new Date(nowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const live = phase === "playing";
+  const live = phase === "playing" || phase === "paused";
   useWatchBeat(showtime.id, "room", live && joined, tracks.audio, tracks.subs, playerReport);
 
   return (
@@ -409,6 +423,12 @@ export default function WatchRoom({
             <ReviewCard compact showtimeId={showtime.id} eyebrow={`${showtime.film.toUpperCase()} · THE END`} initial={myReview}
               next={{ text: "Each film screens once. See what is on next.", href: "/releases", cta: "Release calendar" }} />
           </div>
+        )}
+
+        {phase === "paused" && (
+          <StateCard overlay icon="film" title="The studio paused the premiere">
+            Everyone is held on the same frame. It carries on from here for the whole audience as soon as the studio resumes, and the end time moves with it.
+          </StateCard>
         )}
 
         {dropped && (

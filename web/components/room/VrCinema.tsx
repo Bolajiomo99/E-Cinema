@@ -41,7 +41,7 @@ export default function VrCinema({
 }) {
   const halls = (given ?? []).filter((h) => SCENES.has(h.scene));
   const ENVS = halls.length ? halls : DEFAULT_HALLS;
-  const { phase, now } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
+  const { phase, now, filmNow } = useServerClock(`${wsBase}/v1/sync/${showtime.id}`);
   const room = useRoomChannel(wsBase, showtime.id, [], initialWatching, [], []);
   const startMs = Date.parse(showtime.startsAt);
   const video = useRef<HTMLVideoElement>(null);
@@ -89,16 +89,17 @@ export default function VrCinema({
   useEffect(() => {
     const v = video.current;
     if (!v || !film || phase !== "playing" || !joined) return;
-    const pos = ((now() - startMs) / 1000) % film.durationSec;
+    const pos = ((filmNow() - startMs) / 1000) % film.durationSec;
     if (v.readyState >= 1 && Math.abs(v.currentTime - pos) > DRIFT_LIMIT) v.currentTime = pos;
     if (v.paused) v.play().catch(() => setJoined(false));
-  }, [nowMs, phase, joined, film, now, startMs]);
+  }, [nowMs, phase, joined, film, filmNow, startMs]);
+  useEffect(() => { const v = video.current; if (v && phase === "paused" && !v.paused) v.pause(); }, [phase]);
 
   const join = () => {
     setJoined(true);
     const v = video.current;
     if (v && film) {
-      v.currentTime = ((now() - startMs) / 1000) % film.durationSec;
+      v.currentTime = ((filmNow() - startMs) / 1000) % film.durationSec;
       v.play().catch(() => setJoined(false));
     }
   };
@@ -134,7 +135,7 @@ export default function VrCinema({
     setHallId(h.id);
   };
 
-  const live = phase === "playing";
+  const live = phase === "playing" || phase === "paused";
   const untilStart = nowMs === null ? null : Math.max(0, Math.round((startMs - nowMs) / 1000));
   const waitText = untilStart === null ? "" : untilStart > 3600 ? `Starts in ${Math.floor(untilStart / 3600)}h ${Math.floor((untilStart % 3600) / 60)}m` : `Starts in ${Math.floor(untilStart / 60)}:${String(untilStart % 60).padStart(2, "0")}`;
   const seatLabel = `Row ${ROWS[seat.row]}, seat ${seat.seat + 1}`;
