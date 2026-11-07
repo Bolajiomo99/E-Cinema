@@ -202,3 +202,16 @@ func TestQuietPass(t *testing.T) {
 		t.Fatal("plain pass came back quiet")
 	}
 }
+
+func TestPassCarriesSession(t *testing.T) {
+	p := rooms.Passes{Key: []byte("k")}
+	now := time.Now()
+	got, err := p.Check(p.Issue(rooms.Pass{AccountID: "a", ShowtimeID: "s", Name: "Ada", Expires: now.Add(time.Minute), SessionID: "sess-1"}), "s", now)
+	if err != nil || got.SessionID != "sess-1" || got.Quiet || got.Name != "Ada" {
+		t.Fatalf("pass = %+v, %v", got, err)
+	}
+	got, err = p.Check(p.Issue(rooms.Pass{AccountID: "a", ShowtimeID: "s", Name: "Ada", Expires: now.Add(time.Minute), Quiet: true, Lang: "fr", SessionID: "sess-2"}), "s", now)
+	if err != nil || got.SessionID != "sess-2" || !got.Quiet || got.Lang != "fr" {
+		t.Fatalf("quiet pass = %+v, %v", got, err)
+	}
+}

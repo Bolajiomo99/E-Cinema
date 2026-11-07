@@ -29,6 +29,7 @@ type Event struct {
 
 type client struct {
 	accountID string
+	sessionID string
 	name      string
 	country   string
 	lang      string
@@ -132,6 +133,22 @@ func (h *Hub) leave(room string, c *client) int {
 		delete(h.rooms, room)
 	}
 	return n
+}
+
+// SessionsOf lists the signed-in devices an account has connected to a screening right now,
+// so a ticket plays on one device per seat.
+func (h *Hub) SessionsOf(room, accountID string) []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := map[string]bool{}
+	var out []string
+	for c := range h.rooms[room] {
+		if c.accountID == accountID && !seen[c.sessionID] {
+			seen[c.sessionID] = true
+			out = append(out, c.sessionID)
+		}
+	}
+	return out
 }
 
 // Count is how many connections a screening has right now.
@@ -298,7 +315,7 @@ func (h *Hub) Live(store Store, passes Passes, origins []string) http.HandlerFun
 			slog.Error("room blocks failed", "err", err)
 			blocked = map[string]bool{}
 		}
-		c := &client{accountID: pass.AccountID, name: pass.Name, country: pass.Country, lang: pass.Lang, partyID: pass.PartyID, blocked: blocked, out: make(chan Event, 64)}
+		c := &client{accountID: pass.AccountID, sessionID: pass.SessionID, name: pass.Name, country: pass.Country, lang: pass.Lang, partyID: pass.PartyID, blocked: blocked, out: make(chan Event, 64)}
 		h.broadcast(room, Event{Type: "presence", Count: h.join(room, c)}, nil)
 		if c.partyID != "" {
 			h.broadcastParty(room, c.partyID, Event{Type: "friends", Online: h.partyNames(room, c.partyID)}, nil)

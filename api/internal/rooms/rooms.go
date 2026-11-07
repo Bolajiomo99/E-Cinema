@@ -178,6 +178,7 @@ type Pass struct {
 	Lang       string // the viewer's reading language, for translated chat
 	PartyID    string // the party room this viewer belongs to at this premiere, if any
 	Quiet      bool   // a kids profile with chat off: reactions only, no messages
+	SessionID  string // the signed-in device, so a ticket plays on one device per seat
 }
 
 // Passes signs and checks room passes with a key only the API knows.
@@ -185,11 +186,18 @@ type Passes struct{ Key []byte }
 
 func (p Passes) Issue(pass Pass) string {
 	fields := []string{pass.AccountID, pass.ShowtimeID, strconv.FormatInt(pass.Expires.Unix(), 10), pass.Name}
-	if pass.Country != "" || pass.Lang != "" || pass.PartyID != "" || pass.Quiet {
+	if pass.Country != "" || pass.Lang != "" || pass.PartyID != "" || pass.Quiet || pass.SessionID != "" {
 		fields = append(fields, pass.Country, pass.Lang, pass.PartyID)
 	}
-	if pass.Quiet {
-		fields = append(fields, "q")
+	if pass.Quiet || pass.SessionID != "" {
+		q := ""
+		if pass.Quiet {
+			q = "q"
+		}
+		fields = append(fields, q)
+	}
+	if pass.SessionID != "" {
+		fields = append(fields, pass.SessionID)
 	}
 	payload := strings.Join(fields, "\x1f")
 	enc := base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -209,18 +217,18 @@ func (p Passes) Check(token, showtimeID string, now time.Time) (Pass, error) {
 	if err != nil {
 		return Pass{}, ErrBadPass
 	}
-	parts := strings.SplitN(string(raw), "\x1f", 8)
+	parts := strings.SplitN(string(raw), "\x1f", 9)
 	if len(parts) < 4 {
 		return Pass{}, ErrBadPass
 	}
-	for len(parts) < 8 {
+	for len(parts) < 9 {
 		parts = append(parts, "")
 	}
 	exp, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil || now.Unix() > exp || parts[1] != showtimeID {
 		return Pass{}, ErrBadPass
 	}
-	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: parts[4], Lang: parts[5], PartyID: parts[6], Quiet: parts[7] == "q"}, nil
+	return Pass{AccountID: parts[0], ShowtimeID: parts[1], Expires: time.Unix(exp, 0), Name: parts[3], Country: parts[4], Lang: parts[5], PartyID: parts[6], Quiet: parts[7] == "q", SessionID: parts[8]}, nil
 }
 
 func (p Passes) sign(s string) []byte {

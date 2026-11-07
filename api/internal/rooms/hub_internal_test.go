@@ -53,3 +53,16 @@ func TestHubChatHeatForgetsOldMessages(t *testing.T) {
 		t.Fatalf("chat heat = %+v, want NG:1 KE:1", st)
 	}
 }
+
+func TestSessionsOf(t *testing.T) {
+	h := NewHub()
+	h.join("s1", &client{accountID: "a", sessionID: "laptop"})
+	h.join("s1", &client{accountID: "a", sessionID: "laptop"}) // a second tab on the same device
+	h.join("s1", &client{accountID: "b", sessionID: "phone"})
+	if got := h.SessionsOf("s1", "a"); len(got) != 1 || got[0] != "laptop" {
+		t.Fatalf("sessions = %v, want one device", got)
+	}
+	if got := h.SessionsOf("s2", "a"); len(got) != 0 {
+		t.Fatalf("other room = %v", got)
+	}
+}

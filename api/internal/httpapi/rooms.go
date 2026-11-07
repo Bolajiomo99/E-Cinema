@@ -1,17 +1,22 @@
 package httpapi
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 )
 
 func (s *Server) roomRoutes(mux *http.ServeMux) {
 	// Everything the room page needs in one call: the screening, whether the viewer may
 	// enter, their watermark code and the chat so far.
-	mux.HandleFunc("GET /v1/rooms/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+	mux.HandleFunc("GET /v1/rooms/{id}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		id := r.PathValue("id")
 		st, err := s.Tickets.Get(r.Context(), id)
 		if err != nil {
@@ -25,6 +30,15 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 		}
 		out := map[string]any{"showtime": st, "hasTicket": ok, "serverTime": time.Now().UTC()}
 		if ok {
+			// One device per seat: the film is not handed to a second device while the seat plays elsewhere.
+			if away, err := s.secondDevice(r.Context(), id, a, sid); err != nil {
+				fail(w, err)
+				return
+			} else if away {
+				out["elsewhere"] = true
+				writeJSON(w, http.StatusOK, out)
+				return
+			}
 			msgs, err := s.Rooms.Recent(r.Context(), id, a.ID, 50)
 			if err != nil {
 				fail(w, err)
@@ -67,6 +81,13 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			fail(w, rooms.ErrNoTicket)
 			return
 		}
+		if blocked, err := s.secondDevice(r.Context(), id, a, sid); err != nil {
+			fail(w, err)
+			return
+		} else if blocked {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "This ticket is already playing on another device. A ticket plays on one device at a time.", "code": "second_device"})
+			return
+		}
 		name := a.Name
 		if prof.Kind != "owner" {
 			name = prof.Name
@@ -86,7 +107,7 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 			partyID = p.ID
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country, Lang: lang, PartyID: partyID, Quiet: prof.Kind == "kids" && !prof.Chat}),
+			"pass":      s.Passes.Issue(rooms.Pass{AccountID: a.ID, ShowtimeID: id, Name: name, Expires: exp, Country: country, Lang: lang, PartyID: partyID, Quiet: prof.Kind == "kids" && !prof.Chat, SessionID: sid}),
 			"expiresAt": exp.UTC(),
 		})
 	}))
@@ -131,4 +152,43 @@ func (s *Server) roomRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, list)
 	})
 	mux.Handle("GET /v1/rooms/{id}/live", s.Hub.Live(s.Rooms, s.Passes, s.AllowedOrigins))
+}
+
+// secondDevice reports whether this device must wait because the account's seats are already
+// playing on other devices (one device per paid seat). The owner is emailed once per blocked
+// device and screening (email 28, Figma 127:105).
+func (s *Server) secondDevice(ctx context.Context, showtime string, a accounts.Account, sid string) (bool, error) {
+	others := 0
+	var playing string
+	for _, x := range s.Hub.SessionsOf(showtime, a.ID) {
+		if x != sid {
+			others++
+			playing = x
+		}
+	}
+	if others == 0 {
+		return false, nil
+	}
+	var seats int
+	var film string
+	if err := s.Tickets.DB.QueryRow(ctx, `SELECT coalesce(sum(h.seats), 0)::int, s.film FROM showtimes s
+	  LEFT JOIN holds h ON h.showtime_id = s.id AND h.account_id = $2 AND h.status = 'paid' WHERE s.id = $1 GROUP BY s.film`, showtime, a.ID).Scan(&seats, &film); err != nil {
+		return false, err
+	}
+	if others < seats {
+		return false, nil
+	}
+	var device, other string
+	_ = s.Tickets.DB.QueryRow(ctx, `SELECT coalesce((SELECT device FROM account_sessions WHERE id::text = $1), ''), coalesce((SELECT device FROM account_sessions WHERE id::text = $2), '')`, sid, playing).Scan(&device, &other)
+	if device == "" {
+		device = "another device"
+	}
+	if other == "" {
+		other = "your other device"
+	}
+	sum := sha256.Sum256([]byte(sid))
+	code := fmt.Sprintf("DEV-%04d", binary.BigEndian.Uint16(sum[:2])%10000)
+	_ = s.Notify.Queue(ctx, notify.Mail{Kind: "second_device", To: a.Email, Name: a.Name, Dedupe: "second-device:" + showtime + ":" + sid,
+		Data: map[string]any{"film": film, "showtimeId": showtime, "device": device, "playing": other, "code": code}})
+	return true, nil
 }

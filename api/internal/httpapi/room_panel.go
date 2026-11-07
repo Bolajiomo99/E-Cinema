@@ -52,7 +52,7 @@ func (s *Server) addPanel(ctx context.Context, out map[string]any, showtimeID, a
 
 func (s *Server) roomPanelRoutes(mux *http.ServeMux) {
 	// A cheap check for the web app's room routes: may this viewer use the room, and in which language do they read.
-	mux.HandleFunc("GET /v1/rooms/{id}/access", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+	mux.HandleFunc("GET /v1/rooms/{id}/access", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, sid string) {
 		st, err := s.Tickets.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
 			fail(w, err)
@@ -64,6 +64,14 @@ func (s *Server) roomPanelRoutes(mux *http.ServeMux) {
 			return
 		}
 		out := map[string]any{"hasTicket": ok, "accountId": a.ID, "lang": "en", "startsAt": st.StartsAt.UTC()}
+		if ok {
+			if away, err := s.secondDevice(r.Context(), st.ID, a, sid); err != nil {
+				fail(w, err)
+				return
+			} else if away {
+				out["elsewhere"] = true
+			}
+		}
 		if p, err := s.Accounts.GetProfile(r.Context(), a.ID); err == nil && p.AppLanguage != "" {
 			out["lang"] = p.AppLanguage
 		}
