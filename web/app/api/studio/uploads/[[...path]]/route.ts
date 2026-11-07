@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { accountApi } from "@/lib/auth";
 import { session } from "@/lib/licensing";
 import { randomUUID } from "node:crypto";
-import { dropUpload, finishMultipart, mediaEnabled, objectRange, putRoomObject, roomObjectLink, signPart, startMultipart, uploadedParts } from "@/lib/media";
+import { dropUpload, finishMultipart, mediaEnabled, objectBytes, objectRange, putRoomObject, roomObjectLink, signPart, startMultipart, uploadedParts } from "@/lib/media";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { partCount, type Upload, type UploadFile } from "@/lib/studio-types";
 import { inspect } from "@/lib/upload-checks";
@@ -13,6 +13,8 @@ import { suggestPrices } from "@/lib/price-ai";
 import { syncDubs } from "@/lib/dub-worker";
 import { readMood } from "@/lib/control-ai";
 import { pickClips } from "@/lib/clip-ai";
+import { pressKitPdf } from "@/lib/press-kit";
+import type { Studio } from "@/lib/studio-types";
 
 // Film uploads (Figma 35:290). The browser asks here for signed links and sends each part of
 // a file straight to private storage; this route opens, resumes, finishes and checks files.
@@ -75,6 +77,27 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     const key = (r.body as { upload: Upload }).upload.posterKey;
     if (!key || !mediaEnabled) return json(404, { error: "No poster yet" });
     return Response.redirect(await roomObjectLink(key), 302);
+  }
+  // Marketing (Figma 39:779): the press kit PDF, built from what the studio entered.
+  if (p.length === 2 && p[1] === "press-kit") {
+    const [u, pr, st] = await Promise.all([
+      accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s),
+      accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s),
+      accountApi("GET", "/v1/me/studio", undefined, s),
+    ]);
+    if (u.status !== 200) return pass(u);
+    const up = (u.body as { upload: Upload }).upload;
+    const prem = pr.status === 200 ? (pr.body as { premiere: Premiere | null }).premiere : null;
+    const studio = (st.body as { studio: Studio | null }).studio;
+    const poster = up.posterKey && mediaEnabled ? await objectBytes(up.posterKey).catch(() => null) : null;
+    const web = (process.env.WEB_URL || "https://e-cinema.net").replace(/\/$/, "");
+    const pdf = await pressKitPdf({
+      title: up.title, logline: up.logline, genres: up.genres, ageRating: up.ageRating, castCrew: up.castCrew, languages: up.languages,
+      studio: studio?.name ?? "", city: studio?.city ?? "", website: studio?.website ?? "",
+      startsAt: prem?.startsAt ?? null, priceCents: prem?.priceCents ?? 0, link: prem?.showtimeId ? `${web}/film/${prem.showtimeId}` : "", poster,
+    });
+    const name = up.title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "film";
+    return new Response(Buffer.from(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${name}-press-kit.pdf"`, "Cache-Control": "private, no-store" } });
   }
   // The parts already in storage, so a file chosen again carries on where it stopped.
   if (p.length === 4 && p[1] === "files" && p[3] === "parts") {

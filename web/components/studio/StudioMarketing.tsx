@@ -251,9 +251,10 @@ export default function StudioMarketing({ uploads, upload, clips: first, languag
               <span><b>Key art</b><small>{upload?.posterKey ? "Poster uploaded" : "No poster yet"}</small></span>
               {upload?.posterKey && <a className="stmk-link" href={`/api/studio/uploads/${upload.id}/poster`} target="_blank" rel="noopener noreferrer">Open</a>}
             </li>
-            <li className="soon">
+            <li>
               <Icon kind="film" />
-              <span><b>Press kit <em className="soon-tag">Soon</em></b><small>PDF · cast, synopsis, stills</small></span>
+              <span><b>Press kit</b><small>{upload ? "PDF · key art, synopsis, cast and crew, premiere" : "Upload a film first"}</small></span>
+              {upload && <a className="stmk-link" href={`/api/studio/uploads/${upload.id}/press-kit`} download>Download</a>}
             </li>
             <li>
               <Icon kind="link" />
