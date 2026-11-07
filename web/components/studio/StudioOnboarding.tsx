@@ -5,6 +5,7 @@ import FaceCheck from "@/components/FaceCheck";
 import Logo from "@/components/landing/Logo";
 import type { Steps, Studio } from "@/lib/studio-types";
 import { scall } from "./scall";
+import BankPayoutForm from "./BankPayoutForm";
 
 // Figma "Studio / Onboarding · verify studio and rights" (34:49). The four checks each open in
 // place; Continue saves the studio, then sends it to our studio team once every check is done.
@@ -39,6 +40,7 @@ export default function StudioOnboarding({ initial, countries, home }: { initial
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
+  const [via, setVia] = useState<"paypal" | "bank">(st?.payoutMethod === "bank" ? "bank" : "paypal");
   const [paypal, setPaypal] = useState(st?.payoutEmail && !st.payoutEmail.startsWith("payouts+") ? st.payoutEmail : "");
   const [rights, setRights] = useState(st?.rightsNote ?? "");
   const [agree, setAgree] = useState(Boolean(st?.termsAt));
@@ -116,11 +118,17 @@ export default function StudioOnboarding({ initial, countries, home }: { initial
         </Step>
 
         <Step done={m.steps.payout} open={open === "payout"} title="Bank or payout account" text="Where your 70% share is paid, in your currency." action={startBtn("payout", m.steps.payout)}>
-          <div className="pt-inline">
+          <div className="ec-seg stu-seg" role="tablist" aria-label="How you are paid">
+            <button type="button" role="tab" aria-selected={via === "paypal"} className={via === "paypal" ? "on" : ""} onClick={() => setVia("paypal")}>PayPal</button>
+            <button type="button" role="tab" aria-selected={via === "bank"} className={via === "bank" ? "on" : ""} onClick={() => setVia("bank")}>Bank account</button>
+          </div>
+          {via === "bank" ? (
+            <BankPayoutForm onSaved={() => void run("payout", () => scall("GET", "")).then((ok) => ok && setOpen(""))} />
+          ) : <div className="pt-inline">
             <label className="vf-field"><span>PayPal email for payouts</span><div className="vf-box"><input type="email" value={paypal} onChange={(e) => setPaypal(e.target.value)} placeholder="finance@starlight.ng" maxLength={120} /></div></label>
             <button type="button" className="vf-btn red" disabled={busy === "payout" || !paypal} onClick={() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypal.trim()) ? run("payout", () => scall("PUT", "payout", { method: "paypal", email: paypal.trim(), currency: "USD" })).then((ok) => ok && setOpen("")) : setErr("Enter the PayPal email address your share should go to")}>{busy === "payout" ? "Saving" : "Save"}</button>
-          </div>
-          <p className="pt-hint">Your share of each premiere is sent automatically once it ends. Direct bank transfer <em className="soon-tag">Soon</em></p>
+          </div>}
+          <p className="pt-hint">Your share of each premiere is sent automatically once it ends: in US dollars by PayPal, or in your currency by bank transfer.</p>
         </Step>
 
         <Step done={m.steps.rights} open={open === "rights"} title="Rights declaration" text="For each film: territories, languages and dates you hold rights for. AI flags conflicts with other studios." action={startBtn("rights", m.steps.rights)}>

@@ -5703,3 +5703,12 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 .stpr-enc-st { color: var(--text-secondary); font-style: normal; font-size: 13px; }
 .stpr-enc-st.on { color: #34c759; font-weight: 600; text-decoration: none; }
 .stpr-enc-note { margin-top: 8px; }
+
+/* Studio bank payouts (Studio / Revenue and payouts, Bank transfer) */
+.stu-acc > div { flex: 1; }
+.stu-acc.dim b { color: #a6a6b0; }
+.stu-acc .vf-btn { flex: none; }
+.stu-paid { display: block; font: 500 12px/18px Manrope, sans-serif; color: #6e6e7a; }
+.bank-form { display: grid; gap: 12px; margin-bottom: 12px; }
+.bank-form .bank-ok { color: #4fd1c5; }
+.stu-seg { margin-bottom: 12px; }
