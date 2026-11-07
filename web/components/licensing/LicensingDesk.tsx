@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useState } from "react";
-import { dateName, naira, PLANS, type Application, type Check, type Product } from "@/lib/licensing-types";
+import { dateName, naira, PLANS, type Application, type Case, type Check, type Product } from "@/lib/licensing-types";
 import { countryName } from "@/lib/worldmap";
 import { pcall } from "./pcall";
 
@@ -28,6 +28,8 @@ export default function LicensingDesk() {
       <h2>Products</h2>
       {apps && products.length === 0 && <p className="bp-none">No designs waiting.</p>}
       {products.map((p) => <ProductRow key={p.id} p={p} onDone={load} />)}
+      <h2>Compliance cases</h2>
+      <Cases />
       <h2>Royalties</h2>
       <Settle />
     </div>
@@ -111,5 +113,60 @@ function Settle() {
       </div>
       {msg && <p className="bp-meta" role="status">{msg}</p>}
     </form>
+  );
+}
+
+// Market-check findings (email 43): open a case, then close it once fixed or suspend the licence.
+function Cases() {
+  const [cases, setCases] = useState<Case[] | null>(null);
+  const [f, setF] = useState({ licence: "", issue: "", place: "", finding: "", days: 14 });
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => pcall<{ cases: Case[] }>("GET", "desk/cases").then((r) => setCases(r.cases), (e: Error) => setMsg(e.message)), []);
+  useEffect(() => { load(); }, [load]);
+  const decide = async (c: Case, outcome: "closed" | "suspended") => {
+    if (outcome === "suspended" && !confirm(`Suspend licence ${c.licence}? The partner can no longer sell until it is restored.`)) return;
+    setBusy(true); setMsg("");
+    try { await pcall("POST", `desk/cases/${c.id}/decide`, { outcome }); setMsg(`${c.number} ${outcome === "closed" ? "closed" : "closed and licence suspended"}.`); load(); } catch (x) { setMsg((x as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <>
+      {cases?.length === 0 && <p className="bp-none">No open cases.</p>}
+      {cases?.map((c) => {
+        const late = c.status === "open" && c.fixBy < new Date().toISOString().slice(0, 10);
+        return (
+          <article key={c.id} className="bp-desk-row">
+            <p className="bp-meta"><b>{c.number}</b> · {c.company} ({c.licence}) · {c.issue}{c.place ? ` in ${c.place}` : ""} · fix by {dateName(c.fixBy)}{late ? " · overdue" : ""}</p>
+            <p className="bp-meta">{c.finding}</p>
+            {c.status === "fixed" && <p className="bp-meta">Partner says fixed: {c.partnerNote}</p>}
+            <div className="bp-desk-act">
+              <button className="vf-btn soft sm" disabled={busy} onClick={() => decide(c, "closed")}>Close case</button>
+              <button className="vf-btn red sm" disabled={busy} onClick={() => decide(c, "suspended")}>Suspend licence</button>
+            </div>
+          </article>
+        );
+      })}
+      <form className="bp-desk-row" onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true); setMsg("");
+        try {
+          const c = await pcall<Case>("POST", `desk/cases/${f.licence.trim().toUpperCase()}`, f);
+          setMsg(`${c.number} opened. ${c.company} has been emailed.`);
+          setF({ licence: "", issue: "", place: "", finding: "", days: 14 });
+          load();
+        } catch (x) { setMsg((x as Error).message); } finally { setBusy(false); }
+      }}>
+        <p className="bp-meta">Open a case when a market check finds a partner breaking the rules. They get a warning email and the days you give to fix it.</p>
+        <div className="bp-desk-act">
+          <label>Licence <input required value={f.licence} onChange={(e) => setF({ ...f, licence: e.target.value })} placeholder="NG-0057" pattern="[A-Za-z]{2}-\d{4}" /></label>
+          <label>What was found <input required maxLength={80} className="wide" value={f.issue} onChange={(e) => setF({ ...f, issue: e.target.value })} placeholder="unlabelled caps" /></label>
+          <label>Where <input maxLength={60} value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} placeholder="Kano" /></label>
+          <label>Days to fix <input required type="number" min={1} max={60} value={f.days} onChange={(e) => setF({ ...f, days: Number(e.target.value) })} /></label>
+        </div>
+        <label className="bp-desk-note">Details and what to do <textarea required maxLength={600} rows={3} value={f.finding} onChange={(e) => setF({ ...f, finding: e.target.value })} placeholder="Our investigator bought 6 caps at your Kano stall with no authenticity label. Label or withdraw all stock." /></label>
+        <div className="bp-desk-act"><button className="vf-btn red sm" disabled={busy}>Open case and email partner</button></div>
+        {msg && <p className="bp-meta" role="status">{msg}</p>}
+      </form>
+    </>
   );
 }

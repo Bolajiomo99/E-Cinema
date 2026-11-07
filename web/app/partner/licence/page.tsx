@@ -1,6 +1,7 @@
+import CaseFix from "@/components/licensing/CaseFix";
 import RenewLicence from "@/components/licensing/RenewLicence";
 import { myLicence, partnerPage, session } from "@/lib/licensing";
-import { dateName, PLANS, type Compliance } from "@/lib/licensing-types";
+import { dateName, PLANS, type Case, type Compliance } from "@/lib/licensing-types";
 import { countryName } from "@/lib/worldmap";
 
 // Figma "Licensee / Licence and compliance" (116:726).
@@ -15,11 +16,14 @@ function Step({ ok, title, detail }: { ok: boolean; title: string; detail: strin
   );
 }
 
+const CASE: Record<Case["status"], [string, string]> = { open: ["red", "Fix needed"], fixed: ["amber", "Being checked"], closed: ["teal", "Closed"], suspended: ["red", "Licence suspended"] };
+
 const daysUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - new Date().getTime()) / 86400000);
 
 export default async function PartnerLicence() {
   const s = await session();
-  const [mine, c] = await Promise.all([myLicence(s), partnerPage<Compliance>(s, "compliance")]);
+  const [mine, c, cs] = await Promise.all([myLicence(s), partnerPage<Compliance>(s, "compliance"), partnerPage<{ cases: Case[] }>(s, "cases")]);
+  const cases = cs?.cases ?? [];
   if (!mine || !c) return <p className="pt-empty">Your licence could not load. Refresh to try again.</p>;
   const l = mine.licensee;
   const days = daysUntil(l.validUntil);
@@ -49,10 +53,29 @@ export default async function PartnerLicence() {
           <p className={`pt-score ${c.score < 75 ? "low" : ""}`}>{c.score} / 100</p>
           <p className="pt-verdict">{verdict}.{late > 0 ? ` ${late === 1 ? "One late sample photo" : `${late} late sample photos`} this year.` : " Every sample photo was on time."}{c.rejected ? ` ${c.rejected} product${c.rejected === 1 ? "" : "s"} not approved.` : ""}</p>
           <Step ok={late === 0 || c.samplesOnTime / Math.max(1, c.samplesTotal) >= 0.8} title="Quality samples on time" detail={c.samplesTotal ? `${c.samplesOnTime} of ${c.samplesTotal}` : "None due yet"} />
-          <Step ok={c.unapproved === 0} title={c.unapproved ? `${c.unapproved} unapproved product${c.unapproved === 1 ? "" : "s"} found` : "No unapproved products found"} detail={`Market checks: ${c.marketChecks}`} />
+          <Step ok={c.unapproved === 0} title={c.unapproved ? `${c.unapproved} open compliance case${c.unapproved === 1 ? "" : "s"}` : "No unapproved products found"} detail={`Market checks: ${c.marketChecks}`} />
           <Step ok={c.royaltiesOk === c.royaltiesTotal} title="Royalties paid on time" detail={c.royaltiesTotal ? `${c.royaltiesOk} of ${c.royaltiesTotal}` : "None due yet"} />
         </section>
       </div>
+      {cases.length > 0 && (
+        <section className="bp-panel">
+          <h2>Compliance cases</h2>
+          {cases.map((x) => (
+            <div key={x.id} id={x.number} className="pt-case">
+              <div className="pt-v">
+                <div><b>{x.number} · {x.issue}{x.place ? ` in ${x.place}` : ""}</b><small>{x.finding}</small></div>
+                <span className={`bp-pill ${CASE[x.status][0]}`}>{CASE[x.status][1]}</span>
+              </div>
+              {(x.status === "open" || x.status === "fixed") && (
+                <>
+                  <p className="pt-hint">{x.status === "fixed" ? `You told us: ${x.partnerNote} The brand team will check and close the case.` : `Fix it by ${dateName(x.fixBy)}, or your licence is suspended.`}</p>
+                  {l.status === "active" && <CaseFix id={x.id} fixed={x.status === "fixed"} />}
+                </>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
       <section className="bp-panel">
         <h2>Rules in short</h2>
         <p className="pt-rules">Only approved products may carry the logo · prices are yours to set · no selling in countries outside your licence · every item needs an E‑Cinema code · breaking the rules can end the licence with 30 days notice.</p>

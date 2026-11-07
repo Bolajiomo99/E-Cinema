@@ -77,6 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
   if (p[0] === "desk") {
     const me = await currentAccount();
     if (!isStaff(me?.email)) return json(403, { error: "Staff only" });
+    if (p[1] === "cases") return pass(await accountApi("GET", "/v1/licensing/cases"));
     const r = await accountApi("GET", "/v1/licensing/applications");
     if (r.status !== 200) return pass(r);
     const b = r.body as { applications: Application[]; products: Product[] };
@@ -176,6 +177,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     }
     if (p[1] === "codes") return pass(await accountApi("POST", "/v1/me/partner/codes", { productId: body.productId, count: Number(body.count) }, s));
     if (p[1] === "members") return pass(await accountApi("POST", "/v1/me/partner/members", body, s));
+    if (p[1] === "cases" && /^\d{1,9}$/.test(p[2] ?? "") && p[3] === "fixed") return pass(await accountApi("POST", `/v1/me/partner/cases/${p[2]}/fixed`, { note: body.note }, s));
     // A month's royalty (email 41): the API quotes the month, PayPal takes the money, the capture settles it.
     if (p[1] === "royalty") {
       const month = String(body.month ?? "");
@@ -215,6 +217,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     if (p[1] === "applications" && UUID.test(p[2] ?? "")) return pass(await accountApi("POST", `/v1/licensing/applications/${p[2]}/review`, body));
     if (p[1] === "products" && UUID.test(p[2] ?? "")) return pass(await accountApi("POST", `/v1/licensing/products/${p[2]}/decide`, body));
     if (p[1] === "settle" && /^[A-Z]{2}-\d{4}$/.test(p[2] ?? "")) return pass(await accountApi("POST", `/v1/licensing/${p[2]}/settle`, body));
+    if (p[1] === "cases" && /^[A-Z]{2}-\d{4}$/.test(p[2] ?? "")) return pass(await accountApi("POST", `/v1/licensing/${p[2]}/cases`, { issue: body.issue, place: body.place, finding: body.finding, days: Number(body.days) }));
+    if (p[1] === "cases" && /^\d{1,9}$/.test(p[2] ?? "") && p[3] === "decide") return pass(await accountApi("POST", `/v1/licensing/cases/${p[2]}/decide`, { outcome: body.outcome }));
   }
   return json(404, { error: "Not found" });
 }

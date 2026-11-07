@@ -88,6 +88,12 @@ export function short(n: number) {
   if (Math.abs(n) >= 1e6) return `₦${(n / 1e6).toFixed(1)}M`;
   return naira(n);
 }
+// A compliance case the brand team opened after a market check (email 43, Figma 127:435).
+export type Case = {
+  id: number; number: string; licence: string; company?: string; issue: string; place: string; finding: string;
+  fixBy: string; status: "open" | "fixed" | "closed" | "suspended"; partnerNote: string; createdAt: string; resolvedAt?: string;
+};
+
 // Royalty invoices (email 41): licence NG-0042, October 2026 → INV-0042-10, due by the 5th of the next month.
 export const invoiceNo = (licence: string, ym: string) => `INV-${licence.split("-").pop()}-${ym.slice(5, 7)}`;
 export function royaltyDueBy(ym: string) {
