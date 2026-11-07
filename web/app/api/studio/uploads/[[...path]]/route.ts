@@ -280,6 +280,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const { p, s } = g;
   const body = await req.json().catch(() => ({}));
   if (p.length === 1) return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}`, { title: String(body.title ?? "") }, s));
+  // Emergency pause (Figma 37:1272). Resuming lengthens the running time, so the catalog is refreshed.
+  if (p.length === 2 && p[1] === "pause") {
+    const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/pause`, { on: body.on === true }, s);
+    if (r.status === 200) await refreshLive(true);
+    return pass(r);
+  }
   // Approving a sell-out encore puts it on sale, so the catalog is refreshed at once.
   if (p.length === 3 && p[1] === "encores" && /^[1-5]$/.test(p[2])) {
     const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/encores/${p[2]}`, { approve: body.approve === true }, s);

@@ -10,7 +10,7 @@ import { scall } from "./scall";
 
 type Report = { messageId: number; name: string; country: string; body: string; kind: string; reasons: string[]; reporters: number; hidden: boolean; status: "open" | "actioned" | "dismissed"; at: string };
 export type ControlData = {
-  control: { showtimeId: string; film: string; startsAt: string; durationMin: number; messages: number; spoilers: number; autoHidden: number; reports: Report[]; phrases: { lang: string; body: string; count: number }[] };
+  control: { showtimeId: string; film: string; startsAt: string; durationMin: number; pausedAt?: string | null; pausedMs?: number; messages: number; spoilers: number; autoHidden: number; reports: Report[]; phrases: { lang: string; body: string; count: number }[] };
   live: { watching: number; countries: number; byCountry: Record<string, number>; chatByCountry: Record<string, number> };
   peak: { watching: number; at: string };
   studio: string;
@@ -58,8 +58,9 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
 
   const c = d.control;
   const start = Date.parse(c.startsAt), end = start + c.durationMin * 60_000;
-  const live = now >= start && now < end;
-  const status = now < start ? `Starts ${watDay(c.startsAt)} WAT · in ${span(start - now)}` : live ? `Started ${wat(c.startsAt)} WAT · ${span(now - start)} in · ${span(end - now)} left` : `Ended ${wat(new Date(end).toISOString())} WAT`;
+  const paused = c.pausedAt ? Date.parse(c.pausedAt) : null;
+  const live = now >= start && (now < end || paused !== null);
+  const status = paused !== null ? `Paused for everyone · ${span(Math.max(0, now - paused))} so far · resumes where it stopped` : now < start ? `Starts ${watDay(c.startsAt)} WAT · in ${span(start - now)}` : live ? `Started ${wat(c.startsAt)} WAT · ${span(now - start)} in · ${span(end - now)} left` : `Ended ${wat(new Date(end).toISOString())} WAT`;
   const ranked = Object.entries(d.live.byCountry ?? {}).filter(([cc, v]) => v > 0 && COUNTRIES[cc]).sort((a, b) => b[1] - a[1]);
   const max = ranked[0]?.[1] ?? 1;
   const chatPerMin = Object.values(d.live.chatByCountry ?? {}).reduce((a, b) => a + b, 0) / 10;
@@ -98,6 +99,16 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
       setText(""); setComposing(false);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(""); }
   }
+  async function pause(on: boolean) {
+    if (on && !window.confirm("Pause the premiere for every viewer? Everyone is held on the same frame until you resume.")) return;
+    setErr(""); setMsg(""); setBusy("pause");
+    try {
+      await scall("PUT", `uploads/${upload}/pause`, { on });
+      setNow(Date.now());
+      await refresh();
+      setMsg(on ? "Paused. Every viewer is held on the same frame." : "Resumed for everyone. The end time moved by the length of the pause.");
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(""); }
+  }
   async function moderate(r: Report, hide: boolean) {
     setErr(""); setBusy(`m${r.messageId}`);
     try {
@@ -121,7 +132,9 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
         <div className="pt-btns">
           {live && <span className="stcr-live">LIVE</span>}
           {canEdit && <button className="vf-btn ghost" onClick={() => { setComposing(!composing); setMsg(""); }}>Message all viewers</button>}
-          {canEdit && <button className="vf-btn red" disabled title="Coming soon">Emergency pause <em className="soon-tag">Soon</em></button>}
+          {canEdit && live && (paused !== null
+            ? <button className="vf-btn red" disabled={busy === "pause"} onClick={() => void pause(false)}>{busy === "pause" ? "Resuming" : "Resume premiere"}</button>
+            : <button className="vf-btn red" disabled={busy === "pause"} onClick={() => void pause(true)}>{busy === "pause" ? "Pausing" : "Emergency pause"}</button>)}
         </div>
       </header>
       {films.length > 1 && (
