@@ -5660,6 +5660,8 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 
 /* Public studio page (Figma 597:27) */
 .sp-page { position: relative; overflow: hidden; min-height: 100vh; padding-bottom: 64px; }
+.sp-page > .tn { position: relative; z-index: 2; }
+.sp-acts a.lp-btn { text-decoration: none; }
 .sp-glow { position: absolute; left: -200px; top: -300px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(227,24,45,.35), transparent 70%); pointer-events: none; }
 .sp-head { position: relative; display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; grid-template-areas: "av id acts" "av stats acts"; gap: 4px 24px; align-items: start; padding: 56px 48px 0; }
 .sp-av { grid-area: av; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #f5731f, #e3182d); color: #fff; font: 700 36px/1 Manrope, sans-serif; }
