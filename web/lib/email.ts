@@ -55,6 +55,20 @@ export async function send(to: string, subject: string, html: string, text: stri
 
 export type Where = { device: string; place: string };
 
+// Figma email 02 "Confirm your email" (106:60), sent at sign-up and on "Send a new code".
+export async function sendEmailConfirm(to: string, code: string) {
+  const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
+  await send(
+    to,
+    `Your E-Cinema code is ${spaced}`,
+    layout("Enter it within 10 minutes", "Confirm your email",
+      p("Enter this code in E-Cinema to finish signing up.") +
+      codeBox(code) +
+      `<p style="margin:0;font:500 14px/1.55 ${FONT};color:#7a7a84">It works for 10 minutes. If you did not try to sign up, ignore this email.</p>`, "VERIFY"),
+    `Your E-Cinema code is ${spaced}. Enter it in E-Cinema to finish signing up. It works for 10 minutes. If you did not try to sign up, ignore this email.`,
+  );
+}
+
 export async function sendLoginCode(to: string, code: string, where: Where) {
   await send(
     to,

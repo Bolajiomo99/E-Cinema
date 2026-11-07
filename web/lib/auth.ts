@@ -17,6 +17,7 @@ export type Account = {
   phoneVerified: boolean;
   faceVerified: boolean;
   idVerified: boolean;
+  emailVerified?: boolean;
   createdAt: string;
 };
 

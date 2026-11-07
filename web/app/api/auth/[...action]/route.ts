@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { accountApi, deviceLabel, SESSION_COOKIE } from "@/lib/auth";
-import { emailEnabled, sendLoginCode, sendNewSignIn, sendPasswordChanged, sendResetCode } from "@/lib/email";
+import { emailEnabled, sendEmailConfirm, sendLoginCode, sendNewSignIn, sendPasswordChanged, sendResetCode } from "@/lib/email";
 import { timesLeaked } from "@/lib/pwned";
 import { countryName } from "@/lib/plans";
 
@@ -27,6 +27,20 @@ async function readBody(req: NextRequest): Promise<Record<string, unknown>> {
   } catch {
     return {};
   }
+}
+
+// Issues the email confirmation code and emails it. Smoke-test accounts get no mail.
+async function mailEmailCode(session: string): Promise<{ ok: true; sentTo: string } | { ok: false; status: number; error: string }> {
+  const r = await accountApi("POST", "/v1/me/email/code", {}, session);
+  const out = r.body as { code?: string; email?: string; maskedTo?: string; error?: string } | null;
+  if (r.status !== 200 || !out?.code || !out.email) return { ok: false, status: r.status === 200 ? 502 : r.status, error: out?.error || "We could not make a code just now" };
+  if (/^smoke\+.*@e-cinema\.net$/i.test(out.email)) return { ok: true, sentTo: out.maskedTo ?? "" };
+  if (!emailEnabled) {
+    if (process.env.E2E_LOG_CODES) console.log(`[e2e] email code for ${out.email}: ${out.code}`);
+    return { ok: true, sentTo: out.maskedTo ?? "" };
+  }
+  try { await sendEmailConfirm(out.email, out.code); } catch { return { ok: false, status: 502, error: "We could not send your code just now. Please try again in a minute." }; }
+  return { ok: true, sentTo: out.maskedTo ?? "" };
 }
 
 const relay = (r: { status: number; body: unknown }) => json(r.status, r.body);
@@ -111,7 +125,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   switch (action) {
     case "signup":
       if (b.terms !== true) return json(400, { error: "Please agree to the Terms and Privacy Policy" });
-      return withSession(await accountApi("POST", "/v1/accounts", { email: b.email, name: b.name, password: b.password, device }));
+    {
+      const r = await accountApi("POST", "/v1/accounts", { email: b.email, name: b.name, password: b.password, device });
+      const token = (r.body as { session?: Session } | null)?.session?.token;
+      // Email 02: the code that confirms the address goes out straight away; the Verify step asks for it.
+      if (r.status >= 200 && r.status < 300 && token) await mailEmailCode(token);
+      return withSession(r);
+    }
     case "signin": {
       const r = await accountApi("POST", "/v1/sessions", { email: b.email, password: b.password, device });
       if (r.status === 202) {
@@ -184,6 +204,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
       res.cookies.delete(SESSION_COOKIE);
       return res;
     }
+    case "email/code": {
+      if (!session) return json(401, { error: "not signed in" });
+      const sent = await mailEmailCode(session);
+      return sent.ok ? json(200, { sentTo: sent.sentTo }) : json(sent.status, { error: sent.error });
+    }
+    case "email/confirm":
+      if (!session) return json(401, { error: "not signed in" });
+      return relay(await accountApi("POST", "/v1/me/email/confirm", { code: b.code }, session));
     case "phone":
       if (!session) return json(401, { error: "not signed in" });
       return relay(await accountApi("POST", "/v1/phone", { phone: b.phone }, session));
