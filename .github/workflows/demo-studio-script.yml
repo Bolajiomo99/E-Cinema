@@ -2,7 +2,7 @@ name: Demo studio script
 
 # Puts the English subtitles of the stand-in film (Tears of Steel, (c) Blender Foundation,
 # CC BY 3.0, mango.blender.org) in private R2 as the subtitle file of Lagoon Gate Pictures'
-# "Tide of Lagos" upload, so the studio's AI dubbing has a real script to translate.
+# "Red Earth" upload, so the studio's AI dubbing has a real script to translate.
 on:
   workflow_dispatch:
   push:
