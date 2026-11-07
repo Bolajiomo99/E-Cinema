@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -444,8 +445,116 @@ func (s *Server) accountRoutes(mux *http.ServeMux) {
 			fail(w, err)
 			return
 		}
+		if res.Status == "retry" || res.Status == "rejected" {
+			var b struct {
+				Device string `json:"device"`
+				Place  string `json:"place"`
+			}
+			_ = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&b)
+			lock, err := s.Accounts.RecordFaceFailure(r.Context(), a.ID, res.Attempt, b.Device, b.Place)
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			if lock != nil {
+				s.mailFaceLock(r.Context(), lock)
+				writeJSON(w, http.StatusLocked, map[string]any{"error": accounts.ErrFaceLocked.Error(), "locked": true})
+				return
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"account": acct, "check": res})
 	}))
+	// Unlocking after five failed face checks: the emailed code, then a new face check.
+	mux.HandleFunc("POST /v1/unlock/code", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Email string `json:"email"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		lock, err := s.Accounts.ResendUnlockCode(r.Context(), b.Email)
+		if err != nil && !errors.Is(err, accounts.ErrBadInput) {
+			fail(w, err)
+			return
+		}
+		if lock != nil {
+			s.mailFaceLock(r.Context(), lock)
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"sentTo": accounts.MaskEmail(strings.TrimSpace(b.Email))})
+	})
+	mux.HandleFunc("POST /v1/unlock/start", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Email string `json:"email"`
+			Code  string `json:"code"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		token, _, err := s.Accounts.StartUnlock(r.Context(), b.Email, b.Code)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"unlockToken": token})
+	})
+	mux.HandleFunc("POST /v1/unlock/identity", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Token string `json:"unlockToken"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if s.Identity == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "face checks are not switched on yet"})
+			return
+		}
+		id, err := s.Accounts.UnlockAccount(r.Context(), b.Token)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		tok, err := s.Identity.SDKToken(r.Context(), id)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"token": tok})
+	})
+	mux.HandleFunc("POST /v1/unlock/finish", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Token string `json:"unlockToken"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		if s.Identity == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "face checks are not switched on yet"})
+			return
+		}
+		id, err := s.Accounts.UnlockAccount(r.Context(), b.Token)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		res, err := s.Identity.Check(r.Context(), id)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if res.Status != "approved" {
+			writeJSON(w, http.StatusOK, map[string]any{"unlocked": false, "status": res.Status})
+			return
+		}
+		if _, err := s.Accounts.RecordIdentity(r.Context(), id, res.Status); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := s.Accounts.FinishUnlock(r.Context(), b.Token); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"unlocked": true, "status": res.Status})
+	})
 	mux.HandleFunc("POST /v1/passkeys/register/begin", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		id, opts, err := s.Accounts.BeginPasskeyRegistration(r.Context(), a.ID)
 		if err != nil {
@@ -548,4 +657,10 @@ func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 // welcome queues email 01 (Figma 106:39), the first email every member gets.
 func (s *Server) welcome(id, email, name string) {
 	_ = s.Notify.Queue(context.Background(), notify.Mail{Kind: "welcome", To: email, Name: name, Dedupe: "welcome:" + id})
+}
+
+// mailFaceLock queues email 33 (Figma 127:215) with the unlock code.
+func (s *Server) mailFaceLock(ctx context.Context, lock *accounts.FaceLock) {
+	_ = s.Notify.Queue(ctx, notify.Mail{Kind: "account_locked", To: lock.Email, Name: lock.Name,
+		Data: map[string]any{"code": lock.Code, "place": lock.Place, "email": lock.Email}})
 }

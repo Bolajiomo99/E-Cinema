@@ -26,6 +26,7 @@ var (
 	ErrEmailTaken     = errors.New("an account already uses this email, sign in instead")
 	ErrBadLogin       = errors.New("email or password is wrong")
 	ErrLocked         = errors.New("too many attempts, try again in 15 minutes")
+	ErrFaceLocked     = errors.New("this account is locked for your safety after several failed face checks. Use the code we emailed you on the unlock page")
 	ErrLockdown       = errors.New("E-Cinema has paused new sign-ups and sign-ins from new devices for a short while to keep accounts safe. If you are already signed in, you can keep watching. Please try again later")
 	ErrBanned         = errors.New("This account was closed for sharing films without permission; write to admin@e-cinema.net if you think this is wrong")
 	ErrNoSession      = errors.New("not signed in")
@@ -238,16 +239,20 @@ func (s Store) SignIn(ctx context.Context, email, password, device string) (Acco
 // startSession must run inside a transaction holding the account row, so two
 // simultaneous sign-ins cannot both slip under the device limit.
 func (s Store) startSession(ctx context.Context, tx pgx.Tx, accountID, device string) (Session, error) {
-	var restored, alerts, known, banned, locked bool
+	var restored, alerts, known, banned, locked, faceLocked bool
 	if err := tx.QueryRow(ctx, `SELECT delete_after IS NOT NULL, login_alerts,
 		EXISTS (SELECT 1 FROM account_sessions WHERE account_id = $1 AND device = $2), banned_at IS NOT NULL,
 		coalesce((SELECT lockdown FROM security_settings WHERE id = 1), false) AND lower(email) <> ALL(coalesce($3::text[], '{}'))
-		  AND NOT EXISTS (SELECT 1 FROM executives e WHERE e.email = lower(accounts.email) AND (e.expires_on IS NULL OR e.expires_on >= current_date))
-		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device), s.Trusted).Scan(&restored, &alerts, &known, &banned, &locked); err != nil {
+		  AND NOT EXISTS (SELECT 1 FROM executives e WHERE e.email = lower(accounts.email) AND (e.expires_on IS NULL OR e.expires_on >= current_date)),
+		face_locked_at IS NOT NULL
+		FROM accounts WHERE id = $1 FOR UPDATE`, accountID, cleanDevice(device), s.Trusted).Scan(&restored, &alerts, &known, &banned, &locked, &faceLocked); err != nil {
 		return Session{}, err
 	}
 	if banned {
 		return Session{}, ErrBanned
+	}
+	if faceLocked {
+		return Session{}, ErrFaceLocked
 	}
 	// Lock down mode: people already signed in on this device keep going; nobody new gets in.
 	if locked && !known {

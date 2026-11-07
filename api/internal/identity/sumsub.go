@@ -33,6 +33,8 @@ type Result struct {
 	Status  string   `json:"status"`
 	Labels  []string `json:"labels,omitempty"`
 	Comment string   `json:"comment,omitempty"`
+	// Attempt names this submission, so a failed attempt counts once however often it is read.
+	Attempt string `json:"-"`
 }
 
 func (s Sumsub) do(ctx context.Context, method, path string, body any, out any) (int, error) {
@@ -84,6 +86,9 @@ func (s Sumsub) Check(ctx context.Context, accountID string) (Result, error) {
 	var out struct {
 		Review struct {
 			ReviewStatus string `json:"reviewStatus"`
+			AttemptID    string `json:"attemptId"`
+			ReviewID     string `json:"reviewId"`
+			ReviewDate   string `json:"reviewDate"`
 			ReviewResult struct {
 				ReviewAnswer      string   `json:"reviewAnswer"`
 				ReviewRejectType  string   `json:"reviewRejectType"`
@@ -101,6 +106,10 @@ func (s Sumsub) Check(ctx context.Context, accountID string) (Result, error) {
 	}
 	r := out.Review.ReviewResult
 	res := Result{Status: "pending", Labels: r.RejectLabels, Comment: r.ModerationComment}
+	res.Attempt = out.Review.AttemptID
+	if res.Attempt == "" && out.Review.ReviewDate != "" {
+		res.Attempt = out.Review.ReviewID + "@" + out.Review.ReviewDate
+	}
 	if out.Review.ReviewStatus == "completed" {
 		switch {
 		case r.ReviewAnswer == "GREEN":
