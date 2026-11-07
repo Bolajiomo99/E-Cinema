@@ -351,13 +351,15 @@ type LiveFilm struct {
 	EarlySave   int              `json:"earlySave"`
 	Formats     []string         `json:"formats"`
 	HasMaster   bool             `json:"hasMaster"`
+	Blocked     []string         `json:"blocked"` // countries the studio does not sell in
 }
 
 // LiveFilms lists every published studio premiere that has not ended more than a day ago.
 func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	rows, err := st.DB.Query(ctx, `SELECT s.id, u.id, s.film, s.studio, s.starts_at, s.duration_min, s.price_cents, s.adult, u.logline, u.genres, u.age_rating, u.languages, u.poster_key <> '',
 	    coalesce((SELECT f.info FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded' LIMIT 1), ''),
-	    p.early_save, p.formats, EXISTS (SELECT 1 FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded')
+	    p.early_save, p.formats, EXISTS (SELECT 1 FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded'),
+	    coalesce((SELECT x.blocked_countries FROM studios x WHERE x.name = u.studio), '{}')
 	  FROM studio_premieres p JOIN studio_uploads u ON u.id = p.upload JOIN showtimes s ON s.id = p.showtime_id
 	  WHERE p.published_at IS NOT NULL AND s.withdrawn_at IS NULL AND s.starts_at + make_interval(mins => s.duration_min) > now() - interval '1 day'
 	  ORDER BY s.starts_at LIMIT 200`)
@@ -366,7 +368,7 @@ func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (LiveFilm, error) {
 		var f LiveFilm
-		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format, &f.EarlySave, &f.Formats, &f.HasMaster)
+		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format, &f.EarlySave, &f.Formats, &f.HasMaster, &f.Blocked)
 		return f, err
 	})
 	if err != nil {
