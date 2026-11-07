@@ -127,3 +127,11 @@ export type PremierePlan = {
   showtimeId: string; startsAt: string; movedFrom?: string; withdrawnAt?: string;
   seats: number; holders: number; grossCents: number; sharePct: number; week: number; refundsDue: number;
 };
+
+// The film's short reference, as in email 44 (same rule as studios.FilmCode in the API):
+// two initials of the title and four digits from the upload id, e.g. FLM-OZ-2207.
+export function filmCode(title: string, uploadId: string) {
+  const initials = title.split(/\s+/).map((w) => [...w].find((c) => /[\p{L}\p{N}]/u.test(c)) ?? "").filter(Boolean).slice(0, 2).join("").toUpperCase() || "X";
+  const n = parseInt(uploadId.replace(/-/g, "").slice(0, 8), 16) % 10000;
+  return `FLM-${initials}-${String(n).padStart(4, "0")}`;
+}

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
-import type { PremierePlan, Upload, UploadFile } from "@/lib/studio-types";
+import { filmCode, type PremierePlan, type Upload, type UploadFile } from "@/lib/studio-types";
 import { scall } from "./scall";
 
 // Figma "Studio / Film detail" (99:247): what viewers will read, whether the files are ready,
@@ -116,7 +116,7 @@ export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwne
       <header className="bp-head">
         <div>
           <h1>{u.title}</h1>
-          <p>{[u.genres.split(",")[0]?.trim(), runtime, u.languages, when].filter(Boolean).join(" · ")}</p>
+          <p>{[filmCode(u.title, u.id), u.genres.split(",")[0]?.trim(), runtime, u.languages, when].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="pt-btns">
           <span className="vf-btn ghost stu-soon" aria-disabled="true">Preview as viewer <em className="soon-tag">Soon</em></span>

@@ -530,6 +530,26 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // 44 Studio film needs changes (127:457). Queued by the API when a film with a premiere ahead
+  // has quality-check problems; a new problem sends a new email.
+  film_changes: (m) => {
+    const film = S(m.data.film), code = S(m.data.code), upload = S(m.data.upload);
+    const issues = Array.isArray(m.data.issues) ? (m.data.issues as unknown[]).map(S).filter(Boolean).slice(0, 8) : [];
+    if (!film || !code || !/^[0-9a-f-]{36}$/.test(upload) || !issues.length) return null;
+    const n = issues.length, word = ["one fix", "two fixes", "three fixes", "four fixes", "five fixes"][n - 1] ?? `${n} fixes`;
+    const sentence = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).replace(/[.!]?$/, ".");
+    return done({
+      from: SENDER.studios, tag: "CHANGES NEEDED", footer: FOOT_ACTION(),
+      subject: `${film} needs ${word} before release`, preview: n === 1 ? sentence(issues[0]).slice(0, 90) : `${n} things to fix before your premiere`,
+      title: "Your film is almost ready",
+      body: (n === 1
+        ? p(`Our checks found one thing to fix: ${esc(sentence(issues[0]))} Fix it in the Studio portal to keep your premiere date. Film:`)
+        : p("Our checks found these to fix:") + steps(issues.map(sentence)) + p("Fix them in the Studio portal to keep your premiere date. Film:")) +
+        bigCode(code) + button(href(`/studio/films/${upload}`), "Open Studio portal"),
+      text: `Our checks found ${n === 1 ? "one thing" : `${n} things`} to fix in ${film} (${code}): ${issues.map(sentence).join(" ")} Fix ${n === 1 ? "it" : "them"} in the Studio portal to keep your premiere date: ${href(`/studio/films/${upload}`)}`,
+    });
+  },
+
   // 45 Executive invite expiring (127:479)
   exec_invite_expiring: (m) => {
     const token = S(m.data.token), ends = S(m.data.expiresAt);
@@ -665,7 +685,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], compliance_warning: ["case"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], compliance_warning: ["case"], film_changes: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
