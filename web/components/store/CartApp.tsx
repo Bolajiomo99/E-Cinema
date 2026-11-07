@@ -4,35 +4,37 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
 import ProductArt from "@/components/store/ProductArt";
+import PayLogo, { type PayBrand } from "@/components/pay/PayLogo";
 import { announce, setCart, store } from "@/lib/store-client";
 import { price, type Address, type Order, type Pricing, type Quote } from "@/lib/store-types";
 
-type Method = { id: string; name: string; sub: string; ready: boolean };
+type Method = { id: string; name: string; sub: string; ready: boolean; logo: PayBrand };
 
 // Cart and checkout (Figma 53:1111): change amounts, set the address, take the bundle offer,
 // pick how to pay, and pay. Totals always come back from the server.
-export default function CartApp({ initial, px, country, countryLabel, paypal, tz }: {
-  initial: Quote; px: Pricing; country?: string; countryLabel: string; paypal: boolean; tz: string;
+export default function CartApp({ initial, px, country, countryLabel, paypal, paystack = false, flutterwave = false, failed = "", tz }: {
+  initial: Quote; px: Pricing; country?: string; countryLabel: string; paypal: boolean; paystack?: boolean; flutterwave?: boolean; failed?: string; tz: string;
 }) {
   const [q, setQ] = useState(initial);
   const paypalOrder = useRef("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(failed);
   const [editing, setEditing] = useState(!initial.address && initial.lines.length > 0);
   const ng = (country ?? q.address?.country) === "NG";
   const methods: Method[] = [
-    { id: "card", name: ng ? "Card · Verve, Visa, Mastercard" : "Card · Visa, Mastercard", sub: ng ? "Paystack secure form" : "Through PayPal, no account needed", ready: !ng && paypal },
-    { id: "paypal", name: "PayPal", sub: "Pay with your PayPal balance or linked card", ready: paypal },
-    ...(ng ? [{ id: "bank", name: "Bank transfer or USSD", sub: "Flutterwave · instant", ready: false }] : []),
-    { id: "cod", name: "Pay on delivery", sub: "Cash or card at your door, Lagos only", ready: q.cod },
-    { id: "crypto", name: "Crypto · BTC, USDC", sub: "Coinbase Commerce", ready: false },
-    ...(ng ? [{ id: "instalments", name: "Pay in 6 instalments", sub: "For orders over ₦100,000", ready: false }] : []),
+    { id: "card", name: ng ? "Card · Verve, Visa, Mastercard" : "Card · Visa, Mastercard", sub: ng ? "Paystack secure form" : "Through PayPal, no account needed", ready: ng ? paystack : paypal, logo: ng ? "card-ng" : "card" },
+    { id: "paypal", name: "PayPal", sub: "Pay with your PayPal balance or linked card", ready: paypal, logo: "paypal" },
+    ...(ng ? [{ id: "bank", name: "Bank transfer or USSD", sub: "Flutterwave · instant", ready: flutterwave, logo: "flutterwave" as PayBrand }] : []),
+    { id: "cod", name: "Pay on delivery", sub: "Cash or card at your door, Lagos only", ready: q.cod, logo: "cash" },
+    { id: "crypto", name: "Crypto · BTC, USDC", sub: "Coinbase Commerce", ready: false, logo: "coinbase" },
+    ...(ng ? [{ id: "instalments", name: "Pay in 6 instalments", sub: "For orders over ₦100,000", ready: false, logo: "bank" as PayBrand }] : []),
   ];
   const [method, setMethod] = useState(() => methods.find((m) => m.ready && m.id === "paypal")?.id ?? methods.find((m) => m.ready)?.id ?? "");
   // A method can open up later (pay on delivery once a Lagos address is saved).
   const fallback = methods.find((m) => m.ready && m.id === "paypal")?.id ?? methods.find((m) => m.ready)?.id ?? "";
   const chosen = methods.find((m) => m.id === method && m.ready) ?? methods.find((m) => m.id === fallback);
-  const usesPayPal = chosen?.id === "paypal" || chosen?.id === "card";
+  const local = ng && chosen?.id === "card" ? "paystack" : ng && chosen?.id === "bank" ? "flutterwave" : "";
+  const usesPayPal = !local && (chosen?.id === "paypal" || chosen?.id === "card");
 
   const change = async (productId: string, variant: string, qty: number, add = false) => {
     setBusy(true);
@@ -50,6 +52,17 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, tz
     if (r.ok) return window.location.assign(`/shop/orders?o=${r.data.id}&placed=1`);
     setBusy(false);
     setErr(r.data.error ?? "Could not place the order");
+    if (r.status === 409) refresh();
+  };
+  // Paystack (cards in Nigeria) and Flutterwave (bank transfer, USSD): the order is made on the
+  // server, then the buyer pays on the provider's page and comes back to tracking.
+  const payLocal = async () => {
+    setBusy(true);
+    setErr("");
+    const r = await store<{ url: string; order: Order }>("checkout", "POST", { method: local, expectTotalNgn: q.totalNgn });
+    if (r.ok && r.data.url) return window.location.assign(r.data.url);
+    setBusy(false);
+    setErr((!r.ok && r.data.error) || "Could not start the payment");
     if (r.status === 409) refresh();
   };
   const refresh = async () => {
@@ -152,6 +165,7 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, tz
             <button key={m.id} type="button" role="radio" aria-checked={chosen?.id === m.id} disabled={!m.ready}
               className={`ct-pm${chosen?.id === m.id ? " on" : ""}`} onClick={() => setMethod(m.id)}>
               <span className="ct-radio" aria-hidden />
+              <PayLogo brand={m.logo} />
               <span className="ct-t"><strong>{m.name}</strong><small>{m.sub}</small></span>
               {!m.ready && <span className="soon-tag">{m.id === "cod" ? "Lagos only" : "soon"}</span>}
             </button>
@@ -171,6 +185,8 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, tz
           <button type="button" className="sh-btn wide" onClick={() => setEditing(true)} disabled={busy}>{q.address ? "Fix the items above to pay" : "Add your address to pay"}</button>
         ) : chosen?.id === "cod" ? (
           <button type="button" className="sh-btn wide" onClick={placeCOD} disabled={busy}>{busy ? "Placing…" : `Place order · pay ${price(q.totalNgn, px)} on delivery`}</button>
+        ) : local ? (
+          <button type="button" className="sh-btn wide" onClick={payLocal} disabled={busy}>{busy ? "Opening the secure page…" : `Pay ${price(q.totalNgn, px)} with ${local === "paystack" ? "Paystack" : "Flutterwave"}`}</button>
         ) : usesPayPal ? (
           <PayPalTicketButton className="sh-btn wide" label={`Pay ${price(q.totalNgn, px)}`} create={createPayPal} onPaid={() => window.location.assign(`/shop/orders?o=${paypalOrder.current}&placed=1`)} disabled={busy} />
         ) : (

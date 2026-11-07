@@ -5712,3 +5712,9 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 .bank-form { display: grid; gap: 12px; margin-bottom: 12px; }
 .bank-form .bank-ok { color: #4fd1c5; }
 .stu-seg { margin-bottom: 12px; }
+
+/* Real brand marks on payment choices */
+.pay-logo { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 56px; height: 30px; padding: 0 8px; border-radius: 6px; background: #fff; flex: none; }
+.pay-logo img { display: block; }
+.pay-logo.icon { min-width: 40px; }
+.sh-hero-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
