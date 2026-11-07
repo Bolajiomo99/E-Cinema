@@ -10,7 +10,7 @@ import { json, sameOrigin } from "@/lib/room-gate";
 import { chargeFor, isStaff, myQuote } from "@/lib/store";
 import { switchOn } from "@/lib/platform";
 import { newReference, providerReady, refundPayment, startPayment, type Provider } from "@/lib/local-pay";
-import type { Order, Quote } from "@/lib/store-types";
+import { firstPart, INSTALMENT_MIN_NGN, INSTALMENT_PARTS, type Order, type Quote } from "@/lib/store-types";
 
 // The E-Cinema store (Figma 53:925, 96:1194, 53:1111, 89:894): cart, address, checkout with
 // PayPal or pay on delivery, cancel with refund, returns, reorders, reviews, and the delivery
@@ -153,9 +153,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
 // Checkout: pay on delivery places the order now; PayPal creates the order for the buyer to
 // approve and records it as pending until the capture confirms it.
 async function checkout(session: string, country: string, body: Record<string, unknown>) {
-  const method = ["cod", "paypal", "paystack", "flutterwave"].includes(String(body.method)) ? String(body.method) : "";
+  const method = ["cod", "paypal", "paystack", "flutterwave", "instalments"].includes(String(body.method)) ? String(body.method) : "";
   if (!method) return json(400, { error: "Choose how to pay" });
   if (method === "paystack" || method === "flutterwave") return localCheckout(method, session, country, body);
+  if (method === "instalments") return localCheckout("paystack", session, country, body, true);
   const expect = Number(body.expectTotalNgn);
   if (method === "cod" && !switchOn("pay.cod")) return json(503, { error: "Pay on delivery is switched off just now" });
   if (method === "paypal" && !switchOn("pay.paypal")) return json(503, { error: "PayPal is switched off just now" });
@@ -199,7 +200,7 @@ async function checkout(session: string, country: string, body: Record<string, u
 
 // Paystack and Flutterwave: the order waits as pending under the provider reference, and the
 // buyer pays on the provider's page in naira. The return page and the webhook confirm it.
-async function localCheckout(p: Provider, session: string, country: string, body: Record<string, unknown>) {
+async function localCheckout(p: Provider, session: string, country: string, body: Record<string, unknown>, plan = false) {
   if (!providerReady(p)) return json(503, { error: "This payment method is not switched on yet" });
   const expect = Number(body.expectTotalNgn);
   const q: Quote | null = await myQuote(session, country);
@@ -210,17 +211,19 @@ async function localCheckout(p: Provider, session: string, country: string, body
   if (q.totalNgn !== expect) return json(409, { error: "Prices changed while you were paying; please check your cart again" });
   const me = await currentAccount();
   if (!me) return json(401, { error: "Sign in first", signIn: true });
+  if (plan && q.totalNgn < INSTALMENT_MIN_NGN) return json(400, { error: `Instalments are for orders of ₦${INSTALMENT_MIN_NGN.toLocaleString("en-NG")} or more` });
   const reference = newReference(p);
-  const amountKobo = q.totalNgn * 100;
-  const r = await accountApi("POST", "/v1/me/orders", { method: p, country, expectTotalNgn: expect, chargeCurrency: "NGN", chargeCents: amountKobo, paypalOrderId: reference }, session);
+  // Pay in 6: today's charge is the first part; the saved card pays the rest monthly.
+  const amountKobo = (plan ? firstPart(q.totalNgn) : q.totalNgn) * 100;
+  const r = await accountApi("POST", "/v1/me/orders", { method: plan ? "instalments" : p, country, expectTotalNgn: expect, chargeCurrency: "NGN", chargeCents: amountKobo, paypalOrderId: reference }, session);
   if (r.status !== 201) return pass(r);
   const order = r.body as Order;
   try {
     const started = await startPayment(p, {
       reference, amountKobo, email: me.email, name: me.name || "E-Cinema member",
-      title: `E-Cinema shop: ${q.count} item${q.count === 1 ? "" : "s"}`,
+      title: `E-Cinema shop: ${q.count} item${q.count === 1 ? "" : "s"}${plan ? `, part 1 of ${INSTALMENT_PARTS}` : ""}`,
       returnUrl: `${site()}/api/pay/${p}/return`,
-      meta: { kind: "shop", orderId: order.id },
+      meta: plan ? { kind: "shop", orderId: order.id, plan: "instalments" } : { kind: "shop", orderId: order.id },
     });
     return json(200, { url: started.url, order });
   } catch (e) {

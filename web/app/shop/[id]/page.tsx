@@ -9,7 +9,7 @@ import ProductBuy from "@/components/store/ProductBuy";
 import { currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { readLocale } from "@/lib/locale";
 import { myQuote, pricing, storeProduct } from "@/lib/store";
-import { CATEGORY, price, type Product, type Quote } from "@/lib/store-types";
+import { CATEGORY, firstPart, INSTALMENT_MIN_NGN, INSTALMENT_PARTS, price, type Product, type Quote } from "@/lib/store-types";
 
 // Built from the Figma frame "Web / Shop · Product detail" (96:1194).
 export const dynamic = "force-dynamic";
@@ -74,7 +74,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             )}
           </p>
           <p className="pd-price">{price(p.priceNgn, px)}</p>
-          {p.priceNgn >= 100000 && <p className="sh-muted">or 6 × {price(Math.ceil(p.priceNgn / 6 / 100) * 100, px)} with Paystack instalments <span className="soon-tag">soon</span></p>}
+          {p.priceNgn >= INSTALMENT_MIN_NGN && <p className="sh-muted">or {INSTALMENT_PARTS} × {price(firstPart(p.priceNgn), px)} with Paystack instalments, chosen in the cart</p>}
           <p className="pd-blurb">{p.blurb}</p>
           <ProductBuy productId={p.id} options={p.options} signedIn={Boolean(me)} />
           <div className="pd-del">

@@ -132,7 +132,20 @@ export default function OrdersApp({ initial, reviewable, px, tz, focus, placed }
                     <span className="or-p">{price(it.unitNgn * it.qty, px)}</span>
                   </div>
                 ))}
-                <p className="or-tot"><span>{current.method === "cod" && current.status !== "delivered" ? "To pay on delivery" : "Total paid"}</span><strong>{price(current.totalNgn, px)}</strong></p>
+                {current.plan ? (
+                  <>
+                    <p className="or-tot"><span>Paid so far · {current.plan.paid} of {current.plan.parts} parts</span><strong>{price(current.plan.paidNgn, px)}</strong></p>
+                    <small className="sh-muted">
+                      {current.plan.status === "done" ? `Fully paid: ${price(current.totalNgn, px)} over ${current.plan.parts} parts on your Paystack card.`
+                        : current.plan.status === "failed" ? `We could not take part ${current.plan.paid + 1} after three tries${current.plan.lastError ? ` (${current.plan.lastError})` : ""}. Email help@e-cinema.net to pay the rest another way.`
+                        : current.plan.status === "stopped" ? "The plan stopped with this order; no more parts will be charged."
+                        : current.plan.nextDue ? `Next part ${price(current.plan.nextNgn, px)} on ${new Date(current.plan.nextDue).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: tz })}, charged to the same card. Order total ${price(current.totalNgn, px)}.`
+                        : `Order total ${price(current.totalNgn, px)} in ${current.plan.parts} parts.`}
+                    </small>
+                  </>
+                ) : (
+                  <p className="or-tot"><span>{current.method === "cod" && current.status !== "delivered" ? "To pay on delivery" : "Total paid"}</span><strong>{price(current.totalNgn, px)}</strong></p>
+                )}
                 {current.method === "paypal" && <small className="sh-muted">Charged {(current.chargeCents / 100).toLocaleString("en", { style: "currency", currency: current.chargeCurrency })} through PayPal</small>}
               </div>
             )}
@@ -178,7 +191,7 @@ function Track({ o, t, d, now, px, onCancel }: { o: Order; t: (iso?: string) => 
     o.status === "delivered" || o.status === "returned" ? 1
     : o.status === "out" && o.outAt && eta ? Math.min(0.95, Math.max(0.3, (now - Date.parse(o.outAt)) / Math.max(1, Date.parse(eta) - Date.parse(o.outAt))))
     : o.status === "out" ? 0.5 : o.status === "packed" ? 0.12 : 0.04;
-  const paid = o.method === "cod" ? "pay on delivery" : "paid with PayPal";
+  const paid = o.method === "cod" ? "pay on delivery" : o.method === "paystack" ? "paid with Paystack" : o.method === "flutterwave" ? "paid with Flutterwave" : o.method === "instalments" ? `paying in ${o.plan?.parts ?? 6} parts` : "paid with PayPal";
   const steps: { title: string; sub: string; at?: string; state: "done" | "now" | "todo" }[] =
     o.status === "returning" || o.status === "returned"
       ? [
@@ -189,7 +202,7 @@ function Track({ o, t, d, now, px, onCancel }: { o: Order; t: (iso?: string) => 
       : [
           { title: "Ordered", sub: `${t(o.placedAt ?? o.createdAt)} · ${paid}`, state: "done" },
           ...(o.status === "cancelled"
-            ? [{ title: "Cancelled", sub: `${t(o.cancelledAt)}${o.method === "paypal" ? " · refunded to your PayPal" : ""}`, state: "done" as const }]
+            ? [{ title: "Cancelled", sub: `${t(o.cancelledAt)}${o.method === "paypal" ? " · refunded to your PayPal" : o.method === "paystack" || o.method === "flutterwave" || o.method === "instalments" ? " · refunded to your card or bank" : ""}`, state: "done" as const }]
             : [
                 { title: "Packed at Lagos hub", sub: o.packedAt ? t(o.packedAt) : "Being packed now", state: o.packedAt ? ("done" as const) : ("now" as const) },
                 {

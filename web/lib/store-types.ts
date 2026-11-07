@@ -21,12 +21,15 @@ export type Item = {
 export type Rider = { name: string; phone: string; vehicle: string; plate: string; eta: string };
 export type OrderStatus = "pending" | "placed" | "packed" | "out" | "delivered" | "cancelled" | "returning" | "returned";
 export type Order = {
-  id: string; number: string; status: OrderStatus; method: "paypal" | "cod";
+  id: string; number: string; status: OrderStatus; method: "paypal" | "cod" | "paystack" | "flutterwave" | "instalments";
   itemsNgn: number; discountNgn: number; bundleNgn: number; deliveryNgn: number; vatNgn: number; totalNgn: number;
   chargeCurrency: string; chargeCents: number; address: Address; rider?: Rider; returnReason?: string; buyer?: string;
   createdAt: string; placedAt?: string; packedAt?: string; outAt?: string; deliveredAt?: string; cancelledAt?: string; returnAt?: string; returnedAt?: string;
   items: Item[];
+  plan?: Plan;
 };
+// Pay in 6: parts paid so far and the next charge to the saved card.
+export type Plan = { parts: number; paid: number; partNgn: number; nextNgn: number; paidNgn: number; status: "waiting" | "active" | "done" | "failed" | "stopped"; nextDue?: string; lastError?: string };
 
 // Display prices: naira converted at one rate into the viewer's currency.
 export type Pricing = { currency: string; rate: number };
@@ -48,3 +51,9 @@ export const CATEGORY: Record<Product["category"], string> = {
 export const defaultVariant = (p: Product) => p.options.map((o) => o.values[0]).join(" · ");
 
 export const RETURN_DAYS = 14;
+
+// Pay in 6 (Shop hero, Cart): same split as the API. Each part is the total over six rounded
+// up; the last part takes what is left.
+export const INSTALMENT_PARTS = 6;
+export const INSTALMENT_MIN_NGN = 100_000;
+export const firstPart = (totalNgn: number) => Math.ceil(totalNgn / INSTALMENT_PARTS);

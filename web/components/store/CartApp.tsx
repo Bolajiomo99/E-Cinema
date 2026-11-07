@@ -6,7 +6,7 @@ import PayPalTicketButton from "@/components/PayPalTicketButton";
 import ProductArt from "@/components/store/ProductArt";
 import PayLogo, { type PayBrand } from "@/components/pay/PayLogo";
 import { announce, setCart, store } from "@/lib/store-client";
-import { price, type Address, type Order, type Pricing, type Quote } from "@/lib/store-types";
+import { firstPart, INSTALMENT_MIN_NGN, INSTALMENT_PARTS, price, type Address, type Order, type Pricing, type Quote } from "@/lib/store-types";
 
 type Method = { id: string; name: string; sub: string; ready: boolean; logo: PayBrand };
 
@@ -27,13 +27,17 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, pa
     ...(ng ? [{ id: "bank", name: "Bank transfer or USSD", sub: "Flutterwave · instant", ready: flutterwave, logo: "flutterwave" as PayBrand }] : []),
     { id: "cod", name: "Pay on delivery", sub: "Cash or card at your door, Lagos only", ready: q.cod, logo: "cash" },
     { id: "crypto", name: "Crypto · BTC, USDC", sub: "Coinbase Commerce", ready: false, logo: "coinbase" },
-    ...(ng ? [{ id: "instalments", name: "Pay in 6 instalments", sub: "For orders over ₦100,000", ready: false, logo: "bank" as PayBrand }] : []),
+    ...(ng ? [{
+      id: "instalments", name: `Pay in ${INSTALMENT_PARTS} instalments`,
+      sub: q.totalNgn >= INSTALMENT_MIN_NGN ? `${INSTALMENT_PARTS} × ${price(firstPart(q.totalNgn), px)} · first today, then monthly on the same card` : `For orders of ${price(INSTALMENT_MIN_NGN, px)} or more`,
+      ready: paystack && q.totalNgn >= INSTALMENT_MIN_NGN, logo: "paystack" as PayBrand,
+    }] : []),
   ];
   const [method, setMethod] = useState(() => methods.find((m) => m.ready && m.id === "paypal")?.id ?? methods.find((m) => m.ready)?.id ?? "");
   // A method can open up later (pay on delivery once a Lagos address is saved).
   const fallback = methods.find((m) => m.ready && m.id === "paypal")?.id ?? methods.find((m) => m.ready)?.id ?? "";
   const chosen = methods.find((m) => m.id === method && m.ready) ?? methods.find((m) => m.id === fallback);
-  const local = ng && chosen?.id === "card" ? "paystack" : ng && chosen?.id === "bank" ? "flutterwave" : "";
+  const local = ng && chosen?.id === "card" ? "paystack" : ng && chosen?.id === "bank" ? "flutterwave" : chosen?.id === "instalments" ? "instalments" : "";
   const usesPayPal = !local && (chosen?.id === "paypal" || chosen?.id === "card");
 
   const change = async (productId: string, variant: string, qty: number, add = false) => {
@@ -167,7 +171,7 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, pa
               <span className="ct-radio" aria-hidden />
               <PayLogo brand={m.logo} />
               <span className="ct-t"><strong>{m.name}</strong><small>{m.sub}</small></span>
-              {!m.ready && <span className="soon-tag">{m.id === "cod" ? "Lagos only" : "soon"}</span>}
+              {!m.ready && <span className="soon-tag">{m.id === "cod" ? "Lagos only" : m.id === "instalments" && paystack ? `${price(INSTALMENT_MIN_NGN, px)}+` : "soon"}</span>}
             </button>
           ))}
         </div>
@@ -186,7 +190,7 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, pa
         ) : chosen?.id === "cod" ? (
           <button type="button" className="sh-btn wide" onClick={placeCOD} disabled={busy}>{busy ? "Placing…" : `Place order · pay ${price(q.totalNgn, px)} on delivery`}</button>
         ) : local ? (
-          <button type="button" className="sh-btn wide" onClick={payLocal} disabled={busy}>{busy ? "Opening the secure page…" : `Pay ${price(q.totalNgn, px)} with ${local === "paystack" ? "Paystack" : "Flutterwave"}`}</button>
+          <button type="button" className="sh-btn wide" onClick={payLocal} disabled={busy}>{busy ? "Opening the secure page…" : local === "instalments" ? `Pay ${price(firstPart(q.totalNgn), px)} today with Paystack` : `Pay ${price(q.totalNgn, px)} with ${local === "paystack" ? "Paystack" : "Flutterwave"}`}</button>
         ) : usesPayPal ? (
           <PayPalTicketButton className="sh-btn wide" label={`Pay ${price(q.totalNgn, px)}`} create={createPayPal} onPaid={() => window.location.assign(`/shop/orders?o=${paypalOrder.current}&placed=1`)} disabled={busy} />
         ) : (

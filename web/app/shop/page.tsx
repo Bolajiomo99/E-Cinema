@@ -8,7 +8,7 @@ import ProductArt from "@/components/store/ProductArt";
 import { currentAccount } from "@/lib/auth";
 import { readLocale } from "@/lib/locale";
 import { pricing, storeProducts } from "@/lib/store";
-import { defaultVariant, price, type Product } from "@/lib/store-types";
+import { defaultVariant, firstPart, INSTALMENT_PARTS, price, type Product } from "@/lib/store-types";
 
 // Built from the Figma frame "Web / Shop" (53:925).
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             <p>Front-row seat at every premiere. 4K per eye, spatial audio, made for E‑Cinema VR halls.</p>
             <div className="sh-hero-b">
               <Link href="/shop/vr-headset" className="sh-btn">Buy · {price(hero.priceNgn, px)}</Link>
-              <span className="sh-muted">or 6 × {price(Math.ceil(hero.priceNgn / 6 / 100) * 100, px)} · instalments <span className="soon-tag">soon</span></span>
+              <span className="sh-muted">or {INSTALMENT_PARTS} × {price(firstPart(hero.priceNgn), px)} · instalments in the cart</span>
             </div>
           </div>
           <Link href="/shop/vr-headset" className="sh-hero-img" aria-label="See the VR headset">
