@@ -4123,6 +4123,7 @@ a.cp-person:hover { border-color: #44444f; }
 .stu-legend { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
 .stu-legend span + span { color: #6e6e7a; }
 .stu-mut { font: 500 13px/18px Manrope, sans-serif; color: #a6a6b0; }
+.stu-mut small { display: block; font: 500 11px/16px Manrope, sans-serif; color: #6f6f7a; }
 
 /* Films table */
 .stu-films { display: flex; flex-direction: column; gap: 12px; }

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { money, type Film } from "@/lib/studio-types";
 
-// Figma "Studio / Films" (34:458): every premiere of the studio's films, filtered by state.
-export type FilmRow = Film & { kind: string; dubs: number };
+// Figma "Studio / Films" (34:458): one row per film (its encores folded in), filtered by state.
+// startsAt is the screening that matters now: the live one, else the next, else the premiere.
+export type FilmRow = Film & { kind: string; dubs: number; screenings: number; upcoming: number };
 const POSTERS = ["#1d1440", "#3d0f2e", "#0f3324", "#2b2f36", "#0c2a3a", "#3b2a0a"];
 
 // Built by hand so the server and the browser print exactly the same text.
@@ -23,14 +24,15 @@ export type DraftRow = { id: string; title: string; files: number; saved: string
 export default function StudioFilms({ films, drafts, now }: { films: FilmRow[]; drafts: DraftRow[]; now: number }) {
   const [tab, setTab] = useState<"all" | Film["state"]>("all");
   const count = (s: Film["state"]) => films.filter((f) => f.state === s).length;
-  const titles = new Set(films.map((f) => f.film)).size;
+  const titles = films.length;
+  const screenings = films.reduce((n, f) => n + f.upcoming, 0);
   const shown = tab === "all" ? films : films.filter((f) => f.state === tab);
   return (
     <div className="pt-body">
       <header className="bp-head">
         <div>
           <h1>Films</h1>
-          <p>{titles} {titles === 1 ? "title" : "titles"} · {count("upcoming")} upcoming · {count("live")} live</p>
+          <p>{titles} {titles === 1 ? "title" : "titles"} · {screenings} upcoming {screenings === 1 ? "screening" : "screenings"} · {count("live")} live</p>
         </div>
         <Link className="vf-btn red" href="/studio/upload">Upload a film</Link>
       </header>
@@ -41,9 +43,9 @@ export default function StudioFilms({ films, drafts, now }: { films: FilmRow[]; 
       </div>
       {shown.length ? (
         <div className="stu-films" role="table" aria-label="Your films">
-          <div className="stu-fr hdr" role="row"><span role="columnheader">Title</span><span role="columnheader">Status</span><span role="columnheader">Premiere</span><span role="columnheader">Languages</span><span role="columnheader">Tickets</span><span role="columnheader">Gross</span><span /></div>
+          <div className="stu-fr hdr" role="row"><span role="columnheader">Title</span><span role="columnheader">Status</span><span role="columnheader">Next screening</span><span role="columnheader">Languages</span><span role="columnheader">Tickets</span><span role="columnheader">Gross</span><span /></div>
           {shown.map((f, i) => (
-            <div key={f.showtimeId} className="stu-fr" role="row">
+            <div key={f.origin || f.showtimeId} className="stu-fr" role="row">
               <span className="stu-ft" role="cell">
                 <i className="stu-poster sm" style={{ background: `linear-gradient(180deg, ${POSTERS[i % POSTERS.length]}, #000)` }} aria-hidden />
                 <span><b>{f.film.toUpperCase()}</b><small>{f.kind}</small></span>
@@ -51,11 +53,11 @@ export default function StudioFilms({ films, drafts, now }: { films: FilmRow[]; 
               <span role="cell">
                 {f.state === "live" ? <span className="stu-badge"><i />LIVE</span> : f.state === "upcoming" ? <span className="stu-tag white">ON SALE</span> : <span className="stu-tag">{f.payout === "sent" ? "PAID OUT" : "ENDED"}</span>}
               </span>
-              <span role="cell" className="stu-mut">{premiere(f.startsAt, now)}</span>
+              <span role="cell" className="stu-mut">{premiere(f.startsAt, now)}{f.screenings > 1 && <small>{f.screenings} screenings</small>}</span>
               <span role="cell" className="stu-mut">{f.dubs ? `${f.dubs + 1} audio` : "Original audio"}</span>
               <span role="cell"><b>{f.seats ? f.seats.toLocaleString("en-GB") : "—"}</b></span>
               <span role="cell"><b>{f.grossCents ? money(f.grossCents, f.currency, true) : "—"}</b></span>
-              <span role="cell"><Link className="vf-btn sm" href={`/film/${f.showtimeId}`}>View</Link></span>
+              <span role="cell"><Link className="vf-btn sm" href={f.uploadId ? `/studio/films/${f.uploadId}` : `/film/${f.showtimeId}`}>View</Link></span>
             </div>
           ))}
         </div>

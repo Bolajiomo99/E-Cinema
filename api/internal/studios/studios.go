@@ -491,6 +491,9 @@ type Film struct {
 	Completion  float64   `json:"completion"`
 	State       string    `json:"state"` // upcoming, live, ended
 	Payout      string    `json:"payout"`
+	// Origin is the first screening this one repeats (itself for a premiere); encores share it.
+	Origin   string `json:"origin"`
+	UploadID string `json:"uploadId,omitempty"`
 }
 
 func (st Store) Films(ctx context.Context, acct, email string) ([]Film, error) {
@@ -510,9 +513,12 @@ func (st Store) films(ctx context.Context, studio string, share int) ([]Film, er
 	  (SELECT count(*) FROM reviews r WHERE r.showtime_id = s.id AND NOT r.hidden),
 	  coalesce((SELECT avg(least(1.0, w.secs / (s.duration_min * 60.0))) FROM (SELECT sum(seconds) secs FROM watch_beats b WHERE b.showtime_id = s.id GROUP BY b.account_id) w), 0),
 	  coalesce((SELECT status FROM studio_payouts p WHERE p.showtime_id = s.id), ''),
-	  CASE WHEN now() < s.starts_at THEN 'upcoming' WHEN now() < s.starts_at + s.duration_min * interval '1 minute' THEN 'live' ELSE 'ended' END
-	  FROM showtimes s LEFT JOIN holds h ON h.showtime_id = s.id LEFT JOIN accounts a ON a.id = h.account_id
-	  WHERE s.studio = $1 GROUP BY s.id ORDER BY s.starts_at DESC`, studio)
+	  CASE WHEN now() < s.starts_at THEN 'upcoming' WHEN now() < s.starts_at + s.duration_min * interval '1 minute' THEN 'live' ELSE 'ended' END,
+	  o.origin, coalesce((SELECT p.upload::text FROM studio_premieres p WHERE p.showtime_id = o.origin), '')
+	  FROM showtimes s
+	  CROSS JOIN LATERAL (SELECT coalesce(s.encore_of, (SELECT e.origin FROM studio_encores e WHERE e.showtime_id = s.id), s.id) AS origin) o
+	  LEFT JOIN holds h ON h.showtime_id = s.id LEFT JOIN accounts a ON a.id = h.account_id
+	  WHERE s.studio = $1 GROUP BY s.id, o.origin ORDER BY s.starts_at DESC`, studio)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +527,7 @@ func (st Store) films(ctx context.Context, studio string, share int) ([]Film, er
 	for rows.Next() {
 		var f Film
 		if err := rows.Scan(&f.ShowtimeID, &f.Film, &f.StartsAt, &f.DurationMin, &f.Capacity, &f.Currency, &f.Seats, &f.GrossCents, &f.Countries,
-			&f.Rating, &f.Reviews, &f.Completion, &f.Payout, &f.State); err != nil {
+			&f.Rating, &f.Reviews, &f.Completion, &f.Payout, &f.State, &f.Origin, &f.UploadID); err != nil {
 			return nil, err
 		}
 		f.ShareCents = f.GrossCents * int64(share) / 10000

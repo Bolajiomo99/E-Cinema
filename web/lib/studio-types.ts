@@ -17,7 +17,7 @@ export type Role = "owner" | "admin" | "finance" | "marketing" | "viewer";
 export type Film = {
   showtimeId: string; film: string; startsAt: string; durationMin: number; capacity: number; seats: number;
   grossCents: number; shareCents: number; currency: string; rating: number; reviews: number; countries: number; completion: number;
-  state: "upcoming" | "live" | "ended"; payout: string;
+  state: "upcoming" | "live" | "ended"; payout: string; origin?: string; uploadId?: string;
 };
 export type Overview = {
   studio: Studio; currency: string; earnedMonth: number; earnedLast: number; seatsMonth: number; seatsLast: number;
