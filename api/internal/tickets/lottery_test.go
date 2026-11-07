@@ -112,3 +112,42 @@ func TestSoldOutLottery(t *testing.T) {
 		t.Fatal("told twice")
 	}
 }
+
+// A studio premiere with the fast sell-out rule on gives 1,000 free seats when it sells out
+// within 24 hours of its first sale; slower sell-outs keep the usual one in 40.
+func TestFastSellOutSeats(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	const id, studio = "fast-lottery-test", "Test Fast Pictures"
+	clean := func() {
+		s.DB.Exec(ctx, `DELETE FROM lottery_draws WHERE showtime_id = $1`, id)
+		s.DB.Exec(ctx, `DELETE FROM holds WHERE showtime_id = $1`, id)
+		s.DB.Exec(ctx, `DELETE FROM studios WHERE name = $1`, studio)
+	}
+	clean()
+	newShow(t, s, id, 20)
+	t.Cleanup(clean)
+	s.DB.Exec(ctx, `INSERT INTO studios (name, slug, status, payout_email) VALUES ($1, 'test-fast-pictures', 'verified', 'x@example.com')`, studio)
+	var up string
+	if err := s.DB.QueryRow(ctx, `INSERT INTO studio_uploads (studio, title) VALUES ($1, 'Fast') RETURNING id`, studio).Scan(&up); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(ctx, `INSERT INTO studio_premieres (upload, showtime_id, published_at, free_seats) VALUES ($1, $2, now(), true)`, up, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(ctx, `INSERT INTO holds (showtime_id, seats, viewer_ref, status, expires_at) VALUES ($1, 10, 'v', 'paid', now()), ($1, 10, 'v', 'paid', now())`, id); err != nil {
+		t.Fatal(err)
+	}
+	if l, err := s.LotteryState(ctx, id, ""); err != nil || l.FreeSeats != tickets.FastSellOutSeats {
+		t.Fatalf("fast sell-out: %+v %v", l, err)
+	}
+	s.DB.Exec(ctx, `UPDATE holds SET created_at = now() + interval '30 hours' WHERE ctid = (SELECT ctid FROM holds WHERE showtime_id = $1 LIMIT 1)`, id)
+	if l, _ := s.LotteryState(ctx, id, ""); l.FreeSeats != 1 {
+		t.Fatalf("slow sell-out gave %d", l.FreeSeats)
+	}
+	s.DB.Exec(ctx, `UPDATE studio_premieres SET free_seats = false WHERE upload = $1`, up)
+	s.DB.Exec(ctx, `UPDATE holds SET created_at = now() WHERE showtime_id = $1`, id)
+	if l, _ := s.LotteryState(ctx, id, ""); l.FreeSeats != 1 {
+		t.Fatalf("rule off gave %d", l.FreeSeats)
+	}
+}

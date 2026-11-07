@@ -57,6 +57,29 @@ type Winner struct {
 	HoldID    string `json:"holdId"`
 }
 
+// FastSellOutSeats is the platform rule on studio premieres that switch it on: a film that sells
+// every seat within 24 hours of its first sale opens this many free seats, at E-Cinema's cost.
+const FastSellOutSeats = 1000
+
+const fastSellOut = `SELECT EXISTS (SELECT 1 FROM studio_premieres p WHERE p.showtime_id = $1 AND p.free_seats)
+  AND coalesce((SELECT max(created_at) - min(created_at) <= interval '24 hours' FROM holds h WHERE h.showtime_id = $1 AND h.status = 'paid' AND NOT h.lottery), false)`
+
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// seatsToGive is how many free seats a sold-out screening's draw gives away.
+func seatsToGive(ctx context.Context, q querier, showtimeID string, capacity int) (int, error) {
+	var fast bool
+	if err := q.QueryRow(ctx, fastSellOut, showtimeID).Scan(&fast); err != nil {
+		return 0, err
+	}
+	if fast {
+		return FastSellOutSeats, nil
+	}
+	return freeSeats(capacity), nil
+}
+
 func freeSeats(capacity int) int {
 	if n := capacity / SeatsPerFree; n > 0 {
 		return n
@@ -82,6 +105,11 @@ func (st Store) LotteryState(ctx context.Context, showtimeID, accountID string) 
 		return l, err
 	}
 	l.Sold, l.SoldOut, l.FreeSeats, l.DrawAt = sold, sold >= capacity, freeSeats(capacity), starts.Add(-DrawBefore)
+	if l.SoldOut {
+		if l.FreeSeats, err = seatsToGive(ctx, st.DB, showtimeID, capacity); err != nil {
+			return l, err
+		}
+	}
 	if first != nil && last != nil {
 		l.SoldOutAfter = int(last.Sub(*first).Minutes())
 	}
@@ -213,7 +241,10 @@ func (st Store) Draw(ctx context.Context, showtimeID string, now time.Time) ([]W
 		if err != nil {
 			return err
 		}
-		seats := freeSeats(capacity)
+		seats, err := seatsToGive(ctx, tx, showtimeID, capacity)
+		if err != nil {
+			return err
+		}
 		won := pick(seed, ids, seats)
 		for _, id := range won {
 			var w Winner
