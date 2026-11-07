@@ -17,6 +17,7 @@ import type { Party } from "@/lib/parties";
 import { doorsCloseAt, LATE_GRACE_MIN, phaseOf, quote, salesOver } from "@/lib/ticket-quote";
 import LateEntry, { MinutesIn } from "@/components/film/LateEntry";
 import LiveAudience from "@/components/dash/LiveAudience";
+import ViewBeacon from "@/components/film/ViewBeacon";
 import { endsAt } from "@/lib/catalog";
 
 // Built from the Figma frame "Web / Film detail · premiere page" (30:904).
@@ -87,6 +88,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
         <span className="fd-fade-left" aria-hidden />
         <span className="fd-fade-bottom" aria-hidden />
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
+        <ViewBeacon film={s.id} />
         <div className="fd-copy">
           <div className="lp-badges">
             {phase === "grace" || phase === "late" || phase === "closed" ? (
