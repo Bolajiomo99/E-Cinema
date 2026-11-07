@@ -8,7 +8,7 @@ type LiveFilm = {
   showtimeId: string; upload: string; film: string; studio: string; startsAt: string; durationMin: number; priceCents: number; adult: boolean;
   logline: string; genres: string; ageRating: string; languages: string; poster: boolean; format: string;
   prices: Record<string, { country: string; currency: string; amountMinor: number }>;
-  earlySave?: number; formats?: string[]; hasMaster?: boolean; blocked?: string[];
+  earlySave?: number; formats?: string[]; hasMaster?: boolean; blocked?: string[]; studioSlug?: string;
 };
 
 // How a coming-soon post's formats read on the film's card (Figma 53:1512).
@@ -51,6 +51,7 @@ export function toShowtime(f: LiveFilm): Showtime {
     posterImage: f.poster ? `/api/films/${f.upload}/poster` : undefined,
     studioFilm: f.upload,
     blocked: f.blocked?.length ? f.blocked : undefined,
+    studioSlug: f.studioSlug || undefined,
     local: Object.fromEntries(Object.values(f.prices ?? {}).map((p) => [p.country, { currency: p.currency, minor: p.amountMinor }])),
   };
 }

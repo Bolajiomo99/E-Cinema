@@ -152,7 +152,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
           <section>
             <h2 className="fd-h2">Cast and crew</h2>
             <div className="fd-cast">
-              <div className="fd-person"><span style={{ background: "#e3182d" }}>{s.studio.charAt(0)}</span><b>{s.studio}</b><small>Studio</small></div>
+              <div className="fd-person"><span style={{ background: "#e3182d" }}>{s.studio.charAt(0)}</span><b>{s.studioSlug ? <Link href={`/studios/${s.studioSlug}`}>{s.studio}</Link> : s.studio}</b><small>Studio</small></div>
               <p className="fd-note">The studio publishes the full cast and crew before the premiere.</p>
             </div>
           </section>

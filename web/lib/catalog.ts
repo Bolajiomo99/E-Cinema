@@ -25,6 +25,7 @@ export type Showtime = {
   studioFilm?: string; // set on premieres a studio published from its portal
   local?: Record<string, { currency: string; minor: number }>; // studio's price per country
   blocked?: string[]; // countries the studio does not sell this film in
+  studioSlug?: string; // the studio's public page, for live studio premieres
   encoreOf?: string; // a weekly encore of this lineup screening
 };
 
