@@ -34,6 +34,7 @@ const SENDER = {
 // Footers: service mail cannot be switched off; the others link to the email settings.
 const settingsLink = () => `<a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Email settings</a>`;
 const FOOT_ACTION = () => ({ html: `You get this because of an action on your E-Cinema account. ${settingsLink()}` });
+const FOOT_STUDIO = () => ({ html: `You get this as a member of a studio on E-Cinema. <a href="${esc(site())}/studio/settings#notifications" style="color:#7a7a84">Choose which studio emails you get</a>` });
 const FOOT_NEWS = () => ({ html: `You get this because you said yes to news from E-Cinema. <a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Unsubscribe</a> · ${settingsLink()}` });
 
 // Pieces of the designs that only these emails use.
@@ -391,6 +392,76 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // Studio notification emails (Figma 39:1184 Settings · Notifications). Each member turns them
+  // on or off in Studio settings, so the footer says where.
+  studio_milestone: (m) => {
+    const film = S(m.data.film), pct = N(m.data.pct), sold = N(m.data.sold), cap = N(m.data.capacity), upload = S(m.data.upload);
+    if (!film || ![25, 50, 100].includes(pct)) return null;
+    const out = pct === 100;
+    const link = /^[0-9a-f-]{36}$/.test(upload) ? href(`/studio/films/${upload}?tab=pre-sales`) : href("/studio/premieres");
+    return done({
+      from: SENDER.studios, tag: out ? "SOLD OUT" : `${pct}% SOLD`, footer: FOOT_STUDIO(),
+      subject: out ? `${film} is sold out` : `${film} is ${pct}% sold`, preview: `${sold.toLocaleString("en-GB")} of ${cap.toLocaleString("en-GB")} seats, premiere ${when(S(m.data.startsAt), m.country)}`,
+      title: out ? "Every seat is sold" : `${pct}% of seats sold`,
+      body: facts([
+        ["Film", film],
+        ["Premiere", when(S(m.data.startsAt), m.country, { zone: true })],
+        ["Seats sold", `${sold.toLocaleString("en-GB")} of ${cap.toLocaleString("en-GB")}`],
+      ]) + (out ? p("Fans who missed out can still book an encore once you add one in Premieres and pricing.") : "") + button(link, "See pre-sales"),
+      text: `${film}: ${sold} of ${cap} seats sold (${pct}%). Pre-sales: ${link}`,
+    });
+  },
+  studio_incident: (m) => {
+    const film = S(m.data.film), title = S(m.data.title), mins = N(m.data.minutes);
+    if (!film || !title) return null;
+    return done({
+      from: SENDER.studios, tag: "INCIDENT", footer: FOOT_STUDIO(),
+      subject: `Streaming problem during ${film}`, preview: title,
+      title: "A problem hit your screening",
+      body: p(`Our engineers logged a streaming problem during ${esc(film)}: ${esc(title.replace(/[.!]?$/, "."))}`) +
+        (S(m.data.note) ? small(esc(S(m.data.note))) : "") +
+        facts([["Film", film], ...(mins > 0 ? [["Picture lost for", `${mins} ${mins === 1 ? "minute" : "minutes"}`] as [string, string]] : [])]) +
+        p("Every ticket holder who was watching gets a free seat on E-Cinema to make up for it.") +
+        button(href("/studio/control"), "Open control room"),
+      text: `Streaming problem during ${film}: ${title}. Viewers who were watching get a free seat. ${href("/studio/control")}`,
+    });
+  },
+  studio_leak: (m) => {
+    const PLACES: Record<string, string> = { website: "a website", telegram: "Telegram", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "another site" };
+    const KINDS: Record<string, string> = { clip: "A clip", full: "The full film", screenshot: "A screenshot", other: "Part" };
+    const film = S(m.data.film), place = PLACES[S(m.data.place)], what = KINDS[S(m.data.what)];
+    if (!place || !what) return null;
+    return done({
+      from: SENDER.studios, tag: "LEAK FOUND", footer: FOOT_STUDIO(),
+      subject: `Leak found${film ? `: ${film}` : ""} on ${place.replace(/^a /, "")}`, preview: "Send a takedown and trace who shared it",
+      title: "A leak was reported",
+      body: p(`${what} of ${film ? esc(film) : "one of your films"} was reported on ${esc(place)}. Open Piracy protection to send the takedown notice and trace the viewer code in the picture.`) +
+        button(href("/studio/piracy"), "Open Piracy protection"),
+      text: `${what} of ${film || "one of your films"} was reported on ${place}. ${href("/studio/piracy")}`,
+    });
+  },
+  studio_weekly: (m) => {
+    const from = S(m.data.from), to = S(m.data.to), seats = N(m.data.seats), leaks = N(m.data.openLeaks);
+    if (!from || !to) return null;
+    const day = (d: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
+    const range = `${day(from)} to ${day(to)}`;
+    const rows: [string, string][] = [
+      ["Seats sold", seats.toLocaleString("en-GB")],
+      ["Gross tickets", money(N(m.data.grossCents), "USD")],
+      ["Your share", money(N(m.data.shareCents), "USD")],
+      ["Countries", N(m.data.countries).toLocaleString("en-GB")],
+    ];
+    if (S(m.data.topFilm)) rows.push(["Best seller", `${S(m.data.topFilm)} · ${N(m.data.topSeats).toLocaleString("en-GB")} seats`]);
+    rows.push(["Open leaks", leaks ? leaks.toLocaleString("en-GB") : "None"]);
+    return done({
+      from: SENDER.studios, tag: "WEEKLY REPORT", footer: FOOT_STUDIO(),
+      subject: `Your week on E-Cinema: ${seats.toLocaleString("en-GB")} ${seats === 1 ? "seat" : "seats"} sold`, preview: range,
+      title: `Your week, ${range}`,
+      body: facts(rows) + button(href("/studio/analytics"), "Open analytics"),
+      text: `${range}: ${seats} seats sold, ${money(N(m.data.shareCents), "USD")} to you. ${href("/studio/analytics")}`,
+    });
+  },
+
   // 35 Report received (127:259)
   report_received: (m) => done({
     from: SENDER.rewards, tag: "REPORT RECEIVED", footer: FOOT_ACTION(),
@@ -685,7 +756,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], compliance_warning: ["case"], film_changes: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], compliance_warning: ["case"], film_changes: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"], studio_milestone: ["film"], studio_incident: ["film"], studio_leak: ["place"], studio_weekly: ["from"],
 };
 
 export const mailKinds = () => Object.keys(T);
