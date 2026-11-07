@@ -587,6 +587,22 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
       text: `You lost the picture in ${film} from ${clock(from, m.country)} to ${clock(to, m.country)}. We added a free seat to your E-Cinema credit, good for any premiere. Credit code ${code}. ${href("/browse")}`,
     });
   },
+  // 28 Ticket opened on another device (127:105). Queued by the API when a second device tries
+  // to play a seat that is already playing (one device per paid seat).
+  second_device: (m) => {
+    const film = S(m.data.film), device = S(m.data.device), playing = S(m.data.playing);
+    if (!film) return null;
+    return done({
+      from: SENDER.security, tag: "ONE DEVICE", footer: FOOT_ACTION(),
+      subject: "Your ticket was opened on a second device", preview: "We stopped it. Was this you?",
+      title: "We blocked a second device",
+      body: p(`Someone tried to play your ${esc(film)} ticket on ${esc(device || "another device")} while it was playing on ${esc(playing || "your other device")}. A ticket plays on one device only, so we blocked it. Device code:`) +
+        refBox(S(m.data.code)) + button(href("/account/devices"), "This was not me") +
+        small("If it was you, close the film on the first device and open it again on the new one."),
+      text: `Someone tried to play your ${film} ticket on ${device || "another device"} while it was playing on ${playing || "your other device"}. A ticket plays on one device only, so we blocked it. Device code ${S(m.data.code)}. Not you? Sign that device out: ${href("/account/devices")}`,
+    });
+  },
+
 };
 
 // Facts an email cannot go out without (the rest check inside their template).
@@ -595,7 +611,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
