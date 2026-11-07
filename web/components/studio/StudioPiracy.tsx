@@ -205,7 +205,7 @@ export default function StudioPiracy({ initial, films, canEdit, failed }: { init
             <li><span>Takedown notices written by Studio AI</span><i className="on" aria-label="On" /></li>
             <li><span>Multi-DRM (Widevine, PlayReady, FairPlay) <em className="soon-tag">Soon</em></span><i aria-label="Not yet" /></li>
             <li><span>Screen capture blocking on Android <em className="soon-tag">Soon</em></span><i aria-label="Not yet" /></li>
-            <li><span>Region lock to licensed countries <em className="soon-tag">Soon</em></span><i aria-label="Not yet" /></li>
+            <li><span>Seats sold only in the countries you allow (Settings, Default territories)</span><i className="on" aria-label="On" /></li>
           </ul>
         </section>
         <section className="bp-panel" aria-label="What we do when a leak is found">
