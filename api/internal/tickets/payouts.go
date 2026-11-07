@@ -152,7 +152,8 @@ func (st Store) RecordPayout(ctx context.Context, showtimeID string, o Outcome) 
 	switch {
 	case o.Status == "sent":
 		tag, err = st.DB.Exec(ctx, `UPDATE studio_payouts SET status = 'sent', paypal_batch_id = NULLIF($2, ''),
-		  transfer_id = CASE WHEN $3 <> '' THEN $3 ELSE transfer_id END, paid_currency = $4, paid_minor = $5, updated_at = now()
+		  transfer_id = CASE WHEN $3 <> '' THEN $3 ELSE transfer_id END,
+		  paid_currency = CASE WHEN $4 <> '' THEN $4 ELSE paid_currency END, paid_minor = CASE WHEN $5::bigint > 0 THEN $5::bigint ELSE paid_minor END, updated_at = now()
 		  WHERE showtime_id = $1 AND status IN ('pending', 'failed')`, showtimeID, o.BatchID, o.TransferID, o.PaidCurrency, o.PaidMinor)
 	case o.Status == "submitted" && o.TransferID != "":
 		tag, err = st.DB.Exec(ctx, `UPDATE studio_payouts SET status = 'pending', transfer_id = $2, paid_currency = $3, paid_minor = $4, updated_at = now()
@@ -170,12 +171,16 @@ func (st Store) RecordPayout(ctx context.Context, showtimeID string, o Outcome) 
 }
 
 // DuePayouts lists ended screenings whose studio has not been paid yet (never claimed, pending or failed).
+// MaxBankAttempts is how many refused bank transfers a payout gets before it waits for staff
+// (usually a closed or mistyped account the studio has to fix).
+const MaxBankAttempts = 5
+
 func (st Store) DuePayouts(ctx context.Context) ([]string, error) {
 	rows, err := st.DB.Query(ctx, `SELECT s.id FROM showtimes s
 	  LEFT JOIN studio_payouts p ON p.showtime_id = s.id
 	  WHERE s.starts_at + make_interval(mins => s.duration_min) < now()
-	    AND (p.status IS NULL OR p.status IN ('pending', 'failed'))
-	  ORDER BY s.starts_at LIMIT 500`)
+	    AND (p.status IS NULL OR p.status = 'pending' OR (p.status = 'failed' AND p.attempts < $1))
+	  ORDER BY s.starts_at LIMIT 500`, MaxBankAttempts)
 	if err != nil {
 		return nil, err
 	}

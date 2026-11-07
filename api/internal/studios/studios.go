@@ -264,6 +264,11 @@ func (st Store) SetPayout(ctx context.Context, acct, email string, p Payout) (St
 	return st.editable(ctx, acct, email, "money", false, func(s Studio) error {
 		_, err := st.DB.Exec(ctx, `UPDATE studios SET payout_method = $2, payout_email = CASE WHEN $2 = 'paypal' THEN $3 ELSE payout_email END,
 		  payout_bank = $4, payout_number = $5, payout_name = $6, payout_currency = $7, payout_bank_code = $8 WHERE name = $1`, s.Name, p.Method, p.Email, p.Bank, p.Number, p.Name, p.Currency, p.BankCode)
+		if err != nil {
+			return err
+		}
+		// New details: refused payouts get a fresh round of attempts, by the new method.
+		_, err = st.DB.Exec(ctx, `UPDATE studio_payouts SET attempts = 0, method = $2, updated_at = now() WHERE studio = $1 AND status = 'failed'`, s.Name, p.Method)
 		return err
 	})
 }
