@@ -115,7 +115,9 @@ export async function execContent(s: string): Promise<ContentData | null> {
   return r.status === 200 ? (r.body as ContentData) : null;
 }
 
-export type LiveData = { playing: { id: string; film: string; studio: string; starts: string; ends: string; watching: number; peak: number; byCountry: Record<string, number> }[] };
+// Player reports (sync drift, stalls, start time). Null values mean no reports yet.
+export type StreamQuality = { reports: number; inSync: number | null; rebuffer: number | null; driftMs: number | null; startMs: number | null; startP95Ms: number | null };
+export type LiveData = { playing: { id: string; film: string; studio: string; starts: string; ends: string; watching: number; peak: number; byCountry: Record<string, number>; quality?: StreamQuality }[]; quality?: StreamQuality };
 
 export async function execLive(s: string): Promise<LiveData | null> {
   const r = await accountApi("GET", "/v1/me/exec/live", undefined, s);
@@ -261,6 +263,7 @@ export type InfraBackup = { key: string; bytes: number; tables: number; restored
 export type InfraData = {
   viewersNow: number; peakToday: number; dbPingMs: number; dbBytes: number; dbConns: number; dbMaxConns: number; dbVersion: string;
   backups: InfraBackup[]; messages24h: number; seats24h: number; p50Ms: number; p99Ms: number; requests: number;
+  stream?: StreamQuality;
 };
 export async function execInfra(s: string): Promise<InfraData | null> {
   const r = await accountApi("GET", "/v1/me/exec/infra", undefined, s);

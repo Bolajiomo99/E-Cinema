@@ -48,7 +48,9 @@ export default function ExecInfra({ d, now, up }: { d: InfraData; now: number; u
       <div className="exc-tiles exin-tiles">
         <div className="exc-tile"><span>Concurrent viewers</span><b>{d.viewersNow.toLocaleString("en-US")}</b><small>peak on one screening today: {d.peakToday.toLocaleString("en-US")}</small></div>
         <div className="exc-tile"><span>API p99</span><b>{d.requests ? `${ms(d.p99Ms)} ms` : "–"}</b><small className={d.p99Ms < 150 ? "up" : "down"}>{d.requests ? `p50 ${ms(d.p50Ms)} ms · last ${d.requests.toLocaleString("en-US")} requests` : "no requests yet"}</small></div>
-        <div className="exc-tile"><span>Stream start p95</span><b className="exin-soon">Soon</b><small>measured from the players</small></div>
+        {d.stream?.startP95Ms != null
+          ? <div className="exc-tile"><span>Stream start p95</span><b>{(d.stream.startP95Ms / 1000).toFixed(1)} s</b><small className={d.stream.startP95Ms <= 4000 ? "up" : "down"}>from joining to the first frame · last 24 hours</small></div>
+          : <div className="exc-tile"><span>Stream start p95</span><b className="exin-soon">–</b><small>no one joined a room in the last 24 hours</small></div>}
         {up ? <div className="exc-tile"><span>Uptime 90 days</span><b>{pct(up.quarter)}</b><small className={up.up ? "up" : "down"}>{up.up ? `30 days ${pct(up.month)} · all checks up` : "a check is down right now"}</small></div>
           : <div className="exc-tile"><span>Uptime 90 days</span><b className="exin-soon">–</b><small>the uptime monitor did not answer</small></div>}
         <div className="exc-tile"><span>Last failover drill</span><b className="exin-soon">None yet</b><small>one region today</small></div>

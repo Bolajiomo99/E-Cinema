@@ -6,8 +6,8 @@ import type { LiveData } from "@/lib/exec";
 import { countryName } from "@/lib/worldmap";
 
 // Live operations (Figma 82:852). Audience numbers come straight from the watch-room hub and
-// refresh every 10 seconds. Stream health, sync drift and incidents need player telemetry and
-// carry "Soon" until it exists.
+// refresh every 10 seconds. Sync drift, rebuffering and room health come from the reports the
+// players send each minute (the last five minutes).
 const REGION: Record<string, string> = {};
 const put = (r: string, cc: string) => cc.split(" ").forEach((c) => { REGION[c] = r; });
 put("Africa", "NG GH SN CI BJ TG SL LR GM BF ML NE GN CV KE UG TZ RW ET SO ZA ZW ZM BW NA MZ MW AO CM CD CG GA EG MA DZ TN SD");
@@ -31,6 +31,12 @@ export default function ExecLive({ initial, up }: { initial: LiveData; up: Uptim
     return () => clearInterval(t);
   }, []);
   const online = d.playing.reduce((s, p) => s + p.watching, 0);
+  const q = d.quality;
+  const health = (h?: LiveData["playing"][number]["quality"]) => {
+    if (!h || h.inSync == null) return <span className="exl-muted">No reports</span>;
+    const bad = h.inSync < 0.8 || (h.rebuffer ?? 0) >= 0.03, warn = h.inSync < 0.95 || (h.rebuffer ?? 0) >= 0.01;
+    return <span className={`exl-h ${bad ? "bad" : warn ? "warn" : ""}`}><i />{bad ? "Poor" : warn ? "Fair" : "Good"} · {Math.round(h.inSync * 100)}% in sync</span>;
+  };
   const peak = Math.max(0, ...d.playing.map((p) => p.peak));
   const regions = new Map<string, number>();
   for (const p of d.playing) for (const [cc, v] of Object.entries(p.byCountry ?? {})) {
@@ -60,8 +66,8 @@ export default function ExecLive({ initial, up }: { initial: LiveData; up: Uptim
       <div className="exc-tiles exg-tiles">
         <div className="exc-tile"><span>Online now</span><b>{k(online)}</b><small className="up">{peak ? `biggest room peaked at ${k(peak)}` : "no one watching yet"}</small></div>
         <div className="exc-tile"><span>Rooms live</span><b>{d.playing.length}</b><small className="up">{d.playing.length ? `avg ${Math.round(online / d.playing.length)} people` : "nothing playing"}</small></div>
-        <div className="exc-tile soon"><span>Sync drift<em className="soon-tag">Soon</em></span><small>Needs player telemetry</small></div>
-        <div className="exc-tile soon"><span>Rebuffering<em className="soon-tag">Soon</em></span><small>Needs player telemetry</small></div>
+        <div className={`exc-tile${q?.driftMs == null ? " soon" : ""}`}><span>Sync drift</span><b>{q?.driftMs != null ? `${q.driftMs} ms` : "–"}</b><small className={q?.inSync == null ? "" : q.inSync >= 0.95 ? "up" : "down"}>{q?.inSync != null ? `${Math.round(q.inSync * 100)}% of players within ±250 ms` : "no player reports in the last 5 minutes"}</small></div>
+        <div className={`exc-tile${q?.rebuffer == null ? " soon" : ""}`}><span>Rebuffering</span><b>{q?.rebuffer != null ? `${(Math.round(q.rebuffer * 1000) / 10)}%` : "–"}</b><small className={q?.rebuffer == null ? "" : q.rebuffer < 0.01 ? "up" : "down"}>{q?.rebuffer != null ? "of watch time spent loading" : "no player reports in the last 5 minutes"}</small></div>
       </div>
 
       <div className="exc-card exl-card">
@@ -74,7 +80,7 @@ export default function ExecLive({ initial, up }: { initial: LiveData; up: Uptim
               <span role="cell">{lagos(p.starts)}</span>
               <span role="cell"><b>{k(p.watching)}</b></span>
               <span role="cell">{where(p.byCountry)}</span>
-              <span role="cell" className="exl-soon">Soon</span>
+              <span role="cell">{health(p.quality)}</span>
               <span role="cell" className="exl-act">
                 <Link href={`/room/${p.id}`} className="exa-edit exn-btn">Watch</Link>
                 <span className="exl-pause" aria-disabled="true" title="Pausing a premiere is coming soon">Pause</span>
