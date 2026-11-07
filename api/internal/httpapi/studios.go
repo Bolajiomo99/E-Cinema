@@ -312,6 +312,33 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"blockedCountries": st.Blocked}, err)
 		}
 	}))
+	// The public studio page (Figma 597:27).
+	mux.HandleFunc("GET /v1/studio-pages/{slug}", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		acct := ""
+		if tok := r.Header.Get("X-Session-Token"); tok != "" {
+			if a, _, err := s.Accounts.Authenticate(r.Context(), tok); err == nil {
+				acct = a.ID
+			}
+		}
+		p, err := s.Studios.PublicPage(r.Context(), r.PathValue("slug"), acct, time.Now())
+		reply(w, p, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio-follows/{slug}", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		var b struct{ On bool }
+		if decode(w, r, &b) {
+			n, err := s.Studios.Follow(r.Context(), r.PathValue("slug"), a.ID, b.On)
+			reply(w, map[string]any{"following": b.On, "followers": n}, err)
+		}
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/bio", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Bio string `json:"bio"`
+		}
+		if decodeN(w, r, 4<<10, &b) {
+			st, err := s.Studios.SetBio(r.Context(), a.ID, a.Email, b.Bio)
+			reply(w, map[string]any{"bio": st.Bio}, err)
+		}
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)

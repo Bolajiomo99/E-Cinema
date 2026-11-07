@@ -169,6 +169,11 @@ func run() error {
 			} else if n > 0 {
 				slog.Info("studio alerts queued", "count", n)
 			}
+			if n, err := srv.Studios.NotifyFollowers(ctx, time.Now()); err != nil {
+				slog.Error("studio follower notices", "err", err)
+			} else if n > 0 {
+				slog.Info("studio follower notices", "count", n)
+			}
 			if n, err := srv.Studios.QueueHookEvents(ctx, time.Now()); err != nil {
 				slog.Error("studio webhooks", "err", err)
 			} else if n > 0 {
