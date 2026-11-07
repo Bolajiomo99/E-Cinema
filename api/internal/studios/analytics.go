@@ -44,6 +44,7 @@ type Analytics struct {
 type Country struct {
 	Country    string `json:"country"`
 	Viewers    int    `json:"viewers"`
+	Prev       int    `json:"prev"` // viewers in the period before, for the Growth layer
 	GrossCents int64  `json:"grossCents"`
 }
 
@@ -64,6 +65,8 @@ type Money struct {
 }
 
 type Funnel struct {
+	Clips  int `json:"clips"` // visitors who played a film's trailer clip
+	Pages  int `json:"pages"` // visitors who opened a film page
 	Orders int `json:"orders"`
 	Seats  int `json:"seats"`
 	Gifts  int `json:"gifts"`
@@ -172,6 +175,40 @@ func (st Store) Analytics(ctx context.Context, acct, email string, days int, now
 		return c, err
 	}); err != nil {
 		return a, fmt.Errorf("analytics countries: %w", err)
+	}
+
+	// Growth: the same countries' viewers in the period just before this one.
+	if len(a.Countries) > 0 {
+		rows, err = st.DB.Query(ctx, `SELECT x.country, count(*) FROM (`+people+`) p JOIN accounts x ON x.id = p.account_id
+		  WHERE x.country IS NOT NULL GROUP BY 1`, s.Name, from.Add(-to.Sub(from)), from)
+		if err != nil {
+			return a, err
+		}
+		prev := map[string]int{}
+		for rows.Next() {
+			var c string
+			var k int
+			if err := rows.Scan(&c, &k); err != nil {
+				rows.Close()
+				return a, err
+			}
+			prev[c] = k
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return a, fmt.Errorf("analytics growth: %w", err)
+		}
+		for i := range a.Countries {
+			a.Countries[i].Prev = prev[a.Countries[i].Country]
+		}
+	}
+
+	// Funnel top: distinct visitors per film who played its clip or opened its page.
+	if err = st.DB.QueryRow(ctx, `SELECT count(DISTINCT (v.showtime_id, v.visitor)) FILTER (WHERE v.kind = 'clip'),
+	    count(DISTINCT (v.showtime_id, v.visitor)) FILTER (WHERE v.kind = 'page')
+	  FROM page_views v JOIN showtimes s ON s.id = v.showtime_id
+	  WHERE s.studio = $1 AND v.day >= $2::date AND v.day < $3::date`, s.Name, from, to).Scan(&a.Funnel.Clips, &a.Funnel.Pages); err != nil {
+		return a, fmt.Errorf("analytics funnel: %w", err)
 	}
 
 	// Money in the period: refunds are tickets refunded, whenever they were bought.

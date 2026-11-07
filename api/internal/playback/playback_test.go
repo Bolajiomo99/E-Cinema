@@ -79,3 +79,51 @@ func TestPlayback(t *testing.T) {
 		t.Fatalf("devices/hours = %v %v", au.Devices, au.Hours[4])
 	}
 }
+
+func TestView(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	p, err := db.Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if err := db.Migrate(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	s := playback.Store{DB: p}
+	p.Exec(ctx, `DELETE FROM showtimes WHERE id = 'pv-film'`)
+	p.Exec(ctx, `INSERT INTO showtimes (id, film, studio, starts_at, duration_min, capacity, price_cents, currency) VALUES ('pv-film', 'View Film', 'PV Studio', now() + interval '2 days', 100, 10, 500, 'USD')`)
+	t.Cleanup(func() { p.Exec(ctx, `DELETE FROM showtimes WHERE id = 'pv-film'`) })
+	now := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	v := "0123456789abcdef"
+	for _, c := range []struct{ film, kind, visitor string }{{"pv-film", "like", v}, {"pv-film", "page", "Not-A-Hash"}, {"", "page", v}} {
+		if _, err := s.View(ctx, c.film, c.kind, c.visitor, "NG", now); !errors.Is(err, playback.ErrBadInput) {
+			t.Fatalf("%+v: want ErrBadInput, got %v", c, err)
+		}
+	}
+	if ok, err := s.View(ctx, "pv-film", "page", v, "NG", now); err != nil || !ok {
+		t.Fatalf("first view: %v %v", ok, err)
+	}
+	if ok, _ := s.View(ctx, "pv-film", "page", v, "NG", now.Add(time.Hour)); ok {
+		t.Fatal("same visitor, same day counted twice")
+	}
+	if ok, _ := s.View(ctx, "pv-film", "page", v, "NG", now.Add(24*time.Hour)); !ok {
+		t.Fatal("next day not counted")
+	}
+	if ok, _ := s.View(ctx, "pv-film", "clip", v, "zz", now); !ok {
+		t.Fatal("clip not counted")
+	}
+	if ok, err := s.View(ctx, "no-such-film", "page", v, "", now); err != nil || ok {
+		t.Fatalf("unknown film: %v %v", ok, err)
+	}
+	var n int
+	var country *string
+	p.QueryRow(ctx, `SELECT count(*), max(country) FILTER (WHERE kind = 'clip') FROM page_views WHERE showtime_id = 'pv-film'`).Scan(&n, &country)
+	if n != 3 || country != nil {
+		t.Fatalf("rows %d, clip country %v", n, country)
+	}
+}

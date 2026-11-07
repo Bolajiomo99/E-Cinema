@@ -11,6 +11,29 @@ import (
 
 // Insights routes (Figma 19:462): player heartbeats in, the viewer's own report out.
 func (s *Server) insightRoutes(mux *http.ServeMux) {
+	// Film page visits and trailer clip plays for the studio ticket funnel. The web server sends
+	// a salted visitor hash, never an account id or address.
+	mux.HandleFunc("POST /v1/views", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			ShowtimeID string `json:"showtimeId"`
+			Kind       string `json:"kind"`
+			Visitor    string `json:"visitor"`
+			Country    string `json:"country"`
+		}
+		if !decode(w, r, &b) {
+			return
+		}
+		ok, err := s.Playback.View(r.Context(), b.ShowtimeID, b.Kind, b.Visitor, b.Country, time.Now())
+		if errors.Is(err, playback.ErrBadInput) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "showtimeId, kind (page or clip) and visitor are required"})
+			return
+		}
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"counted": ok})
+	}))
 	mux.HandleFunc("POST /v1/me/watch-beats", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		var b struct {
 			ShowtimeID string `json:"showtimeId"`

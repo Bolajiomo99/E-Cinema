@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"regexp"
 	"slices"
 	"time"
 
@@ -199,4 +200,27 @@ func (s Store) AudienceOf(ctx context.Context, studio string, from, to time.Time
 		}
 	}
 	return a, rows.Err()
+}
+
+var visitorRe = regexp.MustCompile(`^[0-9a-f]{16,64}$`)
+var countryRe = regexp.MustCompile(`^[A-Z]{2}$`)
+
+// View counts one visitor opening a film page ("page") or playing its trailer clip ("clip"),
+// once per visitor per film per UTC day. It reports whether the view was new; an unknown
+// film or a malformed visitor is ErrBadInput.
+func (s Store) View(ctx context.Context, showtimeID, kind, visitor, country string, now time.Time) (bool, error) {
+	if (kind != "page" && kind != "clip") || !visitorRe.MatchString(visitor) || showtimeID == "" {
+		return false, ErrBadInput
+	}
+	var c *string
+	if countryRe.MatchString(country) {
+		c = &country
+	}
+	tag, err := s.DB.Exec(ctx, `INSERT INTO page_views (day, showtime_id, kind, visitor, country)
+	  SELECT $1::date, id, $3, $4, $5 FROM showtimes WHERE id = $2
+	  ON CONFLICT DO NOTHING`, now.UTC().Format("2006-01-02"), showtimeID, kind, visitor, c)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }

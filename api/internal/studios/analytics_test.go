@@ -39,6 +39,10 @@ func TestAnalytics(t *testing.T) {
 	  ($1, 'test-an-1', current_date - 2, 'room', '', 6000), ($2, 'test-an-1', current_date - 2, 'room', 'ha', 3000),
 	  ($2, 'test-an-1', current_date - 120, 'replay', '', 600)`, a1, a2)
 	p.Exec(ctx, `INSERT INTO reviews (account_id, showtime_id, stars) VALUES ($1, 'test-an-1', 5), ($2, 'test-an-1', 2)`, a1, a2)
+	p.Exec(ctx, `INSERT INTO page_views (day, showtime_id, kind, visitor) VALUES
+	  (current_date - 1, 'test-an-1', 'page', 'aaaaaaaaaaaaaaaa'), (current_date - 2, 'test-an-1', 'page', 'aaaaaaaaaaaaaaaa'),
+	  (current_date - 1, 'test-an-1', 'page', 'bbbbbbbbbbbbbbbb'), (current_date - 1, 'test-an-1', 'clip', 'cccccccccccccccc'),
+	  (current_date - 200, 'test-an-1', 'clip', 'dddddddddddddddd')`)
 
 	if _, err := st.Analytics(ctx, stranger, "an-x@example.com", 90, time.Now()); !errors.Is(err, studios.ErrNotFound) {
 		t.Fatalf("stranger: %v", err)
@@ -57,9 +61,15 @@ func TestAnalytics(t *testing.T) {
 		t.Fatalf("countries: %+v", a.Countries)
 	}
 	for _, c := range a.Countries {
-		if c.Country == "NG" && c.GrossCents != 2000 {
-			t.Fatalf("NG gross: %+v", c)
+		if c.Country == "NG" && (c.GrossCents != 2000 || c.Prev != 0) {
+			t.Fatalf("NG: %+v", c)
 		}
+		if c.Country == "DE" && c.Prev != 1 {
+			t.Fatalf("DE growth: %+v", c)
+		}
+	}
+	if a.Funnel.Pages != 2 || a.Funnel.Clips != 1 {
+		t.Fatalf("funnel: %+v", a.Funnel)
 	}
 	m := a.Money
 	if m.GrossCents != 3000 || m.RefundCents != 1000 || m.ShareCents != 1400 || m.PlatformCents != 600 || m.Buyers != 1 || a.Funnel.Seats != 2 {
