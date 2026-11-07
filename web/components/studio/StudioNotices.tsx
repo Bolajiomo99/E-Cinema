@@ -70,7 +70,7 @@ export default function StudioNotices({ initial, failed }: { initial: NoticeData
         </div>
         <div className="pt-btns">
           <button type="button" className="vf-btn ghost" disabled={busy || !d.unread} onClick={markRead}>{busy ? "Marking" : "Mark all read"}</button>
-          <span className="vf-btn soft stu-soon" aria-disabled="true" title="Coming soon">Notification settings <em className="soon-tag">Soon</em></span>
+          <Link className="vf-btn soft" href="/studio/settings#notifications">Notification settings</Link>
         </div>
       </header>
       {failed && <p className="vf-err" role="alert">Your notifications could not be loaded just now. Refresh the page to try again.</p>}

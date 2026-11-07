@@ -5590,3 +5590,8 @@ a.expp-alert:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .stfd-bar small { display: none; }
   .stfd-tbl th:last-child, .stfd-tbl td:last-child { display: none; }
 }
+button.stu-toggle { border: 0; padding: 0; cursor: pointer; transition: background .15s; }
+button.stu-toggle i { transition: left .15s, background .15s; }
+.stu-toggle.on { background: #e3182d; }
+.stu-toggle.on i { left: 21px; background: #fff; }
+button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

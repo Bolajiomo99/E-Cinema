@@ -15,8 +15,27 @@ function Soon({ title, text }: { title: string; text: string }) {
   );
 }
 
-export default function StudioSettings({ studio: s0 }: { studio: Studio }) {
+const ALERTS: { kind: string; title: string; text: string }[] = [
+  { kind: "milestones", title: "Seat milestones", text: "25%, 50%, sell-out" },
+  { kind: "incidents", title: "Live incidents", text: "Streaming problems logged during a premiere" },
+  { kind: "leaks", title: "Leaks found", text: "As soon as someone else on your team reports one" },
+  { kind: "weekly", title: "Weekly report", text: "Monday 08:00 Lagos: seats, money, countries and leaks" },
+];
+
+export default function StudioSettings({ studio: s0, alerts: a0 }: { studio: Studio; alerts: string[] | null }) {
   const [s, setS] = useState(s0);
+  const [alerts, setAlerts] = useState(a0);
+  const [alertErr, setAlertErr] = useState("");
+  async function toggle(kind: string) {
+    if (!alerts) return;
+    const on = !alerts.includes(kind);
+    setAlertErr("");
+    setAlerts(on ? [...alerts, kind] : alerts.filter((k) => k !== kind));
+    try {
+      const r = await scall<{ alerts: string[] }>("PUT", `alerts/${kind}`, { On: on });
+      setAlerts(r.alerts);
+    } catch (e) { setAlerts(alerts); setAlertErr((e as Error).message); }
+  }
   const [city, setCity] = useState(s0.city);
   const [website, setWebsite] = useState(s0.website);
   const [busy, setBusy] = useState(false);
@@ -84,12 +103,20 @@ export default function StudioSettings({ studio: s0 }: { studio: Studio }) {
           <h2>Webhooks and API <em className="soon-tag">Soon</em></h2>
           <p className="pt-hint">Get real-time events in your own systems: ticket.sold, premiere.started, payout.sent and leak.detected.</p>
         </section>
-        <section className="bp-panel">
+        <section className="bp-panel" id="notifications">
           <h2>Notifications</h2>
-          <Soon title="Seat milestones" text="25%, 50%, sell-out" />
-          <Soon title="Live incidents" text="Sync, streaming or chat problems during a premiere" />
-          <Soon title="Leaks found" text="Immediately, with evidence" />
-          <Soon title="Weekly AI report" text="Monday 08:00 Lagos" />
+          <p className="pt-hint">Emails to you only. Everyone on your team chooses their own.</p>
+          {alerts === null && <p className="vf-err" role="alert">Your email choices could not be loaded. Refresh to try again.</p>}
+          {alerts && ALERTS.map((a) => {
+            const on = alerts.includes(a.kind);
+            return (
+              <div key={a.kind} className="stu-set">
+                <div><b id={`al-${a.kind}`}>{a.title}</b><small>{a.text}</small></div>
+                <button type="button" role="switch" aria-checked={on} aria-labelledby={`al-${a.kind}`} className={`stu-toggle${on ? " on" : ""}`} onClick={() => void toggle(a.kind)}><i /></button>
+              </div>
+            );
+          })}
+          {alertErr && <p className="vf-err" role="alert">{alertErr}</p>}
         </section>
       </div>
       {err && <p className="vf-err" role="alert">{err}</p>}

@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf" };
 const KEY = /^studios\/[0-9a-f-]{36}\.(jpg|png|pdf)$/;
 const SLUG = /^[a-z0-9-]{1,90}$/;
-const PAGES = new Set(["overview", "films", "payouts", "team", "leaks", "campaigns", "notices"]);
+const PAGES = new Set(["overview", "films", "payouts", "team", "leaks", "campaigns", "notices", "alerts"]);
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PLACES: Record<string, string> = { website: "a website", telegram: "a Telegram channel", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "an online service" };
 const KINDS: Record<string, string> = { clip: "a clip of the film", full: "the full film", screenshot: "a still from the film", other: "material from the film" };
@@ -68,6 +68,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
   const body = await req.json().catch(() => ({}));
   if (!p.length) return pass(await accountApi("PUT", "/v1/me/studio", body, s));
   if (p.length === 1 && ["payout", "rights", "team"].includes(p[0])) return pass(await accountApi("PUT", `/v1/me/studio/${p[0]}`, body, s));
+  if (p.length === 2 && p[0] === "alerts" && /^[a-z]{1,20}$/.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/alerts/${p[1]}`, { On: body.On === true }, s));
   if (p.length === 2 && p[0] === "leaks" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/leaks/${p[1]}`, body, s));
   if (p.length === 2 && p[0] === "campaigns" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/campaigns/${p[1]}`, { costCents: Math.round(Number(body.costCents) || 0) }, s));
   return json(404, { error: "Not found" });
