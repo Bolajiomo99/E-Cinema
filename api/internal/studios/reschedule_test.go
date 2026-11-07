@@ -50,6 +50,10 @@ func TestRescheduleWithdraw(t *testing.T) {
 	if err != nil || plan == nil || plan.Seats != 2 || plan.Holders != 1 || plan.GrossCents != 1000 || plan.SharePct != 70 || plan.Week != 2 {
 		t.Fatalf("plan: %+v %v", plan, err)
 	}
+	sales, err := st.SalesOf(ctx, editor, "mv-editor@example.com", u.ID, now)
+	if err != nil || sales == nil || sales.Seats != 2 || sales.GrossCents != 1000 || len(sales.Days) != 14 || sales.Days[13].Seats != 2 || len(sales.Countries) != 1 || sales.Countries[0].Country != "NG" {
+		t.Fatalf("sales: %+v %v", sales, err)
+	}
 	if _, err := st.Reschedule(ctx, editor, "mv-editor@example.com", u.ID, now.Add(2*time.Hour), now); !errors.Is(err, studios.ErrBadInput) {
 		t.Fatalf("too soon: %v", err)
 	}

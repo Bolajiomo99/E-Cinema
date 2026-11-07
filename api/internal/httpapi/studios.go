@@ -190,6 +190,10 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		p, err := s.Studios.PlanOf(r.Context(), a.ID, a.Email, r.PathValue("id"))
 		reply(w, map[string]any{"plan": p}, err)
 	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/sales", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		v, err := s.Studios.SalesOf(r.Context(), a.ID, a.Email, r.PathValue("id"), time.Now())
+		reply(w, map[string]any{"sales": v}, err)
+	}))
 	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/reschedule", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var b struct{ StartsAt time.Time }
 		if decodeN(w, r, 1<<10, &b) {
