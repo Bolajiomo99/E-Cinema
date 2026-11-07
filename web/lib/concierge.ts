@@ -112,7 +112,12 @@ async function runTool(block: Anthropic.ToolUseBlock, out: AgentOutput, session?
   }
 
   if (block.name === "my_tickets") {
-    if (!session) return reply("The viewer is not signed in, so they have no tickets yet. Ask them to sign in at /signin.", true);
+    if (!session) {
+      // Without the accounts API (guest checkout) a booking still works, so don't send them away.
+      return apiEnabled
+        ? reply("The viewer is not signed in, so they have no tickets yet. Ask them to sign in at /signin.", true)
+        : reply("Guest checkout: no saved tickets. You can still book with create_ticket_order.");
+    }
     const list = await myTickets(session);
     return reply(JSON.stringify(list.map((t) => ({
       ...t, film: findShowtime(t.showtimeId)?.film, startsAt: findShowtime(t.showtimeId)?.startsAt,
