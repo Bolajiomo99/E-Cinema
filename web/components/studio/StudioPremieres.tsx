@@ -163,7 +163,7 @@ export default function StudioPremieres({ films, upload: u, premiere: p0, canEdi
           </div>
           {live && <StudioEncores upload={u.id} allowed={p.encores} canEdit={canEdit} />}
           <div className="stpr-free">
-            <p>1,000 free seats if this sells out within 24 hours (platform rule, paid by E‑Cinema) <em className="soon-tag">Soon</em></p>
+            <p>1,000 free seats if this sells out within 24 hours of the first sale (platform rule, paid by E‑Cinema). They are drawn by the sold-out lottery an hour before the film.</p>
             <Toggle label="1,000 free seats" on={rules.freeSeats} disabled={!canEdit} onChange={(v) => setRules({ ...rules, freeSeats: v })} />
           </div>
         </section>
