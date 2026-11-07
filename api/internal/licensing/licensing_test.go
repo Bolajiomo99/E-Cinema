@@ -261,4 +261,45 @@ func TestLicensing(t *testing.T) {
 	if none, _ := st.MarkRenewed(ctx, "NOT-A-RENEWAL"); none != nil {
 		t.Fatal("unknown renewal matched")
 	}
+	// Last month's royalty (email 41): quoted, paid through PayPal and settled.
+	this := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	last := this.AddDate(0, -1, 0)
+	p.Exec(ctx, `UPDATE licence_sales SET sold_at = $2 WHERE licence = $1`, l.Licence, last.Add(48*time.Hour))
+	p.Exec(ctx, `DELETE FROM licence_settlements WHERE licence = $1`, l.Licence)
+	p.Exec(ctx, `DELETE FROM mail_outbox WHERE dedupe LIKE 'royalty:' || $1 || ':%'`, l.Licence)
+	if _, err := st.QuoteRoyalty(ctx, l, this.Format("2006-01")); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("current month quote: %v", err)
+	}
+	l, _ = st.For(ctx, owner)
+	q, err := st.QuoteRoyalty(ctx, l, last.Format("2006-01"))
+	if err != nil || q.SalesNGN != 105000 || q.RoyaltyNGN != 105000*int64(l.Plan.RoyaltyPct)/100 || q.Invoice != licensing.InvoiceNo(l.Licence, last) {
+		t.Fatalf("quote = %+v, %v", q, err)
+	}
+	if n, err := st.QueueStatements(ctx, this.Add(7*time.Hour)); err != nil || n != 0 {
+		t.Fatalf("before 08:00: %d %v", n, err)
+	}
+	if _, err := st.QueueStatements(ctx, this.Add(9*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	var data string
+	if err := p.QueryRow(ctx, `SELECT data->>'invoice' FROM mail_outbox WHERE kind = 'royalty_statement' AND dedupe = 'royalty:' || $1 || ':' || $2`, l.Licence, last.Format("2006-01")).Scan(&data); err != nil || data != q.Invoice {
+		t.Fatalf("statement mail: %q %v", data, err)
+	}
+	p.Exec(ctx, `DELETE FROM licence_royalty_payments WHERE order_id = 'ROYTEST1'`)
+	if err := st.StartRoyaltyPayment(ctx, l, owner, last.Format("2006-01"), "ROYTEST1"); err != nil {
+		t.Fatal(err)
+	}
+	rp, err := st.MarkRoyaltyPaid(ctx, "ROYTEST1")
+	if err != nil || rp == nil || rp.Licence != l.Licence || !rp.Month.Equal(last) {
+		t.Fatalf("royalty paid = %+v, %v", rp, err)
+	}
+	if again, err := st.MarkRoyaltyPaid(ctx, "ROYTEST1"); err != nil || again == nil {
+		t.Fatalf("repeat capture = %+v, %v", again, err)
+	}
+	if none, _ := st.MarkRoyaltyPaid(ctx, "NOT-A-ROYALTY"); none != nil {
+		t.Fatal("unknown royalty matched")
+	}
+	if _, err := st.QuoteRoyalty(ctx, l, last.Format("2006-01")); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("settled month quote: %v", err)
+	}
 }

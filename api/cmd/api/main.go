@@ -157,6 +157,11 @@ func run() error {
 			} else if n > 0 {
 				slog.Info("mail queued", "count", n)
 			}
+			if n, err := srv.Licensing.QueueStatements(ctx, time.Now()); err != nil {
+				slog.Error("royalty statements", "err", err)
+			} else if n > 0 {
+				slog.Info("royalty statements queued", "count", n)
+			}
 			select {
 			case <-ctx.Done():
 				return

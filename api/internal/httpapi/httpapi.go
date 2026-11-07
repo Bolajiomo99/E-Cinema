@@ -207,6 +207,18 @@ func (s *Server) Routes() http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		// A month's royalty: the statement is settled.
+		if rp, err := s.Licensing.MarkRoyaltyPaid(r.Context(), body.OrderID); err != nil || rp != nil {
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			if rp.Account != "" {
+				s.note(rp.Account, notify.New{Kind: "payment", Title: rp.Month.Format("January") + " royalty paid", Body: "Invoice " + licensing.InvoiceNo(rp.Licence, rp.Month) + " is settled.", Link: "/partner/royalties", Dedupe: "royalty:" + body.OrderID})
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		// A shop order: placed once paid, and the buyer's open pages hear about it.
 		if o, err := s.Shop.MarkPaid(r.Context(), body.OrderID, body.CaptureID); err != nil || o != nil {
 			if err != nil {

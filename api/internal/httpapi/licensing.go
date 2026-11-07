@@ -253,6 +253,21 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 			reply(w, map[string]bool{"ok": true}, s.Licensing.StartRenewal(r.Context(), l, a.ID, b.Plan, b.OrderID))
 		}
 	}))
+	// A month's royalty (email 41): a quote first, then the PayPal order that pays it.
+	mux.HandleFunc("POST /v1/me/partner/royalty", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {
+		var b struct {
+			Month   string `json:"month"`
+			OrderID string `json:"orderId"`
+		}
+		if decodeN(w, r, 1<<10, &b) {
+			if b.OrderID == "" {
+				q, err := s.Licensing.QuoteRoyalty(r.Context(), l, b.Month)
+				reply(w, q, err)
+				return
+			}
+			reply(w, map[string]bool{"ok": true}, s.Licensing.StartRoyaltyPayment(r.Context(), l, a.ID, b.Month, b.OrderID))
+		}
+	}))
 	mux.HandleFunc("PUT /v1/me/partner/payout", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {
 		var b struct{ Bank, Number, Name string }
 		if decodeN(w, r, 2<<10, &b) {
