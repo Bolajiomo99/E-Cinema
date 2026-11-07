@@ -266,6 +266,36 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/me/studio/webhooks/{id}/test", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		reply(w, map[string]bool{"ok": true}, s.Studios.TestHook(r.Context(), a.ID, a.Email, r.PathValue("id"), time.Now()))
 	}))
+	// API keys (Figma 39:1073) and the read-only studio API they open.
+	mux.HandleFunc("GET /v1/me/studio/keys", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		l, err := s.Studios.Keys(r.Context(), a.ID, a.Email)
+		reply(w, map[string]any{"keys": l}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/keys", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Name string `json:"name"`
+		}
+		if decode(w, r, &b) {
+			k, err := s.Studios.AddKey(r.Context(), a.ID, a.Email, b.Name)
+			reply(w, map[string]any{"key": k}, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/keys/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		reply(w, map[string]bool{"ok": true}, s.Studios.RevokeKey(r.Context(), a.ID, a.Email, r.PathValue("id")))
+	}))
+	key := func(r *http.Request) string { return r.Header.Get("X-Studio-Key") }
+	mux.HandleFunc("GET /v1/studio-api/films", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		f, err := s.Studios.APIFilms(r.Context(), key(r), time.Now())
+		reply(w, map[string]any{"films": f}, err)
+	}))
+	mux.HandleFunc("GET /v1/studio-api/films/{id}/sales", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.Studios.APISales(r.Context(), key(r), r.PathValue("id"), time.Now())
+		reply(w, map[string]any{"sales": v}, err)
+	}))
+	mux.HandleFunc("GET /v1/studio-api/payouts", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		p, err := s.Studios.APIPayouts(r.Context(), key(r), time.Now())
+		reply(w, map[string]any{"payouts": p}, err)
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)
