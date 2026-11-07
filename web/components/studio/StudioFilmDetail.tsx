@@ -38,7 +38,9 @@ const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
 // A datetime-local value in the member's own zone.
 const localInput = (iso: string) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); };
 
-export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwner, rightsDeclared }: { upload: Upload; plan: PremierePlan | null; canEdit: boolean; isOwner: boolean; rightsDeclared: boolean }) {
+export type FilmTab = "details" | "languages" | "rights" | "pre-sales";
+
+export default function StudioFilmDetail({ tab = "details", children, upload: u0, plan: p0, canEdit, isOwner, rightsDeclared }: { tab?: FilmTab; children?: React.ReactNode; upload: Upload; plan: PremierePlan | null; canEdit: boolean; isOwner: boolean; rightsDeclared: boolean }) {
   const [plan, setPlan] = useState(p0);
   const [moving, setMoving] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
@@ -111,6 +113,9 @@ export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwne
   const started = live && Date.parse(plan.startsAt) <= now;
   const when = !plan ? "no premiere booked yet" : plan.withdrawnAt ? "premiere withdrawn" : started ? `premiered ${shortDay(plan.startsAt)}` : `premieres ${shortDay(plan.startsAt)}`;
   const rows = statusRows(u, rightsDeclared);
+  const tabLink = (t: FilmTab, label: string) => t === tab
+    ? <span className="on" aria-current="page">{label}</span>
+    : <Link href={t === "details" ? `/studio/films/${u.id}` : `/studio/films/${u.id}?tab=${t}`} scroll={false}>{label}</Link>;
   return (
     <div className="pt-body stfd">
       <header className="bp-head">
@@ -119,22 +124,25 @@ export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwne
           <p>{[filmCode(u.title, u.id), u.genres.split(",")[0]?.trim(), runtime, u.languages, when].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="pt-btns">
-          <span className="vf-btn ghost stu-soon" aria-disabled="true">Preview as viewer <em className="soon-tag">Soon</em></span>
-          {canEdit && <button className="vf-btn red" form="stfd-form" disabled={busy || !changed || !d.title.trim()}>{busy ? "Saving" : "Save changes"}</button>}
+          {live && !started
+            ? <Link className="vf-btn ghost" href={`/film/${plan.showtimeId}`} target="_blank" rel="noopener">Preview as viewer</Link>
+            : <span className="vf-btn ghost stu-off" aria-disabled="true" title={!plan ? "Viewers see the film page once the premiere is booked" : "This premiere is no longer on sale"}>Preview as viewer</span>}
+          {tab === "details" && canEdit && <button className="vf-btn red" form="stfd-form" disabled={busy || !changed || !d.title.trim()}>{busy ? "Saving" : "Save changes"}</button>}
         </div>
       </header>
       {msg && <p className="bp-flash" role="status">{msg}</p>}
       {err && <p className="vf-err" role="alert">{err}</p>}
 
       <nav className="bp-chips" aria-label="Film sections">
-        <span className="on" aria-current="page">Details</span>
+        {tabLink("details", "Details")}
         <Link href={`/studio/upload/${u.id}`}>Media</Link>
-        <span className="off" aria-disabled="true" title="Coming soon">Languages</span>
+        {tabLink("languages", "Languages")}
         <Link href={`/studio/premieres?film=${u.id}`}>Pricing</Link>
-        {["Rights", "Pre-sales"].map((c) => <span key={c} className="off" aria-disabled="true" title="Coming soon">{c}</span>)}
+        {tabLink("rights", "Rights")}
+        {tabLink("pre-sales", "Pre-sales")}
       </nav>
 
-      <div className="stfd-two">
+      {tab !== "details" ? children : <div className="stfd-two">
         <div className="stfd-col">
           <section className="bp-panel">
             <h2>Details</h2>
@@ -209,7 +217,7 @@ export default function StudioFilmDetail({ upload: u0, plan: p0, canEdit, isOwne
             )}
           </section>
         </div>
-      </div>
+      </div>}
 
       {moving !== null && plan && (
         <div className="exa-scrim" role="dialog" aria-modal="true" aria-labelledby="stfd-mv" onClick={(e) => e.target === e.currentTarget && !busy && setMoving(null)}>

@@ -5568,3 +5568,25 @@ a.expp-alert:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pt-case:last-child { border-bottom: 0; }
 .pt-fix { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
 .pt-fix textarea { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; font: 500 14px/20px Manrope, sans-serif; resize: vertical; }
+.stfd .stu-off { opacity: .5; cursor: default; }
+.stfd-act { align-self: flex-start; margin: 4px 0 0; height: 34px; padding: 0 14px; border-radius: 6px; border: 0; background: rgba(255,255,255,.12); font-size: 13px; display: inline-flex; align-items: center; text-decoration: none; color: #f4f4f6; }
+.stfd-v .vf-btn.sm.sec { display: inline-flex; align-items: center; text-decoration: none; color: #f4f4f6; }
+.stfd-link { text-decoration: none; border-radius: 8px; }
+.stfd-link:hover b { text-decoration: underline; }
+.stfd-num { flex: none; font: 700 14px/20px Manrope, sans-serif; color: #f4f4f6; font-variant-numeric: tabular-nums; }
+.stfd-bars { display: flex; align-items: flex-end; gap: 6px; height: 180px; padding-top: 4px; }
+.stfd-bar { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.stfd-bar i { display: block; width: 100%; max-width: 28px; border-radius: 4px 4px 0 0; background: #e3182d; }
+.stfd-bar i.zero { background: #26262e; }
+.stfd-bar small { font: 600 11px/14px Manrope, sans-serif; color: #a6a6b0; font-variant-numeric: tabular-nums; }
+.stfd-bar span { font: 500 11px/14px Manrope, sans-serif; color: #6e6e7a; }
+.stfd-tbl { width: 100%; border-collapse: collapse; font: 500 13px/20px Manrope, sans-serif; color: #f4f4f6; font-variant-numeric: tabular-nums; }
+.stfd-tbl th { text-align: left; font: 600 12px/16px Manrope, sans-serif; color: #6e6e7a; padding: 6px 8px 6px 0; border-bottom: 1px solid #26262e; }
+.stfd-tbl td { padding: 10px 8px 10px 0; border-bottom: 1px solid #1d1d23; }
+.stfd-share { display: inline-block; vertical-align: middle; width: 80px; height: 6px; margin-right: 8px; border-radius: 3px; background: #26262e; overflow: hidden; }
+.stfd-share i { display: block; height: 100%; background: #e3182d; }
+@media (max-width: 760px) {
+  .stfd-bars { gap: 3px; height: 150px; }
+  .stfd-bar small { display: none; }
+  .stfd-tbl th:last-child, .stfd-tbl td:last-child { display: none; }
+}
