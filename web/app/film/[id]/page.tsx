@@ -57,6 +57,8 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
     if (pr?.status === 200) parties = ((pr.body as Party[]) ?? []).filter((x) => x.showtimeId === s.id);
     mine = t;
   }
+  // The studio keeps this film out of some countries (studio settings "Default territories").
+  const regionBlocked = Boolean(loc.country && s.blocked?.includes(loc.country));
   const owned = mine.some((t) => t.showtimeId === s.id && t.status === "paid");
   const q = quote(s, profile ? { ...profile, country: profile.country || loc.country } : { country: loc.country });
   const phase = phaseOf(s);
@@ -114,6 +116,8 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
           <div className="lp-ctas">
             {phase === "ended" ? (
               <Link href="/browse" className="lp-btn lg">Find another premiere</Link>
+            ) : !owned && regionBlocked ? (
+              <Link href="/browse" className="lp-btn lg">Find another premiere</Link>
             ) : !owned && !s.adult && (phase === "grace" || phase === "late" || phase === "closed") ? null : owned ? (
               <Link href={`/room/${s.id}`} className="lp-btn lg">{phase === "before" ? "Open my room" : "Join the room"}</Link>
             ) : s.adult ? (
@@ -124,13 +128,14 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
             <TrailerButton film={s.id} title={s.film} className="lp-btn lg secondary" />
             {phase === "before" && <a href={`/api/calendar/${s.id}.ics`} className="lp-btn lg ghost">Remind me</a>}
           </div>
+          {!owned && regionBlocked && phase !== "ended" && <p className="fd-late" role="note">{s.studio} does not offer this film in your country, so seats cannot be booked from here.</p>}
           {!salesOver(phase) && left !== null && seats && (
             <div className="fd-seats">
               <span className="fd-bar" aria-hidden><i style={{ width: `${Math.round(pct * 100)}%` }} /></span>
               <span className={pct >= 0.75 ? "warn" : undefined}>{left === 0 ? "Sold out" : `${pct >= 0.75 ? "Selling fast · " : ""}${left.toLocaleString("en")} of ${seats.capacity.toLocaleString("en")} seats left`}</span>
             </div>
           )}
-          {(phase === "grace" || phase === "late" || phase === "closed") && !owned && !s.adult && (
+          {(phase === "grace" || phase === "late" || phase === "closed") && !owned && !s.adult && !regionBlocked && (
             <LateEntry start={Date.parse(s.startsAt)} doubles={Date.parse(s.startsAt) + LATE_GRACE_MIN * 60_000} closes={doorsCloseAt(s)} end={endsAt(s)}
               join={money(q.currency, q.total)} joinHref={`/checkout?film=${s.id}`} nextHref={next ? `/film/${next.id}` : undefined} />
           )}

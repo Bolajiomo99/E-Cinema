@@ -7,6 +7,7 @@ export type Studio = {
   payoutMethod: "paypal" | "bank"; payoutEmail: string; payoutBank: string; payoutNumber: string; payoutName: string; payoutCurrency: string;
   shareBps: number; rightsNote: string; rightsAt: string | null; termsAt: string | null; verifiedAt: string | null; createdAt: string;
   dubReview?: boolean; // new dubbed languages wait for a person's approval
+  blockedCountries?: string[]; // where none of its films are sold
   role?: Role; owner?: string;
 };
 export type Steps = { docs: boolean; payout: boolean; rights: boolean; terms: boolean };

@@ -1,5 +1,5 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 // Talks to the Go API (seat holds and the ticket ledger). Without API_URL the web app
 // still takes payments, but seats are not reserved, which is only acceptable in development.
@@ -10,6 +10,8 @@ export const apiEnabled = Boolean(base && token);
 
 export class SoldOutError extends Error {}
 export class AdultOnlyError extends Error {}
+export class RegionError extends Error {}
+export const REGION_MSG = "This film is not offered in your country. The studio does not sell it there.";
 
 async function call<T>(path: string, body: unknown, session?: string): Promise<T | undefined> {
   const res = await fetch(`${base}${path}`, {
@@ -19,6 +21,7 @@ async function call<T>(path: string, body: unknown, session?: string): Promise<T
     signal: AbortSignal.timeout(8000),
   });
   if (res.status === 409) throw new SoldOutError("Not enough seats left");
+  if (res.status === 451) throw new RegionError(REGION_MSG);
   if (res.status === 403) throw new AdultOnlyError("This screening is for verified adults");
   if (!res.ok) throw new Error(`API ${path} ${res.status}`);
   return res.status === 204 ? undefined : ((await res.json()) as T);
@@ -30,7 +33,17 @@ export type Hold = { id: string; totalCents: number; currency: string; expiresAt
 // them into the watch room later.
 export async function holdSeats(showtimeId: string, seats: number, viewerRef: string, session?: string, quality = "hd", via: "web" | "concierge" = "web"): Promise<Hold | undefined> {
   if (!apiEnabled) return undefined;
-  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality, campaign: await campaignCode(), via }, session);
+  return call<Hold>(`/v1/showtimes/${encodeURIComponent(showtimeId)}/holds`, { seats, viewerRef, quality, campaign: await campaignCode(), via, country: await edgeCountry() }, session);
+}
+
+// Where the buyer is, as Cloudflare sees it, so a studio's blocked territories hold.
+async function edgeCountry(): Promise<string> {
+  try {
+    const c = ((await headers()).get("cf-ipcountry") ?? "").toUpperCase();
+    return /^[A-Z]{2}$/.test(c) ? c : "";
+  } catch {
+    return "";
+  }
 }
 
 // The studio campaign link (e-cinema.net/c/<code>) the buyer arrived through, so the studio can

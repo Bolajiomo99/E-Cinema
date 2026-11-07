@@ -4,6 +4,7 @@ import { nameOf } from "@/lib/countries";
 import { can, dayName, type Studio } from "@/lib/studio-types";
 import { scall } from "./scall";
 import StudioWebhooks, { type Hook } from "./StudioWebhooks";
+import StudioTerritories from "./StudioTerritories";
 import type { ApiKey } from "./StudioApiKeys";
 
 // Figma "Studio / Settings" (39:1184). The verified name, country and registration are fixed;
@@ -101,7 +102,7 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
             <div><b>Company certificate</b><small>{s.docsKey ? (s.docsOk ? "On file · checked by AI" : "On file · checked by our studio team") : "Not uploaded"}</small></div>
             {s.docsKey && <button className="vf-btn sm" onClick={openDoc}>View</button>}
           </div>
-          <Soon title="Default territories" text="Choose where your films can be sold by default" />
+          <StudioTerritories blocked={s.blockedCountries ?? []} canEdit={edit} onSaved={(m) => { setErr(""); setMsg(m); }} />
           <div className="stu-set">
             <div><b id="set-dubrev">AI dub approval</b><small>{dubReview ? "Every new language needs a reviewer's approval before viewers hear it" : "Off: a language goes live when every line is voiced and nothing is flagged"}</small></div>
             <button type="button" role="switch" aria-checked={dubReview} aria-labelledby="set-dubrev" disabled={!edit} className={`stu-toggle${dubReview ? " on" : ""}`} onClick={() => void toggleDubReview()}><i /></button>

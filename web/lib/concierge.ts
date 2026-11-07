@@ -5,7 +5,7 @@ import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 import { paypalOrders } from "@/lib/paypal";
 import { shopFor, type ShopItem } from "@/lib/shop";
-import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, RegionError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 
 // E-Cinema AI, the concierge: Claude plans the booking, PayPal takes the payment.
 // The agent can only prepare orders priced by the server. The viewer approves every payment in PayPal.
@@ -150,6 +150,7 @@ async function runTool(block: Anthropic.ToolUseBlock, out: AgentOutput, session?
       hold = await holdSeats(showtime.id, seats, randomUUID(), session, "hd", "concierge");
     } catch (err) {
       if (err instanceof SoldOutError) return reply("Not enough seats left for that screening. Offer another one.", true);
+      if (err instanceof RegionError) return reply("The studio does not sell this film in the viewer's country, so it cannot be booked from there. Suggest another film.", true);
       if (err instanceof AdultOnlyError) return reply("This is an 18+ screening and the viewer has not passed the face and ID check. Point them to /settings/account to do it.", true);
       throw err;
     }

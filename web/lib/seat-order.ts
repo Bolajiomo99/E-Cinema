@@ -6,7 +6,7 @@ import type { OrderRequest } from "@paypal/paypal-server-sdk";
 import { randomUUID } from "node:crypto";
 import type { Showtime } from "@/lib/catalog";
 import { paypalError, paypalOrders } from "@/lib/paypal";
-import { AdultOnlyError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, RegionError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 import { accountApi } from "@/lib/auth";
 import { quote } from "@/lib/ticket-quote";
 import { kidsGate } from "@/lib/family";
@@ -62,6 +62,7 @@ export async function createSeatOrder(showtime: Showtime, session: string | unde
     return NextResponse.json({ orderId: result.id });
   } catch (err) {
     if (err instanceof SoldOutError) return NextResponse.json({ error: "Sold out" }, { status: 409 });
+    if (err instanceof RegionError) return NextResponse.json({ error: err.message }, { status: 451 });
     if (err instanceof AdultOnlyError) return NextResponse.json({ error: "This screening is for verified adults. Finish the face and ID check in your account first.", verify: true }, { status: 403 });
     if (err instanceof Error && / 401$/.test(err.message)) return NextResponse.json({ error: "Sign in to buy a seat", signIn: true }, { status: 401 });
     return paypalError(err);

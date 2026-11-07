@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { AdultOnlyError, attachOrder, holdSeats, markPaid, myTickets, releaseHold, SoldOutError } from "@/lib/api";
+import { AdultOnlyError, RegionError, attachOrder, holdSeats, markPaid, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 import { accountApi, currentAccount } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
 import { kidsGate } from "@/lib/family";
@@ -57,6 +57,7 @@ export async function startSeat(p: Provider, session: string, showtimeId: string
     }
   } catch (err) {
     if (err instanceof SoldOutError) return { status: 409, body: { error: "Sold out" } };
+    if (err instanceof RegionError) return { status: 451, body: { error: err.message } };
     if (err instanceof AdultOnlyError) return { status: 403, body: { error: "Verified adults only" } };
     throw err;
   }

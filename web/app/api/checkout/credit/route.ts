@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
-import { holdSeats, myTickets, releaseHold, SoldOutError, AdultOnlyError } from "@/lib/api";
+import { holdSeats, myTickets, releaseHold, SoldOutError, AdultOnlyError, RegionError } from "@/lib/api";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { findShowtime } from "@/lib/catalog";
 import { quote, salesOver } from "@/lib/ticket-quote";
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof SoldOutError) return NextResponse.json({ error: "Sold out" }, { status: 409 });
+    if (err instanceof RegionError) return NextResponse.json({ error: err.message }, { status: 451 });
     if (err instanceof AdultOnlyError) return NextResponse.json({ error: "Verified adults only" }, { status: 403 });
     throw err;
   }

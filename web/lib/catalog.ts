@@ -24,6 +24,7 @@ export type Showtime = {
   posterImage?: string; // a studio's uploaded poster
   studioFilm?: string; // set on premieres a studio published from its portal
   local?: Record<string, { currency: string; minor: number }>; // studio's price per country
+  blocked?: string[]; // countries the studio does not sell this film in
   encoreOf?: string; // a weekly encore of this lineup screening
 };
 
