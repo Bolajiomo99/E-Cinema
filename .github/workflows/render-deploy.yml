@@ -4,6 +4,8 @@ name: Deploy to Render
 on:
   workflow_dispatch:
   push:
+    # Only main deploys: a push to any other branch would point Render at that branch.
+    branches: [main]
     paths: [ops/render-deploy.mjs, .github/workflows/render-deploy.yml]
 
 permissions:

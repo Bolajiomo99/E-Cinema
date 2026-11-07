@@ -328,6 +328,14 @@ if (!wf) {
   } catch (err) {
     console.log(`Could not update workflow env vars: ${err.message}`);
   }
+  // Keep the workflow building from the branch this deploy runs on (the default branch can be renamed).
+  try {
+    await api("PATCH", `/workflows/${wf.id}`, {
+      buildConfig: { repo: REPO, branch: BRANCH, rootDir: "workflows", runtime: "node", buildCommand: "npm ci && npm run build" },
+    });
+  } catch (err) {
+    console.log(`Could not update workflow branch: ${err.message}`);
+  }
   console.log(`Workflow exists: ${wf.slug ?? wf.id}`);
 }
 let version = await api("POST", "/workflowversions", { workflowId: wf.id });
