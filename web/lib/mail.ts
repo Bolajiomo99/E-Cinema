@@ -42,7 +42,7 @@ const refBox = (t: string) =>
 const ghost = (to: string, label: string) =>
   `<p style="margin:0 0 20px"><a href="${esc(to)}" style="display:inline-block;background:#ffffff;color:#16161a;text-decoration:none;font:600 16px/1 ${FONT};padding:15px 23px;border-radius:8px;border:1px solid #c9c9d0">${esc(label)}</a></p>`;
 const bigCode = (code: string) =>
-  `<div style="margin:0 0 20px;background:#f5f5f7;border-radius:10px;padding:18px;text-align:center;font:400 40px/1.1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:0.5px;color:#141418">${esc(code.slice(0, 3))} ${esc(code.slice(3))}</div>`;
+  `<div style="margin:0 0 20px;background:#f5f5f7;border-radius:10px;padding:18px;text-align:center;font:400 40px/1.1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:0.5px;color:#141418">${/^\d{6}$/.test(code) ? `${code.slice(0, 3)} ${code.slice(3)}` : esc(code)}</div>`;
 const small = (t: string) => `<p style="margin:0 0 20px;font:500 14px/1.55 ${FONT};color:#7a7a84">${t}</p>`;
 const teal = (t: string) => `<div style="margin:0 0 20px;background:#e6f6f4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
 const steps = (list: string[]) =>
@@ -493,6 +493,26 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // 41 Monthly royalty statement (127:391). Queued by the API from 08:00 UTC on the 1st for
+  // partners who owe a royalty for last month; "Pay now" opens that month in the portal.
+  royalty_statement: (m) => {
+    const month = S(m.data.month), invoice = S(m.data.invoice), due = S(m.data.dueBy);
+    const sales = N(m.data.salesNgn), royalty = N(m.data.royaltyNgn), pct = N(m.data.pct);
+    if (!/^\d{4}-\d{2}$/.test(month) || !royalty || !due) return null;
+    const mon = new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", timeZone: "UTC" });
+    const dueDay = new Date(`${due}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+    const ngn = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+    const short = (n: number) => n >= 1e6 ? `₦${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M` : n >= 1e3 ? `₦${Math.round(n / 1e3)}k` : ngn(n);
+    return done({
+      from: SENDER.billing, tag: "STATEMENT", footer: FOOT_ACTION(),
+      subject: `${mon} royalty statement: ${short(royalty)} due`, preview: `Pay by ${dueDay} to stay in good standing`,
+      title: `Your ${mon} statement`,
+      body: p(`You sold ${short(sales)} of E-Cinema merch in ${mon}. Your ${esc(S(m.data.plan))} plan royalty is ${pct}%, so ${ngn(royalty)} is due by ${dueDay}. Pay in your portal by card or PayPal. Invoice:`) +
+        bigCode(invoice) + button(href(`/partner/royalties?pay=${month}`), "Pay now"),
+      text: `You sold ${short(sales)} of E-Cinema merch in ${mon}. Your ${S(m.data.plan)} plan royalty is ${pct}%, so ${ngn(royalty)} is due by ${dueDay}. Invoice ${invoice}. Pay now: ${href(`/partner/royalties?pay=${month}`)}`,
+    });
+  },
+
   // 45 Executive invite expiring (127:479)
   exec_invite_expiring: (m) => {
     const token = S(m.data.token), ends = S(m.data.expiresAt);
@@ -628,7 +648,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
