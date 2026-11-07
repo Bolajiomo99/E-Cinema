@@ -1,10 +1,12 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 )
 
 // Insights routes (Figma 19:462): player heartbeats in, the viewer's own report out.
@@ -16,14 +18,23 @@ func (s *Server) insightRoutes(mux *http.ServeMux) {
 			Audio      string `json:"audio"`
 			Subs       string `json:"subs"`
 			Seconds    int    `json:"seconds"`
+			playback.Report
 		}
 		if !decode(w, r, &b) {
 			return
 		}
-		ok, err := s.Insights.Record(r.Context(), a.ID, b.ShowtimeID, b.Mode, b.Audio, b.Subs, b.Seconds, time.Now())
+		now := time.Now()
+		ok, err := s.Insights.Record(r.Context(), a.ID, b.ShowtimeID, b.Mode, b.Audio, b.Subs, b.Seconds, now)
 		if err != nil {
 			fail(w, err)
 			return
+		}
+		// Player reports ride on the same beat, so a beat sent too soon is not counted twice.
+		if ok {
+			if err := s.Playback.Record(r.Context(), a.ID, b.ShowtimeID, b.Mode, b.Report, now); err != nil && !errors.Is(err, playback.ErrBadInput) {
+				fail(w, err)
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"counted": ok})
 	}))

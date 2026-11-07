@@ -28,6 +28,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 )
@@ -55,6 +56,7 @@ type Server struct {
 	Library library.Store
 	// Insights adds up watch time, chat and spending for the viewer's own dashboard.
 	Insights insights.Store
+	Playback playback.Store
 	// Notify stores the viewer's notifications.
 	Notify notify.Store
 	// Chat runs friends and messages; ChatHub pushes them live.

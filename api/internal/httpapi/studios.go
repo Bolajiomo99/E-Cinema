@@ -12,6 +12,7 @@ import (
 
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/studios"
 )
@@ -99,6 +100,11 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/me/studio/analytics", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 		v, err := s.Studios.Analytics(r.Context(), a.ID, a.Email, days, time.Now())
+		if err == nil {
+			if st, e := s.Studios.Mine(r.Context(), a.ID, a.Email); e == nil && st.Name != "" {
+				v.Audience, err = s.Playback.AudienceOf(r.Context(), st.Name, v.From, v.To)
+			}
+		}
 		reply(w, v, err)
 	}))
 	mux.HandleFunc("GET /v1/me/studio/films", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
@@ -315,7 +321,16 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		if errors.Is(err, rooms.ErrNoMessage) {
 			err = studios.ErrNotFound
 		}
-		reply(w, map[string]any{"control": c, "live": s.Hub.StatOf(sid), "peak": s.Hub.PeakOf(sid), "studio": studio}, err)
+		var q playback.Quality
+		if err == nil {
+			// While the room is open: the last five minutes. Before or after: the whole screening.
+			since, now := c.StartsAt, time.Now()
+			if now.After(c.StartsAt) && now.Before(c.StartsAt.Add(time.Duration(c.DurationMin)*time.Minute)) {
+				since = now.Add(-5 * time.Minute)
+			}
+			q, err = s.Playback.Of(r.Context(), sid, since)
+		}
+		reply(w, map[string]any{"control": c, "live": s.Hub.StatOf(sid), "peak": s.Hub.PeakOf(sid), "studio": studio, "quality": q}, err)
 	}))
 	mux.HandleFunc("POST /v1/me/studio/uploads/{id}/control/announce", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var b struct{ Text string }

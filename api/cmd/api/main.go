@@ -18,6 +18,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/reviews"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/rooms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/shop"
@@ -108,6 +109,7 @@ func run() error {
 		Reviews:        reviews.Store{DB: pool},
 		Library:        library.Store{DB: pool},
 		Insights:       insights.Store{DB: pool},
+		Playback:       playback.Store{DB: pool},
 		Notify:         notify.Store{DB: pool},
 		Chat:           chat.Store{DB: pool},
 		Community:      community.Store{DB: pool},

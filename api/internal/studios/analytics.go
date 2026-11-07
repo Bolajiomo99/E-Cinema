@@ -37,6 +37,7 @@ type Analytics struct {
 	Cohorts        []Cohort  `json:"cohorts"`
 	Money          Money     `json:"money"`
 	Funnel         Funnel    `json:"funnel"`
+	Audience       any       `json:"audience"` // retention, hours and devices from player reports (filled by the API)
 }
 
 // Country is one row of "Top countries": people who watched, and what their tickets brought in.
