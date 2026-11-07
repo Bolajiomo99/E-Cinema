@@ -48,6 +48,7 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
   }
   const [city, setCity] = useState(s0.city);
   const [website, setWebsite] = useState(s0.website);
+  const [bio, setBio] = useState(s0.bio ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -56,8 +57,10 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
   async function save() {
     setBusy(true); setErr(""); setMsg("");
     try {
-      const r = await scall<{ studio: Studio }>("PUT", "", { name: s.name, legalName: s.legalName, regCountry: s.regCountry, regNumber: s.regNumber, city: city.trim(), website: website.trim() });
-      setS(r.studio);
+      let next = s;
+      if (city !== s.city || website !== s.website) next = (await scall<{ studio: Studio }>("PUT", "", { name: s.name, legalName: s.legalName, regCountry: s.regCountry, regNumber: s.regNumber, city: city.trim(), website: website.trim() })).studio;
+      if (bio.trim() !== (s.bio ?? "")) next = { ...next, bio: (await scall<{ bio: string }>("PUT", "bio", { bio: bio.trim() })).bio };
+      setS(next); setBio(next.bio ?? "");
       setMsg("Saved.");
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
@@ -85,11 +88,13 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
               <label className="vf-field"><span>City</span><div className="vf-box"><input value={city} onChange={(e) => setCity(e.target.value)} maxLength={60} disabled={!edit} /></div></label>
               <label className="vf-field"><span>Website</span><div className="vf-box"><input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} maxLength={200} placeholder="https://" disabled={!edit} /></div></label>
             </div>
-            {edit && <div className="pt-btns"><button className="vf-btn red sm" disabled={busy || (city === s.city && website === s.website)}>{busy ? "Saving" : "Save"}</button></div>}
+            <label className="vf-field"><span>About the studio <small>Shown on your public studio page</small></span><div className="vf-box"><textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={400} rows={3} placeholder="Who you are and the films you make" disabled={!edit} /></div></label>
+            {edit && <div className="pt-btns"><button className="vf-btn red sm" disabled={busy || (city === s.city && website === s.website && bio.trim() === (s.bio ?? ""))}>{busy ? "Saving" : "Save"}</button></div>}
             <p className="pt-hint">To change the verified name or registration, email <a href="mailto:admin@e-cinema.net?subject=Studio%20details">admin@e-cinema.net</a> from an owner&apos;s address.</p>
           </form>
           <div className="stu-set">
-            <div><b>Studio page <em className="soon-tag">Soon</em></b><small>e-cinema.net/studios/{s.slug}</small></div>
+            <div><b>Studio page</b><small>e-cinema.net/studios/{s.slug}</small></div>
+            {s.status === "verified" ? <a className="vf-btn sm sec" href={`/studios/${s.slug}`} target="_blank" rel="noopener">View</a> : <small>Goes live once your studio is verified</small>}
           </div>
         </section>
 

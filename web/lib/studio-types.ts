@@ -6,6 +6,7 @@ export type Studio = {
   docsKey: string; docsOk: boolean;
   payoutMethod: "paypal" | "bank"; payoutEmail: string; payoutBank: string; payoutNumber: string; payoutName: string; payoutCurrency: string;
   shareBps: number; rightsNote: string; rightsAt: string | null; termsAt: string | null; verifiedAt: string | null; createdAt: string;
+  bio?: string; // the studio's own words on its public page
   dubReview?: boolean; // new dubbed languages wait for a person's approval
   blockedCountries?: string[]; // where none of its films are sold
   role?: Role; owner?: string;

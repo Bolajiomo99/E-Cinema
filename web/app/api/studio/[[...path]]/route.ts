@@ -69,6 +69,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
   if (!p.length) return pass(await accountApi("PUT", "/v1/me/studio", body, s));
   if (p.length === 1 && ["payout", "rights", "team"].includes(p[0])) return pass(await accountApi("PUT", `/v1/me/studio/${p[0]}`, body, s));
   if (p.length === 1 && p[0] === "territories") return pass(await accountApi("PUT", "/v1/me/studio/territories", { blocked: Array.isArray(body.blocked) ? (body.blocked as unknown[]).filter((c): c is string => typeof c === "string").slice(0, 250) : [] }, s));
+  if (p.length === 1 && p[0] === "bio") return pass(await accountApi("PUT", "/v1/me/studio/bio", { bio: typeof body.bio === "string" ? body.bio.slice(0, 400) : "" }, s));
   if (p.length === 1 && p[0] === "dub-review") return pass(await accountApi("PUT", "/v1/me/studio/dub-review", { On: body.On === true }, s));
   if (p.length === 2 && p[0] === "alerts" && /^[a-z]{1,20}$/.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/alerts/${p[1]}`, { On: body.On === true }, s));
   if (p.length === 2 && p[0] === "leaks" && ID.test(p[1])) return pass(await accountApi("PUT", `/v1/me/studio/leaks/${p[1]}`, body, s));
