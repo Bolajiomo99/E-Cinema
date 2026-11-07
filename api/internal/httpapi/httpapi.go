@@ -298,15 +298,12 @@ func (s *Server) Routes() http.Handler {
 		writeJSON(w, http.StatusOK, st)
 	}))
 	mux.HandleFunc("POST /v1/showtimes/{id}/payout/result", s.internal(func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Status  string `json:"status"`
-			BatchID string `json:"batchId"`
-		}
+		var body tickets.Outcome
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 			return
 		}
-		if err := s.Tickets.RecordPayout(r.Context(), r.PathValue("id"), body.Status, body.BatchID); err != nil {
+		if err := s.Tickets.RecordPayout(r.Context(), r.PathValue("id"), body); err != nil {
 			fail(w, err)
 			return
 		}

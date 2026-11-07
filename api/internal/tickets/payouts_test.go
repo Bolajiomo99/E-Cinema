@@ -63,10 +63,10 @@ func TestStudioPayout(t *testing.T) {
 		t.Fatalf("second claim changed the payout: %+v %v", again, err)
 	}
 
-	if err := s.RecordPayout(ctx, "payout-test", "sent", "BATCH1"); err != nil {
+	if err := s.RecordPayout(ctx, "payout-test", tickets.Outcome{Status: "sent", BatchID: "BATCH1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.RecordPayout(ctx, "payout-test", "failed", ""); !errors.Is(err, tickets.ErrNoPayout) {
+	if err := s.RecordPayout(ctx, "payout-test", tickets.Outcome{Status: "failed"}); !errors.Is(err, tickets.ErrNoPayout) {
 		t.Fatalf("a sent payout was changed: %v", err)
 	}
 	if due, _ := s.DuePayouts(ctx); contains(due, "payout-test") {
@@ -94,7 +94,7 @@ func TestNothingDueAndUnknownStudio(t *testing.T) {
 	if _, err := s.ClaimPayout(ctx, "payout-nostudio"); !errors.Is(err, tickets.ErrNoStudio) {
 		t.Fatalf("unknown studio: got %v", err)
 	}
-	if err := s.RecordPayout(ctx, "payout-empty", "paid", ""); !errors.Is(err, tickets.ErrBadOutcome) {
+	if err := s.RecordPayout(ctx, "payout-empty", tickets.Outcome{Status: "paid"}); !errors.Is(err, tickets.ErrBadOutcome) {
 		t.Fatalf("bad status accepted: %v", err)
 	}
 }
@@ -132,5 +132,57 @@ func TestStudioShareUsesChargedPrice(t *testing.T) {
 	}
 	if st.GrossCents != 810 {
 		t.Fatalf("gross = %d, want 310 + 500", st.GrossCents)
+	}
+}
+
+func TestBankPayout(t *testing.T) {
+	s := store(t)
+	ctx := context.Background()
+	const studio = "Test Bank Payout Films"
+	clean := func() {
+		s.DB.Exec(ctx, `DELETE FROM studio_payouts WHERE showtime_id = 'payout-bank'`)
+		s.DB.Exec(ctx, `DELETE FROM holds WHERE paypal_order_id = 'PAYOUTBK'`)
+		s.DB.Exec(ctx, `DELETE FROM showtimes WHERE id = 'payout-bank'`)
+		s.DB.Exec(ctx, `DELETE FROM studios WHERE name = $1`, studio)
+	}
+	clean()
+	t.Cleanup(clean)
+	if _, err := s.DB.Exec(ctx, `INSERT INTO studios (name, slug, status, payout_email, payout_method, payout_bank, payout_bank_code, payout_number, payout_name, payout_currency, share_bps)
+	  VALUES ($1, 'test-bank-payout-films', 'verified', '', 'bank', 'Access Bank', '044', '0690000031', 'Test Bank Films', 'NGN', 7000)`, studio); err != nil {
+		t.Fatal(err)
+	}
+	newShow(t, s, "payout-bank", 100)
+	s.DB.Exec(ctx, `UPDATE showtimes SET studio = $1 WHERE id = 'payout-bank'`, studio)
+	paidSeats(t, s, "payout-bank", 2, "PAYOUTBK")
+	s.DB.Exec(ctx, `UPDATE showtimes SET starts_at = now() - interval '3 hours' WHERE id = 'payout-bank'`)
+
+	st, err := s.ClaimPayout(ctx, "payout-bank")
+	if err != nil || st.Method != "bank" || st.BankCode != "044" || st.AccountNumber != "0690000031" || st.Reference != "ecinema-payout-bank" {
+		t.Fatalf("bank claim: %+v %v", st, err)
+	}
+	if err := s.RecordPayout(ctx, "payout-bank", tickets.Outcome{Status: "submitted"}); !errors.Is(err, tickets.ErrBadOutcome) {
+		t.Fatalf("submitted without a transfer id: %v", err)
+	}
+	if err := s.RecordPayout(ctx, "payout-bank", tickets.Outcome{Status: "submitted", TransferID: "111", PaidCurrency: "NGN", PaidMinor: 1500000}); err != nil {
+		t.Fatal(err)
+	}
+	st, _ = s.Statement(ctx, "payout-bank")
+	if st.Status != "pending" || st.TransferID != "111" {
+		t.Fatalf("in flight: %+v", st)
+	}
+	// The bank refuses it: the next attempt gets a fresh reference.
+	if err := s.RecordPayout(ctx, "payout-bank", tickets.Outcome{Status: "failed"}); err != nil {
+		t.Fatal(err)
+	}
+	st, err = s.ClaimPayout(ctx, "payout-bank")
+	if err != nil || st.Status != "failed" || st.TransferID != "" || st.Reference != "ecinema-payout-bank-1" {
+		t.Fatalf("after failure: %+v %v", st, err)
+	}
+	if err := s.RecordPayout(ctx, "payout-bank", tickets.Outcome{Status: "sent", TransferID: "222", PaidCurrency: "NGN", PaidMinor: 1500000}); err != nil {
+		t.Fatal(err)
+	}
+	st, _ = s.Statement(ctx, "payout-bank")
+	if st.Status != "sent" || st.TransferID != "222" {
+		t.Fatalf("final: %+v", st)
 	}
 }

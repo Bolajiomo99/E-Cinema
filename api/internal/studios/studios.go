@@ -66,6 +66,7 @@ type Studio struct {
 	PayoutMethod   string     `json:"payoutMethod"`
 	PayoutEmail    string     `json:"payoutEmail"`
 	PayoutBank     string     `json:"payoutBank"`
+	PayoutBankCode string     `json:"payoutBankCode"`
 	PayoutNumber   string     `json:"payoutNumber"`
 	PayoutName     string     `json:"payoutName"`
 	PayoutCurrency string     `json:"payoutCurrency"`
@@ -90,13 +91,13 @@ func (s Studio) Steps() map[string]bool {
 }
 
 const cols = `st.name, coalesce(st.slug, ''), st.legal_name, st.reg_country, st.reg_number, st.city, st.website, st.status, st.review_note,
-  st.docs_key, st.docs_ok, st.payout_method, st.payout_email, st.payout_bank, st.payout_number, st.payout_name, st.payout_currency, st.share_bps,
+  st.docs_key, st.docs_ok, st.payout_method, st.payout_email, st.payout_bank, st.payout_bank_code, st.payout_number, st.payout_name, st.payout_currency, st.share_bps,
   st.rights_note, st.rights_at, st.terms_at, st.verified_at, st.created_at, st.dub_review, st.blocked_countries, st.bio`
 
 func scan(r pgx.Row, extra ...any) (Studio, error) {
 	var s Studio
 	err := r.Scan(append([]any{&s.Name, &s.Slug, &s.LegalName, &s.RegCountry, &s.RegNumber, &s.City, &s.Website, &s.Status, &s.ReviewNote,
-		&s.DocsKey, &s.DocsOK, &s.PayoutMethod, &s.PayoutEmail, &s.PayoutBank, &s.PayoutNumber, &s.PayoutName, &s.PayoutCurrency, &s.ShareBps,
+		&s.DocsKey, &s.DocsOK, &s.PayoutMethod, &s.PayoutEmail, &s.PayoutBank, &s.PayoutBankCode, &s.PayoutNumber, &s.PayoutName, &s.PayoutCurrency, &s.ShareBps,
 		&s.RightsNote, &s.RightsAt, &s.TermsAt, &s.VerifiedAt, &s.CreatedAt, &s.DubReview, &s.Blocked, &s.Bio}, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s, ErrNotFound
@@ -227,9 +228,15 @@ func (st Store) SetDocs(ctx context.Context, acct, email, key string, ok bool) (
 
 type Payout struct {
 	Method, Email, Bank, Number, Name, Currency string
+	// BankCode is the bank's code on the transfer network (Flutterwave's bank list), so the
+	// payout can be sent by bank transfer without anyone typing it in by hand.
+	BankCode string
 }
 
-var accountNo = regexp.MustCompile(`^[0-9A-Z ]{6,34}$`)
+var (
+	accountNo = regexp.MustCompile(`^[0-9A-Z ]{6,34}$`)
+	bankCode  = regexp.MustCompile(`^[0-9A-Z]{2,10}$`)
+)
 
 // SetPayout records where the studio's share goes. Changing it on a verified studio is
 // allowed (finance teams change banks) and takes effect from the next payout.
@@ -237,6 +244,7 @@ func (st Store) SetPayout(ctx context.Context, acct, email string, p Payout) (St
 	p.Method, p.Currency = strings.ToLower(p.Method), strings.ToUpper(clip(p.Currency, 3))
 	p.Email, p.Bank, p.Name = strings.ToLower(clip(p.Email, 120)), clip(p.Bank, 80), clip(p.Name, 120)
 	p.Number = strings.ToUpper(clip(p.Number, 34))
+	p.BankCode = strings.ToUpper(strings.TrimSpace(clip(p.BankCode, 10)))
 	if p.Currency == "" {
 		p.Currency = "USD"
 	}
@@ -245,9 +253,9 @@ func (st Store) SetPayout(ctx context.Context, acct, email string, p Payout) (St
 		if a, err := mail.ParseAddress(p.Email); err != nil || a.Address != p.Email {
 			return Studio{}, ErrBadInput
 		}
-		p.Bank, p.Number, p.Name = "", "", ""
+		p.Bank, p.Number, p.Name, p.BankCode = "", "", "", ""
 	case "bank":
-		if p.Bank == "" || p.Name == "" || !accountNo.MatchString(p.Number) {
+		if p.Bank == "" || p.Name == "" || !accountNo.MatchString(p.Number) || !bankCode.MatchString(p.BankCode) {
 			return Studio{}, ErrBadInput
 		}
 	default:
@@ -255,7 +263,7 @@ func (st Store) SetPayout(ctx context.Context, acct, email string, p Payout) (St
 	}
 	return st.editable(ctx, acct, email, "money", false, func(s Studio) error {
 		_, err := st.DB.Exec(ctx, `UPDATE studios SET payout_method = $2, payout_email = CASE WHEN $2 = 'paypal' THEN $3 ELSE payout_email END,
-		  payout_bank = $4, payout_number = $5, payout_name = $6, payout_currency = $7 WHERE name = $1`, s.Name, p.Method, p.Email, p.Bank, p.Number, p.Name, p.Currency)
+		  payout_bank = $4, payout_number = $5, payout_name = $6, payout_currency = $7, payout_bank_code = $8 WHERE name = $1`, s.Name, p.Method, p.Email, p.Bank, p.Number, p.Name, p.Currency, p.BankCode)
 		return err
 	})
 }
