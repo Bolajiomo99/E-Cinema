@@ -75,6 +75,7 @@ type Studio struct {
 	TermsAt        *time.Time `json:"termsAt"`
 	VerifiedAt     *time.Time `json:"verifiedAt"`
 	CreatedAt      time.Time  `json:"createdAt"`
+	DubReview      bool       `json:"dubReview"` // new dubbed languages wait for a person's approval
 	Role           string     `json:"role,omitempty"`
 	Owner          string     `json:"owner,omitempty"`
 }
@@ -88,13 +89,13 @@ func (s Studio) Steps() map[string]bool {
 
 const cols = `st.name, coalesce(st.slug, ''), st.legal_name, st.reg_country, st.reg_number, st.city, st.website, st.status, st.review_note,
   st.docs_key, st.docs_ok, st.payout_method, st.payout_email, st.payout_bank, st.payout_number, st.payout_name, st.payout_currency, st.share_bps,
-  st.rights_note, st.rights_at, st.terms_at, st.verified_at, st.created_at`
+  st.rights_note, st.rights_at, st.terms_at, st.verified_at, st.created_at, st.dub_review`
 
 func scan(r pgx.Row, extra ...any) (Studio, error) {
 	var s Studio
 	err := r.Scan(append([]any{&s.Name, &s.Slug, &s.LegalName, &s.RegCountry, &s.RegNumber, &s.City, &s.Website, &s.Status, &s.ReviewNote,
 		&s.DocsKey, &s.DocsOK, &s.PayoutMethod, &s.PayoutEmail, &s.PayoutBank, &s.PayoutNumber, &s.PayoutName, &s.PayoutCurrency, &s.ShareBps,
-		&s.RightsNote, &s.RightsAt, &s.TermsAt, &s.VerifiedAt, &s.CreatedAt}, extra...)...)
+		&s.RightsNote, &s.RightsAt, &s.TermsAt, &s.VerifiedAt, &s.CreatedAt, &s.DubReview}, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s, ErrNotFound
 	}

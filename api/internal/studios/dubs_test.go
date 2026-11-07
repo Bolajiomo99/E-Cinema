@@ -109,8 +109,26 @@ func TestDubs(t *testing.T) {
 	if d.Status != "review" || d.Error == "" {
 		t.Fatalf("voice failure: %+v", d)
 	}
+	// With "AI dub approval" off, a clean voicing run goes live by itself.
+	if _, err := st.SetDubReview(ctx, viewer, "dub-viewer@example.com", false); !errors.Is(err, studios.ErrForbidden) {
+		t.Fatalf("viewer switched dub review: %v", err)
+	}
+	if s, err := st.SetDubReview(ctx, owner, email, false); err != nil || s.DubReview {
+		t.Fatalf("switch off: %+v %v", s, err)
+	}
+	st.Voice(ctx, owner, email, u.ID, "ha")
+	st.SetLineAudio(ctx, u.ID, "ha", 1, "Takobin mahaifina ne.", "studio-dubs/"+u.ID+"/ha/b.mp3")
+	if ok, err := st.FinishDub(ctx, u.ID, "ha", ""); err != nil || !ok {
+		t.Fatalf("auto approve: %v %v", ok, err)
+	}
+	if d, _, _ = st.DubLines(ctx, owner, email, u.ID, "ha"); d.Status != "approved" {
+		t.Fatalf("after auto approve: %+v", d)
+	}
+	if ok, _ := st.FinishDub(ctx, u.ID, "ha", ""); ok {
+		t.Fatal("finish on an approved language approved again")
+	}
 	keys, err := st.RemoveDub(ctx, owner, email, u.ID, "ha")
-	if err != nil || len(keys) != 1 {
+	if err != nil || len(keys) != 2 {
 		t.Fatalf("remove: %v %v", keys, err)
 	}
 }

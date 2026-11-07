@@ -296,6 +296,13 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		p, err := s.Studios.APIPayouts(r.Context(), key(r), time.Now())
 		reply(w, map[string]any{"payouts": p}, err)
 	}))
+	mux.HandleFunc("PUT /v1/me/studio/dub-review", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ On bool }
+		if decode(w, r, &b) {
+			st, err := s.Studios.SetDubReview(r.Context(), a.ID, a.Email, b.On)
+			reply(w, map[string]any{"dubReview": st.DubReview}, err)
+		}
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)
@@ -462,8 +469,8 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/studio-dubs/{upload}/{lang}/finish", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		var b struct{ Error string }
 		if decodeN(w, r, 2<<10, &b) {
-			err := s.Studios.FinishDub(r.Context(), r.PathValue("upload"), r.PathValue("lang"), b.Error)
-			reply(w, map[string]bool{"ok": err == nil}, err)
+			approved, err := s.Studios.FinishDub(r.Context(), r.PathValue("upload"), r.PathValue("lang"), b.Error)
+			reply(w, map[string]bool{"ok": err == nil, "approved": approved}, err)
 		}
 	}))
 	mux.HandleFunc("GET /v1/studio-dubs/{upload}", s.internal(func(w http.ResponseWriter, r *http.Request) {

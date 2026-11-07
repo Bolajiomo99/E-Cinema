@@ -373,15 +373,33 @@ func (st Store) SetLineDraft(ctx context.Context, upload, lang string, idx int, 
 	return err
 }
 
-// FinishDub ends a translating or voicing run: back to review, or failed with a reason.
-func (st Store) FinishDub(ctx context.Context, upload, lang, failure string) error {
+// FinishDub ends a translating or voicing run: back to review, or failed with a reason. When the
+// studio switched off "AI dub approval", a voicing run that leaves every line voiced and nothing
+// flagged approves the language at once; approved reports that, so the caller writes the tracks.
+func (st Store) FinishDub(ctx context.Context, upload, lang, failure string) (approved bool, err error) {
 	status := "review"
 	if failure != "" {
 		status = "failed"
 	}
-	_, err := st.DB.Exec(ctx, `UPDATE studio_dubs SET status = CASE WHEN $3 = 'failed' AND status = 'voicing' THEN 'review' ELSE $3 END, error = $4, updated_at = now()
-	  WHERE upload = $1 AND lang = $2 AND status IN ('translating', 'voicing')`, upload, lang, status, clip(failure, 300))
-	return err
+	var was string
+	err = st.DB.QueryRow(ctx, `WITH old AS (SELECT status FROM studio_dubs WHERE upload = $1 AND lang = $2 AND status IN ('translating', 'voicing') FOR UPDATE)
+	  UPDATE studio_dubs d SET status = CASE WHEN $3 = 'failed' AND d.status = 'voicing' THEN 'review' ELSE $3 END, error = $4, updated_at = now()
+	  FROM old WHERE d.upload = $1 AND d.lang = $2 RETURNING old.status`, upload, lang, status, clip(failure, 300)).Scan(&was)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil || failure != "" || was != "voicing" {
+		return false, err
+	}
+	tag, err := st.DB.Exec(ctx, `UPDATE studio_dubs d SET status = 'approved', approved_at = now(), updated_at = now()
+	  FROM studio_uploads u JOIN studios s ON s.name = u.studio
+	  WHERE d.upload = $1 AND d.lang = $2 AND u.id = d.upload AND NOT s.dub_review AND d.status = 'review'
+	    AND EXISTS (SELECT 1 FROM studio_dub_lines l WHERE l.upload = d.upload AND l.lang = d.lang)
+	    AND NOT EXISTS (SELECT 1 FROM studio_dub_lines l WHERE l.upload = d.upload AND l.lang = d.lang AND (l.flag <> '' OR l.audio_key = ''))`, upload, lang)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // ApprovedDubs lists a film's approved languages, for writing the player's track files.
@@ -402,4 +420,17 @@ func (st Store) ApprovedDubs(ctx context.Context, upload string) (showtime strin
 	}
 	langs, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	return showtime, langs, err
+}
+
+// SetDubReview is the "AI dub approval" switch in studio settings (owners and admins).
+func (st Store) SetDubReview(ctx context.Context, acct, email string, on bool) (Studio, error) {
+	s, err := st.verified(ctx, acct, email, true)
+	if err != nil {
+		return s, err
+	}
+	if _, err := st.DB.Exec(ctx, `UPDATE studios SET dub_review = $2 WHERE name = $1`, s.Name, on); err != nil {
+		return s, err
+	}
+	s.DubReview = on
+	return s, nil
 }
