@@ -333,27 +333,28 @@ func (st Store) SaveComingSoon(ctx context.Context, acct, email, id string, in C
 
 // LiveFilm is a published studio premiere as the public site lists it.
 type LiveFilm struct {
-	ShowtimeID  string           `json:"showtimeId"`
-	Upload      string           `json:"upload"`
-	Film        string           `json:"film"`
-	Studio      string           `json:"studio"`
-	StartsAt    time.Time        `json:"startsAt"`
-	DurationMin int              `json:"durationMin"`
-	PriceCents  int              `json:"priceCents"`
-	Adult       bool             `json:"adult"`
-	Logline     string           `json:"logline"`
-	Genres      string           `json:"genres"`
-	AgeRating   string           `json:"ageRating"`
-	Languages   string           `json:"languages"`
-	Poster      bool             `json:"poster"`
-	Format      string           `json:"format"`
-	Prices      map[string]Price `json:"prices"`
-	EarlySave   int              `json:"earlySave"`
-	Formats     []string         `json:"formats"`
-	HasMaster   bool             `json:"hasMaster"`
-	Blocked     []string         `json:"blocked"`            // countries the studio does not sell in
-	EncoreOf    string           `json:"encoreOf,omitempty"` // the premiere this sell-out encore repeats
-	StudioSlug  string           `json:"studioSlug"`         // its public page, /studios/<slug>
+	ShowtimeID   string           `json:"showtimeId"`
+	Upload       string           `json:"upload"`
+	Film         string           `json:"film"`
+	Studio       string           `json:"studio"`
+	StartsAt     time.Time        `json:"startsAt"`
+	DurationMin  int              `json:"durationMin"`
+	PriceCents   int              `json:"priceCents"`
+	Adult        bool             `json:"adult"`
+	Logline      string           `json:"logline"`
+	Genres       string           `json:"genres"`
+	AgeRating    string           `json:"ageRating"`
+	Languages    string           `json:"languages"`
+	Poster       bool             `json:"poster"`
+	Format       string           `json:"format"`
+	Prices       map[string]Price `json:"prices"`
+	EarlySave    int              `json:"earlySave"`
+	Formats      []string         `json:"formats"`
+	HasMaster    bool             `json:"hasMaster"`
+	Blocked      []string         `json:"blocked"`            // countries the studio does not sell in
+	StudentPrice bool             `json:"studentPrice"`       // verified students pay 30% less
+	EncoreOf     string           `json:"encoreOf,omitempty"` // the premiere this sell-out encore repeats
+	StudioSlug   string           `json:"studioSlug"`         // its public page, /studios/<slug>
 }
 
 // LiveFilms lists every published studio premiere that has not ended more than a day ago.
@@ -363,7 +364,7 @@ func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	    p.early_save, p.formats, EXISTS (SELECT 1 FROM studio_upload_files f WHERE f.upload_id = u.id AND f.kind = 'master' AND f.status = 'uploaded'),
 	    coalesce((SELECT x.blocked_countries FROM studios x WHERE x.name = u.studio), '{}'),
 	    coalesce((SELECT x.slug FROM studios x WHERE x.name = u.studio AND x.status = 'verified'), ''),
-	    CASE WHEN s.id = p.showtime_id THEN '' ELSE p.showtime_id END
+	    CASE WHEN s.id = p.showtime_id THEN '' ELSE p.showtime_id END, p.student_price
 	  FROM studio_premieres p JOIN studio_uploads u ON u.id = p.upload
 	  JOIN showtimes s ON s.id = p.showtime_id OR s.id IN (SELECT e.showtime_id FROM studio_encores e WHERE e.origin = p.showtime_id AND e.status = 'approved')
 	  WHERE p.published_at IS NOT NULL AND s.withdrawn_at IS NULL AND s.starts_at + make_interval(mins => s.duration_min) > now() - interval '1 day'
@@ -373,7 +374,7 @@ func (st Store) LiveFilms(ctx context.Context) ([]LiveFilm, error) {
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (LiveFilm, error) {
 		var f LiveFilm
-		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format, &f.EarlySave, &f.Formats, &f.HasMaster, &f.Blocked, &f.StudioSlug, &f.EncoreOf)
+		err := r.Scan(&f.ShowtimeID, &f.Upload, &f.Film, &f.Studio, &f.StartsAt, &f.DurationMin, &f.PriceCents, &f.Adult, &f.Logline, &f.Genres, &f.AgeRating, &f.Languages, &f.Poster, &f.Format, &f.EarlySave, &f.Formats, &f.HasMaster, &f.Blocked, &f.StudioSlug, &f.EncoreOf, &f.StudentPrice)
 		return f, err
 	})
 	if err != nil {
