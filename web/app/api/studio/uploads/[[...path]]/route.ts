@@ -181,7 +181,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     if (limited(`m:${s}`, 6)) return json(429, { error: "Slow down: try again in a minute" });
     const r = await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s);
     if (r.status !== 200) return pass(r);
-    const c = (r.body as { control: { showtimeId: string; film: string; recent: { body: string; at: string }[] } }).control;
+    const c = (r.body as { control: { showtimeId: string; film: string; recent: { body: string; at: string; country?: string }[] } }).control;
     try {
       const mood = await readMood(c.showtimeId, c.film, c.recent ?? []);
       return mood ? json(200, { mood }) : json(200, { mood: null, why: c.recent?.length >= 5 ? "off" : "quiet" });

@@ -17,7 +17,7 @@ export type ControlData = {
   // Player reports: the last five minutes while the room is open, the whole screening otherwise.
   quality?: { reports: number; inSync: number | null; rebuffer: number | null; driftMs: number | null; startMs: number | null; startP95Ms: number | null; countries?: Record<string, { reports: number; driftMs: number }> };
 };
-type Mood = { positive: number; summary: string; points: { at: string; positive: number }[]; read: number };
+type Mood = { positive: number; summary: string; points: { at: string; positive: number }[]; read: number; countries?: Record<string, { positive: number; lines: number }> };
 
 const LAND = dots();
 const n = (v: number) => v.toLocaleString("en-US");
@@ -44,6 +44,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 // Green, amber or red for a health dot; "off" when nothing has been reported.
 const tone = (v: number | null | undefined, good: (x: number) => boolean, ok: (x: number) => boolean) => (v == null ? "off" : good(v) ? "" : ok(v) ? "warn" : "bad");
 const driftColor = (ms: number) => (ms <= 250 ? "#22c55e" : ms <= 1000 ? "#f5a524" : "#ff4d5e");
+const moodColor = (positive: number) => (positive >= 60 ? "#22c55e" : positive >= 40 ? "#f5a524" : "#ff4d5e");
 
 export default function StudioControl({ upload, films, initial, canEdit }: { upload: string; films: { id: string; title: string }[]; initial: ControlData; canEdit: boolean }) {
   const [d, setD] = useState(initial);
@@ -67,7 +68,9 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
   const open = c.reports.filter((r) => r.status === "open");
   const q = d.quality;
   const spanText = live ? "in the last 5 minutes" : "across the screening";
-  const [mapMode, setMapMode] = useState<"viewers" | "drift">("viewers");
+  const [mapMode, setMapMode] = useState<"viewers" | "sentiment" | "drift">("viewers");
+  const felt = Object.entries(mood?.countries ?? {}).filter(([cc]) => COUNTRIES[cc]).sort((a, b) => b[1].lines - a[1].lines);
+  const maxFelt = felt[0]?.[1].lines ?? 1;
   const drifted = Object.entries(q?.countries ?? {}).filter(([cc, v]) => v.reports > 0 && COUNTRIES[cc]).sort((a, b) => b[1].reports - a[1].reports);
   const maxReports = drifted[0]?.[1].reports ?? 1;
 
@@ -182,7 +185,7 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
             <h2>Viewers right now</h2>
             <div className="bp-chips">
               <button type="button" className={mapMode === "viewers" ? "on" : ""} aria-pressed={mapMode === "viewers"} onClick={() => setMapMode("viewers")}>Viewers</button>
-              <button type="button" disabled title="Coming soon">Sentiment <em className="soon-tag">Soon</em></button>
+              <button type="button" className={mapMode === "sentiment" ? "on" : ""} aria-pressed={mapMode === "sentiment"} onClick={() => setMapMode("sentiment")}>Sentiment</button>
               <button type="button" className={mapMode === "drift" ? "on" : ""} aria-pressed={mapMode === "drift"} onClick={() => setMapMode("drift")}>Sync drift</button>
             </div>
           </div>
@@ -197,6 +200,17 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
                     <title>{`${countryName(cc)}: ${n(v)} watching`}</title>
                     <circle cx={p.x} cy={p.y} r={r} fill="#f5a524" fillOpacity={0.25} />
                     <circle cx={p.x} cy={p.y} r={5} fill="#f5a524" />
+                  </g>
+                );
+              })}
+              {mapMode === "sentiment" && felt.map(([cc, v]) => {
+                const p = project(COUNTRIES[cc].lat, COUNTRIES[cc].lon);
+                const r = 9 + 16 * Math.sqrt(v.lines / maxFelt), col = moodColor(v.positive);
+                return (
+                  <g key={cc}>
+                    <title>{`${countryName(cc)}: ${v.positive}% positive from ${n(v.lines)} chat lines`}</title>
+                    <circle cx={p.x} cy={p.y} r={r} fill={col} fillOpacity={0.25} />
+                    <circle cx={p.x} cy={p.y} r={5} fill={col} />
                   </g>
                 );
               })}
@@ -217,6 +231,11 @@ export default function StudioControl({ upload, films, initial, canEdit }: { upl
             <ul className="stcr-legend">
               {ranked.slice(0, 5).map(([cc, v]) => <li key={cc}><i />{countryName(cc)} · {n(v)}</li>)}
               {!ranked.length && <li className="none">Countries appear as viewers join the room.</li>}
+            </ul>
+          ) : mapMode === "sentiment" ? (
+            <ul className="stcr-legend">
+              {felt.slice(0, 5).map(([cc, v]) => <li key={cc}><i style={{ background: moodColor(v.positive) }} />{countryName(cc)} · {v.positive}% positive</li>)}
+              {!felt.length && <li className="none">{mood ? "Countries appear once three or more of their chat lines carry a feeling." : moodNote}</li>}
             </ul>
           ) : (
             <ul className="stcr-legend">

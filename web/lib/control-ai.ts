@@ -5,8 +5,11 @@ import Anthropic from "@anthropic-ai/sdk";
 // world-chat lines of the premiere and labels each one; the page charts the share that is
 // positive over time. Readings are cached for two minutes per screening.
 
-export type Mood = { positive: number; summary: string; points: { at: string; positive: number }[]; read: number; at: string };
-type Said = { body: string; at: string };
+// countries: the positive share per country, for the control room's sentiment map; only countries
+// with at least MIN_FELT lines that carry a feeling are shown, so one message never paints a country.
+export type Mood = { positive: number; summary: string; points: { at: string; positive: number }[]; read: number; at: string; countries: Record<string, { positive: number; lines: number }> };
+type Said = { body: string; at: string; country?: string };
+const MIN_FELT = 3;
 
 let client: Anthropic | null = null;
 const cache = new Map<string, { at: number; mood: Mood }>();
@@ -49,12 +52,21 @@ export async function readMood(showtime: string, film: string, said: Said[]): Pr
     if (labels[i] !== "x") { buckets[k].f++; if (labels[i] === "p") buckets[k].p++; }
   }
   const felt = [...labels].filter((c) => c !== "x").length;
+  const by: Record<string, { p: number; f: number }> = {};
+  for (let i = 0; i < labels.length; i++) {
+    const cc = lines[i].country;
+    if (!cc || labels[i] === "x") continue;
+    const b = (by[cc] ??= { p: 0, f: 0 });
+    b.f++; if (labels[i] === "p") b.p++;
+  }
+  const countries = Object.fromEntries(Object.entries(by).filter(([, b]) => b.f >= MIN_FELT).map(([cc, b]) => [cc, { positive: Math.round((b.p / b.f) * 100), lines: b.f }]));
   const mood: Mood = {
     positive: felt ? Math.round(([...labels].filter((c) => c === "p").length / felt) * 100) : 0,
     summary: out.summary.slice(0, 120),
     points: buckets.flatMap((b, k) => (b.f ? [{ at: new Date(first + (span * (k + 0.5)) / n).toISOString(), positive: Math.round((b.p / b.f) * 100) }] : [])),
     read: labels.length,
     at: new Date().toISOString(),
+    countries,
   };
   cache.set(showtime, { at: Date.now(), mood });
   if (cache.size > 200) cache.delete(cache.keys().next().value!);
