@@ -71,6 +71,8 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
           country={country}
           profile={profile}
           identityStatus={me?.faceVerified ? "approved" : undefined}
+          email={me?.email}
+          emailVerified={me?.emailVerified !== false}
           google={googleEnabled}
           ready={ready}
           wanted={sp.plan}

@@ -706,6 +706,8 @@ html, body { overflow-x: clip; }
 .su-tag { padding: 3px 8px; border: 1px solid #3a3a44; border-radius: 4px; font: 700 10px/14px Manrope, sans-serif; letter-spacing: .8px; }
 .su-later { color: #6e6e7a; font: 600 13px/1 Manrope, sans-serif; }
 .su-note { color: #f59e0b !important; margin-top: 4px; }
+.su-link { background: none; border: 0; padding: 0; margin-top: 6px; color: #f4f4f6; font: 600 13px/18px Manrope, sans-serif; text-decoration: underline; cursor: pointer; }
+.su-link:disabled { opacity: .5; cursor: default; }
 .su-inline { display: flex; gap: 8px; margin-top: 8px; }
 .su-inline input { height: 38px !important; max-width: 160px; }
 .su-info { margin: 0; padding: 12px 14px; border-radius: 10px; background: #12141c; color: #a6a6b0; font: 500 13px/20px Manrope, sans-serif; }

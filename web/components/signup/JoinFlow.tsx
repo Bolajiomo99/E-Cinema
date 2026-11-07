@@ -22,6 +22,7 @@ const I = ({ d }: { d: string }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
 );
 const ICON = {
+  mail: "M3 5h18v14H3Zm0 0 9 7 9-7",
   phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm5 16h.01",
   face: "M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M9 9h.01M15 9h.01M8 14s1.5 2 4 2 4-2 4-2",
   id: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0Zm-1 5c.5-1.5 1.5-2 2.5-2s2 .5 2.5 2M14 10h4M14 14h3",
@@ -61,8 +62,8 @@ export function Stepper({ at }: { at: Step }) {
 const WANTED = "ec.wantedPlan";
 const isPlan = (v: unknown): v is PlanId => typeof v === "string" && PLANS.some((p) => p.id === v);
 
-export default function JoinFlow({ step, country, profile, identityStatus, google, ready, wanted, notice, cycle = "month" }: {
-  step: Step; country?: string; profile?: Profile; identityStatus?: string; google: boolean; ready: Ready; wanted?: string; notice?: string; cycle?: Cycle;
+export default function JoinFlow({ step, country, profile, identityStatus, email, emailVerified = true, google, ready, wanted, notice, cycle = "month" }: {
+  step: Step; country?: string; profile?: Profile; identityStatus?: string; email?: string; emailVerified?: boolean; google: boolean; ready: Ready; wanted?: string; notice?: string; cycle?: Cycle;
 }) {
   const router = useRouter();
   // A plan picked on the landing page rides along through Account and Verify (and survives a
@@ -76,7 +77,7 @@ export default function JoinFlow({ step, country, profile, identityStatus, googl
   }, [wanted]);
   const go = (s: Step) => router.push(`/join?step=${s}${want ? `&plan=${want}` : ""}`);
   if (step === 1) return <AccountStep country={country} google={google} onDone={() => go(2)} />;
-  if (step === 2) return <VerifyStep phone={profile?.contactPhone} identityStatus={identityStatus} onDone={() => go(3)} />;
+  if (step === 2) return <VerifyStep email={email} emailVerified={emailVerified} phone={profile?.contactPhone} identityStatus={identityStatus} onDone={() => go(3)} />;
   if (step === 3) return (
     <PlanStep
       country={country}
@@ -180,10 +181,11 @@ function AccountStep({ country, google, onDone }: { country?: string; google: bo
   );
 }
 
-function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identityStatus?: string; onDone: () => void }) {
+function VerifyStep({ email, emailVerified, phone, identityStatus, onDone }: { email?: string; emailVerified?: boolean; phone?: string; identityStatus?: string; onDone: () => void }) {
   const [sentTo, setSentTo] = useState("");
   const [code, setCode] = useState("");
   const [verified, setVerified] = useState(false);
+  const [mailOk, setMailOk] = useState(Boolean(emailVerified));
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const send = async () => {
@@ -199,6 +201,7 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         <h1>Confirm it&apos;s really you</h1>
         <p>We check every account once so seats, chats and payments belong to real people. Your documents are encrypted and deleted after review.</p>
       </div>
+      <EmailCard email={email} initial={Boolean(emailVerified)} onConfirmed={() => setMailOk(true)} />
       <section className={`su-card${verified ? " done" : ""}`}>
         <span className="su-ico" aria-hidden><I d={ICON.phone} /></span>
         <div>
@@ -239,8 +242,42 @@ function VerifyStep({ phone, identityStatus, onDone }: { phone?: string; identit
         <PasskeyButton />
       </section>
       <p className="su-info su-lock">Each face and phone number can hold one E-Cinema account. If we find a duplicate we ask you to sign in to the original instead.</p>
-      <button className="su-cta" onClick={onDone}>Continue</button>
+      {!mailOk && <p className="su-note" role="status">Confirm your email first. It is how we send your tickets and keep your account safe.</p>}
+      <button className="su-cta" onClick={onDone} disabled={!mailOk}>Continue</button>
     </div>
+  );
+}
+
+const maskMail = (e = "") => { const [u, d] = e.split("@"); return d ? `${u.slice(0, 1)}•••@${d}` : e; };
+
+// Email 02 (Figma 106:60, card 579:5): the code went out when the account was made.
+function EmailCard({ email, initial, onConfirmed }: { email?: string; initial: boolean; onConfirmed: () => void }) {
+  const [done, setDone] = useState(initial);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const resend = async () => {
+    setBusy(true); setNote("");
+    try { await call("/api/auth/email/code", {}); setNote("We sent a new code. It works for 10 minutes."); } catch (e) { setNote((e as Error).message); }
+    setBusy(false);
+  };
+  return (
+    <section className={`su-card${done ? " done" : ""}`}>
+      <span className="su-ico" aria-hidden><I d={ICON.mail} /></span>
+      <div>
+        <strong>Email address</strong>
+        <small>{done ? `Confirmed · ${maskMail(email)}` : `Enter the 6-digit code we emailed to ${maskMail(email)}`}</small>
+        {!done && (
+          <form className="su-inline" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setNote(""); try { await call("/api/auth/email/confirm", { code }); setDone(true); onConfirmed(); } catch (er) { setNote((er as Error).message); } setBusy(false); }}>
+            <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit code" aria-label="Email code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} required />
+            <button className="su-sm" disabled={busy}>Confirm</button>
+          </form>
+        )}
+        {!done && <small><button type="button" className="su-link" onClick={resend} disabled={busy}>Send a new code</button></small>}
+        {note && <small className="su-note">{note}</small>}
+      </div>
+      {done && <span className="su-tag">DONE</span>}
+    </section>
   );
 }
 
