@@ -135,3 +135,10 @@ export function filmCode(title: string, uploadId: string) {
   const n = parseInt(uploadId.replace(/-/g, "").slice(0, 8), 16) % 10000;
   return `FLM-${initials}-${String(n).padStart(4, "0")}`;
 }
+
+// The Pre-sales tab (Figma 99:247): paid seats over the last 14 UTC days and by buyer country.
+export type Sales = {
+  seats: number; grossCents: number;
+  days: { day: string; seats: number }[];
+  countries: { country: string; seats: number; grossCents: number }[];
+};
