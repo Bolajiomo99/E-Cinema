@@ -233,7 +233,8 @@ const PAYPAL_EVENTS = [
 const webUrlNow = existingWeb?.serviceDetails?.url;
 if (webUrlNow) {
   const hookId = await ensurePaypalWebhook(webUrlNow).catch((e) => { console.log(`PayPal webhook check skipped: ${e.message}`); return null; });
-  if (hookId && !webEnv.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = hookId;
+  // The hook found or made with the current PayPal app wins over an ID left from an older app.
+  if (hookId && !process.env.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = hookId;
 }
 for (const [k, v] of Object.entries(webEnv)) if (!v) { console.log(`Skipping empty ${k}`); delete webEnv[k]; }
 
@@ -326,6 +327,14 @@ if (!wf) {
     await api("PUT", `/services/${wf.id}/env-vars`, wfVars);
   } catch (err) {
     console.log(`Could not update workflow env vars: ${err.message}`);
+  }
+  // Keep the workflow building from the branch this deploy runs on (the default branch can be renamed).
+  try {
+    await api("PATCH", `/workflows/${wf.id}`, {
+      buildConfig: { repo: REPO, branch: BRANCH, rootDir: "workflows", runtime: "node", buildCommand: "npm ci && npm run build" },
+    });
+  } catch (err) {
+    console.log(`Could not update workflow branch: ${err.message}`);
   }
   console.log(`Workflow exists: ${wf.slug ?? wf.id}`);
 }
