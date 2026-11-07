@@ -31,6 +31,7 @@ type Infra struct {
 	P50Ms    float64 `json:"p50Ms"`
 	P99Ms    float64 `json:"p99Ms"`
 	Requests int     `json:"requests"`
+	Stream   any     `json:"stream"` // player reports over the last 24 hours (filled by the API)
 }
 
 func (st Store) Infra(ctx context.Context, email string, now time.Time) (Infra, error) {

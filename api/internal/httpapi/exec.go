@@ -12,6 +12,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/accounts"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/exec"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 )
 
 // Executive dashboards (Figma page "07 Executive").
@@ -204,14 +205,15 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			return
 		}
 		type playing struct {
-			ID        string         `json:"id"`
-			Film      string         `json:"film"`
-			Studio    string         `json:"studio"`
-			Starts    time.Time      `json:"starts"`
-			Ends      time.Time      `json:"ends"`
-			Watching  int            `json:"watching"`
-			Peak      int            `json:"peak"`
-			ByCountry map[string]int `json:"byCountry"`
+			ID        string           `json:"id"`
+			Film      string           `json:"film"`
+			Studio    string           `json:"studio"`
+			Starts    time.Time        `json:"starts"`
+			Ends      time.Time        `json:"ends"`
+			Watching  int              `json:"watching"`
+			Peak      int              `json:"peak"`
+			ByCountry map[string]int   `json:"byCountry"`
+			Quality   playback.Quality `json:"quality"`
 		}
 		list := []playing{}
 		for rows.Next() {
@@ -228,8 +230,23 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			list = append(list, p)
 		}
 		rows.Close()
+		// Player reports from the last five minutes, per room and for every room together.
+		for i := range list {
+			q, err := s.Playback.Of(r.Context(), list[i].ID, now.Add(-5*time.Minute))
+			if err != nil {
+				fail(w, err)
+				return
+			}
+			q.Countries = nil
+			list[i].Quality = q
+		}
+		all, err := s.Playback.Of(r.Context(), "", now.Add(-5*time.Minute))
+		if err != nil {
+			fail(w, err)
+			return
+		}
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Watching > list[j].Watching })
-		writeJSON(w, http.StatusOK, map[string]any{"playing": list})
+		writeJSON(w, http.StatusOK, map[string]any{"playing": list, "quality": all})
 	}))
 	// Safety and trust (Figma 82:1075). Keep or remove a reported world-chat message.
 	mux.HandleFunc("GET /v1/me/exec/safety", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
@@ -438,6 +455,9 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/me/exec/infra", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		in, err := s.Exec.Infra(r.Context(), a.Email, time.Now())
 		in.P50Ms, in.P99Ms, in.Requests = s.lat.percentiles()
+		if err == nil {
+			in.Stream, err = s.Playback.Of(r.Context(), "", time.Now().Add(-24*time.Hour))
+		}
 		reply(w, in, err)
 	}))
 	// Security operations (Figma 117:1773).
