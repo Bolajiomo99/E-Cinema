@@ -513,6 +513,23 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // 43 Compliance warning (127:435). Queued when the brand team opens a compliance case on the
+  // licensing desk after a market check.
+  compliance_warning: (m) => {
+    const num = S(m.data.case), issue = S(m.data.issue), place = S(m.data.place), finding = S(m.data.finding), fixBy = S(m.data.fixBy);
+    if (!/^CMP-\d{4,}$/.test(num) || !issue || !finding || !fixBy) return null;
+    const days = Math.max(1, Math.floor((Date.parse(`${fixBy}T23:59:59Z`) - Date.now()) / 86_400_000));
+    const end = finding.trim().replace(/[.!]?$/, ".");
+    return done({
+      from: SENDER.licensing, tag: "WARNING", footer: FOOT_ACTION(),
+      subject: `Warning: ${issue} found${place ? ` in ${place}` : ""}`, preview: `Fix within ${days} ${days === 1 ? "day" : "days"} to avoid suspension`,
+      title: "We found a problem",
+      body: p(`${esc(end)} Fix it within ${days} ${days === 1 ? "day" : "days"}, or your licence is suspended. Case number:`) +
+        bigCode(num) + button(href(`/partner/licence#${num}`), "See the case"),
+      text: `${end} Fix it within ${days} ${days === 1 ? "day" : "days"}, or your licence is suspended. Case ${num}: ${href(`/partner/licence#${num}`)}`,
+    });
+  },
+
   // 45 Executive invite expiring (127:479)
   exec_invite_expiring: (m) => {
     const token = S(m.data.token), ends = S(m.data.expiresAt);
@@ -648,7 +665,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], royalty_statement: ["invoice"], compliance_warning: ["case"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
