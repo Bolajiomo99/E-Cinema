@@ -772,6 +772,10 @@ func (st Store) Compliance(ctx context.Context, l Licensee) (Compliance, error) 
 		return c, err
 	}
 	c.RoyaltiesTotal += due
+	// Rule breaks the brand team found on market checks and has not closed (email 43).
+	if err := st.DB.QueryRow(ctx, `SELECT count(*) FROM licence_cases WHERE licence = $1 AND status IN ('open', 'fixed', 'suspended')`, l.Licence).Scan(&c.Unapproved); err != nil {
+		return c, err
+	}
 	score := 100 - 4*(c.SamplesTotal-c.SamplesOnTime) - 5*(c.RoyaltiesTotal-c.RoyaltiesOK) - 2*c.Rejected - 10*c.Unapproved
 	c.Score = max(0, min(100, score))
 	return c, nil

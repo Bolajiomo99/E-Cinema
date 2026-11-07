@@ -131,6 +131,40 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 		}
 	}))
 
+	// Compliance cases (email 43): the brand team opens one after a market check, then closes it
+	// or suspends the licence.
+	mux.HandleFunc("GET /v1/licensing/cases", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		list, err := s.Licensing.DeskCases(r.Context())
+		reply(w, map[string]any{"cases": list}, err)
+	}))
+	mux.HandleFunc("POST /v1/licensing/{licence}/cases", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Issue, Place, Finding string
+			Days                  int
+		}
+		if !decodeN(w, r, 4<<10, &b) {
+			return
+		}
+		c, err := s.Licensing.OpenCase(r.Context(), r.PathValue("licence"), b.Issue, b.Place, b.Finding, b.Days)
+		if err == nil {
+			var owner string
+			if s.Licensing.DB.QueryRow(r.Context(), `SELECT account_id FROM brand_licensees WHERE licence = $1 AND account_id IS NOT NULL`, c.Licence).Scan(&owner) == nil {
+				s.note(owner, notify.New{Kind: "payment", Title: "Compliance warning " + c.Number, Body: "Fix it by " + c.FixBy + " to keep your licence.", Link: "/partner/licence#" + c.Number, Dedupe: "case:" + c.Number})
+				s.licenceMail(owner, "compliance_warning", c.Number, map[string]any{"company": c.Company, "case": c.Number, "issue": c.Issue, "place": c.Place, "finding": c.Finding, "fixBy": c.FixBy})
+			}
+		}
+		reply(w, c, err)
+	}))
+	mux.HandleFunc("POST /v1/licensing/cases/{id}/decide", s.internal(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Outcome string }
+		if !decodeN(w, r, 1<<10, &b) {
+			return
+		}
+		id, _ := strconv.Atoi(r.PathValue("id"))
+		c, err := s.Licensing.DecideCase(r.Context(), id, b.Outcome)
+		reply(w, c, err)
+	}))
+
 	// The partner portal. Invitations sent to the member's email are claimed on the way in.
 	partner := func(next func(http.ResponseWriter, *http.Request, accounts.Account, licensing.Licensee)) http.HandlerFunc {
 		return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
@@ -167,6 +201,10 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 			var list []licensing.Product
 			list, err = s.Licensing.Products(ctx, l.Licence)
 			v = map[string]any{"products": list}
+		case "cases":
+			var list []licensing.Case
+			list, err = s.Licensing.Cases(ctx, l)
+			v = map[string]any{"cases": list}
 		case "members":
 			var list []licensing.Member
 			list, err = s.Licensing.Members(ctx, l.Licence)
@@ -266,6 +304,14 @@ func (s *Server) licensingRoutes(mux *http.ServeMux) {
 				return
 			}
 			reply(w, map[string]bool{"ok": true}, s.Licensing.StartRoyaltyPayment(r.Context(), l, a.ID, b.Month, b.OrderID))
+		}
+	}))
+	mux.HandleFunc("POST /v1/me/partner/cases/{id}/fixed", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {
+		var b struct{ Note string }
+		if decodeN(w, r, 2<<10, &b) {
+			id, _ := strconv.Atoi(r.PathValue("id"))
+			c, err := s.Licensing.CaseFixed(r.Context(), l, id, b.Note)
+			reply(w, c, err)
 		}
 	}))
 	mux.HandleFunc("PUT /v1/me/partner/payout", partner(func(w http.ResponseWriter, r *http.Request, a accounts.Account, l licensing.Licensee) {

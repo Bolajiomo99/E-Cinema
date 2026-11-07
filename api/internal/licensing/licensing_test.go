@@ -302,4 +302,38 @@ func TestLicensing(t *testing.T) {
 	if _, err := st.QuoteRoyalty(ctx, l, last.Format("2006-01")); !errors.Is(err, licensing.ErrBadInput) {
 		t.Fatalf("settled month quote: %v", err)
 	}
+	// A compliance case (email 43): opened by the brand team, fixed by the partner, then closed.
+	if _, err := st.OpenCase(ctx, l.Licence, "", "Kano", "x", 14); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("empty case: %v", err)
+	}
+	cs, err := st.OpenCase(ctx, l.Licence, "unlabelled caps", "Kano", "Our investigator bought 6 caps at your Kano stall with no authenticity label.", 14)
+	if err != nil || cs.Number != licensing.CaseNumber(cs.ID) || cs.Status != "open" || cs.FixBy != time.Now().AddDate(0, 0, 14).Format("2006-01-02") {
+		t.Fatalf("case = %+v, %v", cs, err)
+	}
+	if cp, _ := st.Compliance(ctx, l); cp.Unapproved != 1 {
+		t.Fatalf("open case counted = %+v", cp)
+	}
+	if _, err := st.CaseFixed(ctx, l, cs.ID, ""); !errors.Is(err, licensing.ErrBadInput) {
+		t.Fatalf("fixed without note: %v", err)
+	}
+	if got, err := st.CaseFixed(ctx, l, cs.ID, "Labelled every cap"); err != nil || got.Status != "fixed" {
+		t.Fatalf("fixed = %+v, %v", got, err)
+	}
+	if got, err := st.DecideCase(ctx, cs.ID, "closed"); err != nil || got.Status != "closed" || got.ResolvedAt == nil {
+		t.Fatalf("closed = %+v, %v", got, err)
+	}
+	if _, err := st.DecideCase(ctx, cs.ID, "suspended"); !errors.Is(err, licensing.ErrNotFound) {
+		t.Fatalf("decided twice: %v", err)
+	}
+	if cp, _ := st.Compliance(ctx, l); cp.Unapproved != 0 {
+		t.Fatalf("closed case still counted = %+v", cp)
+	}
+	cs2, _ := st.OpenCase(ctx, l.Licence, "sales abroad", "Accra", "Sold outside the licence countries.", 7)
+	if got, err := st.DecideCase(ctx, cs2.ID, "suspended"); err != nil || got.Status != "suspended" {
+		t.Fatalf("suspend = %+v, %v", got, err)
+	}
+	if l2, _ := st.For(ctx, owner); l2.Status != "suspended" {
+		t.Fatalf("licence status = %s", l2.Status)
+	}
+	p.Exec(ctx, `UPDATE brand_licensees SET status = 'active' WHERE licence = $1`, l.Licence)
 }
