@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf" };
 const KEY = /^studios\/[0-9a-f-]{36}\.(jpg|png|pdf)$/;
 const SLUG = /^[a-z0-9-]{1,90}$/;
-const PAGES = new Set(["overview", "films", "payouts", "team", "leaks", "campaigns", "notices", "alerts"]);
+const PAGES = new Set(["overview", "films", "payouts", "team", "leaks", "campaigns", "notices", "alerts", "webhooks"]);
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const PLACES: Record<string, string> = { website: "a website", telegram: "a Telegram channel", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "an online service" };
 const KINDS: Record<string, string> = { clip: "a clip of the film", full: "the full film", screenshot: "a still from the film", other: "material from the film" };
@@ -79,6 +79,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
   const p = (await params).path ?? [];
   const s = await session();
   if (!s) return json(401, { error: "Sign in first", signIn: true });
+
+  // Webhooks (Figma 39:1073): add an endpoint, or send it a test event.
+  if (p.length === 1 && p[0] === "webhooks") {
+    if (limited(s + ":hooks", 10)) return json(429, { error: "Slow down: too many changes" });
+    const body = await req.json().catch(() => ({}));
+    const events = Array.isArray(body.events) ? (body.events as unknown[]).filter((e): e is string => typeof e === "string").slice(0, 8) : [];
+    return pass(await accountApi("POST", "/v1/me/studio/webhooks", { url: String(body.url ?? "").slice(0, 500), events }, s));
+  }
+  if (p.length === 3 && p[0] === "webhooks" && ID.test(p[1]) && p[2] === "test") {
+    if (limited(s + ":hooks", 10)) return json(429, { error: "Slow down: too many test events" });
+    return pass(await accountApi("POST", `/v1/me/studio/webhooks/${p[1]}/test`, {}, s));
+  }
 
   // Notifications (Figma 99:552): mark everything so far as read.
   if (p.length === 2 && p[0] === "notices" && p[1] === "seen") return pass(await accountApi("POST", "/v1/me/studio/notices/seen", {}, s));
@@ -188,5 +200,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ p
   const s = await session();
   if (!s) return json(401, { error: "Sign in first", signIn: true });
   if (p.length === 2 && p[0] === "campaigns" && ID.test(p[1])) return pass(await accountApi("DELETE", `/v1/me/studio/campaigns/${p[1]}`, undefined, s));
+  if (p.length === 2 && p[0] === "webhooks" && ID.test(p[1])) return pass(await accountApi("DELETE", `/v1/me/studio/webhooks/${p[1]}`, undefined, s));
   return json(404, { error: "Not found" });
 }

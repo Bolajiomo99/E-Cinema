@@ -37,7 +37,7 @@ var HookEvents = []string{"ticket.sold", "premiere.started", "payout.sent", "lea
 const MaxHooks = 5
 
 var (
-	ErrHookURL      = errors.New("use a public https:// address, without a username or password")
+	ErrHookURL      = errors.New("Use a public https:// address, without a username or password")
 	ErrTooManyHooks = fmt.Errorf("a studio can have up to %d endpoints", MaxHooks)
 )
 
