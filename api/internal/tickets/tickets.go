@@ -18,6 +18,7 @@ var (
 	ErrDoorsClosed = errors.New("doors have closed for this screening")
 	ErrBadSeats    = errors.New("seats must be between 1 and 10")
 	ErrNoHold      = errors.New("hold not found, expired or already used")
+	ErrRegion      = errors.New("this film is not offered in your country")
 	ErrAdult       = errors.New("this screening is for verified adults: pass the face and ID check first")
 
 	ErrBadQuality      = errors.New("quality must be hd, 4k or vr")
@@ -143,6 +144,16 @@ func (st Store) Hold(ctx context.Context, showtimeID, viewerRef string, seats in
 			showtimeID, seats, viewerRef, HoldFor.String(), accountID, q).Scan(&h.ID, &h.ExpiresAt)
 	})
 	return h, err
+}
+
+// Blocked reports whether the film's studio does not sell in the buyer's country: where they
+// are now (country, from the request) or the country on their account.
+func (st Store) Blocked(ctx context.Context, showtimeID, country, accountID string) (bool, error) {
+	var blocked bool
+	err := st.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM showtimes s JOIN studios st ON st.name = s.studio
+	  WHERE s.id = $1 AND (upper($2) = ANY(st.blocked_countries)
+	    OR (SELECT a.country FROM accounts a WHERE a.id = NULLIF($3, '')::uuid) = ANY(st.blocked_countries)))`, showtimeID, country, accountID).Scan(&blocked)
+	return blocked, err
 }
 
 // DoorsCloseMin is how long before the end of a film no new seats are sold.

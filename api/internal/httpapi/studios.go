@@ -303,6 +303,15 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 			reply(w, map[string]any{"dubReview": st.DubReview}, err)
 		}
 	}))
+	mux.HandleFunc("PUT /v1/me/studio/territories", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Blocked []string `json:"blocked"`
+		}
+		if decodeN(w, r, 4<<10, &b) {
+			st, err := s.Studios.SetTerritories(r.Context(), a.ID, a.Email, b.Blocked)
+			reply(w, map[string]any{"blockedCountries": st.Blocked}, err)
+		}
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)

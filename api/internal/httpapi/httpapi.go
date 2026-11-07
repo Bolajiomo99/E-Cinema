@@ -124,6 +124,7 @@ func (s *Server) Routes() http.Handler {
 			Quality   string `json:"quality"`
 			Campaign  string `json:"campaign"`
 			Via       string `json:"via"`
+			Country   string `json:"country"` // where the buyer is, from the edge
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.ViewerRef == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seats and viewerRef are required"})
@@ -138,6 +139,14 @@ func (s *Server) Routes() http.Handler {
 				return
 			}
 			accountID = acct.ID
+		}
+		// A studio can keep its films out of some countries (studio settings, Figma 39:1032).
+		if blocked, err := s.Tickets.Blocked(r.Context(), r.PathValue("id"), body.Country, accountID); err != nil {
+			fail(w, err)
+			return
+		} else if blocked {
+			writeJSON(w, http.StatusUnavailableForLegalReasons, map[string]string{"error": tickets.ErrRegion.Error()})
+			return
 		}
 		h, err := s.Tickets.Hold(r.Context(), r.PathValue("id"), body.ViewerRef, body.Seats, accountID, body.Quality)
 		if err != nil {

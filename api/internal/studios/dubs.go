@@ -421,16 +421,3 @@ func (st Store) ApprovedDubs(ctx context.Context, upload string) (showtime strin
 	langs, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	return showtime, langs, err
 }
-
-// SetDubReview is the "AI dub approval" switch in studio settings (owners and admins).
-func (st Store) SetDubReview(ctx context.Context, acct, email string, on bool) (Studio, error) {
-	s, err := st.verified(ctx, acct, email, true)
-	if err != nil {
-		return s, err
-	}
-	if _, err := st.DB.Exec(ctx, `UPDATE studios SET dub_review = $2 WHERE name = $1`, s.Name, on); err != nil {
-		return s, err
-	}
-	s.DubReview = on
-	return s, nil
-}
