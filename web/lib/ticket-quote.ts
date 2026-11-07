@@ -3,6 +3,9 @@ import { priceOf, vatRate } from "@/lib/plans";
 
 // Paid members get 10% off premiere seats (Figma "Web / Checkout", 18:533).
 export const MEMBER_DISCOUNT = 0.1;
+// Studios can switch on a student price (Studio / Premieres, Figma 35:514): Student Pro members,
+// who are verified students, get this off instead of the member discount.
+export const STUDENT_DISCOUNT = 0.3;
 const MEMBER_PLANS = new Set(["student", "pro", "vip", "enterprise"]);
 
 export type Quality = "hd" | "4k" | "vr";
@@ -18,7 +21,7 @@ export function qualitiesFor(s: Showtime) {
 }
 export const asQuality = (s: Showtime, v?: string | null): Quality => (qualitiesFor(s).find((x) => x.id === v)?.id ?? "hd");
 
-export type Quote = { currency: string; quality: Quality; full: string; preorderSave: number; seat: string; late: string; discount: string; vat: string; vatRate: number; total: string; member: string | null; phase: Phase };
+export type Quote = { currency: string; quality: Quality; full: string; preorderSave: number; seat: string; late: string; discount: string; vat: string; vatRate: number; total: string; member: string | null; student: boolean; phase: Phase };
 
 // Late entry (product brief, 2026-10-14): the normal price until 15 minutes in, double after,
 // and the doors close 30 minutes before the end (Figma 118:1379). "closed" means the film is still
@@ -71,10 +74,11 @@ export function quote(s: Showtime, who?: { plan?: string; planStatus?: string; c
   const phase = phaseOf(s, now);
   const late = phase === "late" ? seat : 0;
   const member = !s.adult && who?.planStatus === "active" && who.plan && MEMBER_PLANS.has(who.plan) ? who.plan : null;
-  const discount = member ? Math.round(seat * MEMBER_DISCOUNT) : 0;
+  const student = member === "student" && Boolean(s.studentPrice);
+  const discount = member ? Math.round(seat * (student ? STUDENT_DISCOUNT : MEMBER_DISCOUNT)) : 0;
   const rate = vatRate(who?.country);
   const vat = Math.round((seat + late - discount) * rate);
-  return { currency: s.price.currency, quality: qual, full: fmt(full), preorderSave: save, seat: fmt(seat), late: fmt(late), discount: fmt(discount), vat: fmt(vat), vatRate: rate, total: fmt(seat + late - discount + vat), member, phase };
+  return { currency: s.price.currency, quality: qual, full: fmt(full), preorderSave: save, seat: fmt(seat), late: fmt(late), discount: fmt(discount), vat: fmt(vat), vatRate: rate, total: fmt(seat + late - discount + vat), member, student, phase };
 }
 
 // The price at each pre-order stage, for the "Price goes up as release gets closer" strip.

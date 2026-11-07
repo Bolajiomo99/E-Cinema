@@ -105,7 +105,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           : <p className="co-line"><span>Seat</span><span>{money(q.currency, q.seat)}</span></p>}
         {Number(q.late) > 0 && <p className="co-line"><span>Late entry (after the first 15 minutes)</span><span>{money(q.currency, q.late)}</span></p>}
         {q.member ? (
-          <p className="co-line"><span>{planName} member discount</span><span className="co-good">−{money(q.currency, q.discount)}</span></p>
+          <p className="co-line"><span>{q.student ? "Student price (30% off)" : `${planName} member discount`}</span><span className="co-good">−{money(q.currency, q.discount)}</span></p>
         ) : (
           <p className="co-line co-hint"><span>Members save 10% on every seat</span><Link href="/plans">See plans</Link></p>
         )}
