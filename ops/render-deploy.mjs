@@ -233,7 +233,8 @@ const PAYPAL_EVENTS = [
 const webUrlNow = existingWeb?.serviceDetails?.url;
 if (webUrlNow) {
   const hookId = await ensurePaypalWebhook(webUrlNow).catch((e) => { console.log(`PayPal webhook check skipped: ${e.message}`); return null; });
-  if (hookId && !webEnv.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = hookId;
+  // The hook found or made with the current PayPal app wins over an ID left from an older app.
+  if (hookId && !process.env.PAYPAL_WEBHOOK_ID) webEnv.PAYPAL_WEBHOOK_ID = hookId;
 }
 for (const [k, v] of Object.entries(webEnv)) if (!v) { console.log(`Skipping empty ${k}`); delete webEnv[k]; }
 

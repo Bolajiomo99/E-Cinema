@@ -29,8 +29,8 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
           RENDER_OWNER_ID: tea-db7ej9e7bikc73ajmkmg
           DEPLOY_BRANCH: ${{ github.ref_name }}
-          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID_SANDBOX }}
-          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET_SANDBOX }}
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID_SANDBOX1 || secrets.PAYPAL_CLIENT_ID_SANDBOX }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET_SANDBOX1 || secrets.PAYPAL_CLIENT_SECRET_SANDBOX }}
           PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CHANNEL3_API_KEY: ${{ secrets.CHANNEL3_API_KEY }}
