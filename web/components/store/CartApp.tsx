@@ -192,7 +192,7 @@ export default function CartApp({ initial, px, country, countryLabel, paypal, pa
         ) : local ? (
           <button type="button" className="sh-btn wide" onClick={payLocal} disabled={busy}>{busy ? "Opening the secure page…" : local === "instalments" ? `Pay ${price(firstPart(q.totalNgn), px)} today with Paystack` : `Pay ${price(q.totalNgn, px)} with ${local === "paystack" ? "Paystack" : "Flutterwave"}`}</button>
         ) : usesPayPal ? (
-          <PayPalTicketButton className="sh-btn wide" label={`Pay ${price(q.totalNgn, px)}`} create={createPayPal} onPaid={() => window.location.assign(`/shop/orders?o=${paypalOrder.current}&placed=1`)} disabled={busy} />
+          <PayPalTicketButton key={chosen?.id} card={chosen?.id === "card"} className="sh-btn wide" label={`Pay ${price(q.totalNgn, px)}`} create={createPayPal} onPaid={() => window.location.assign(`/shop/orders?o=${paypalOrder.current}&placed=1`)} disabled={busy} />
         ) : (
           <button type="button" className="sh-btn wide" disabled>Choose a way to pay</button>
         )}
