@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { MARKETS, marketOf, parsePrice, showPrice, STARTER, type Premiere, type PremiereMode, type PremierePrice } from "@/lib/premiere-types";
 import type { Upload } from "@/lib/studio-types";
 import { scall } from "./scall";
+import StudioEncores from "./StudioEncores";
 
 // Figma "Studio / Premieres and pricing" (35:514): when the film screens, how many seats, the
 // house rules and a price per country. Publishing puts the film on sale on the site.
@@ -154,12 +155,13 @@ export default function StudioPremieres({ films, upload: u, premiere: p0, canEdi
           <p className="stpr-times">{startsAt ? `One global moment: ${CITIES.map(([c, z]) => `${at(startsAt, z, false)} ${c}`).join(" · ")}` : "Pick a date to see the start time around the world."}</p>
           <div className="stpr-pair">
             <label className="vf-field"><span>Seats worldwide</span><div className="vf-box"><input inputMode="numeric" value={seats} onChange={(e) => setSeats(e.target.value)} disabled={!canEdit} /></div></label>
-            <label className="vf-field"><span>Encores after sell-out <em className="soon-tag">Soon</em></span><div className="vf-box">
+            <label className="vf-field"><span>Encores after sell-out</span><div className="vf-box">
               <select value={encores} onChange={(e) => setEncores(Number(e.target.value))} disabled={!canEdit}>
                 {[0, 1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n ? `Up to ${n}, studio approves` : "No encores"}</option>)}
               </select>
             </div></label>
           </div>
+          {live && <StudioEncores upload={u.id} allowed={p.encores} canEdit={canEdit} />}
           <div className="stpr-free">
             <p>1,000 free seats if this sells out within 24 hours (platform rule, paid by E‑Cinema) <em className="soon-tag">Soon</em></p>
             <Toggle label="1,000 free seats" on={rules.freeSeats} disabled={!canEdit} onChange={(v) => setRules({ ...rules, freeSeats: v })} />

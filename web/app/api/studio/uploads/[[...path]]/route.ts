@@ -66,6 +66,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (!p.length) return pass(await accountApi("GET", "/v1/me/studio/uploads", undefined, s));
   if (p.length === 1) return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}`, undefined, s));
   if (p.length === 2 && p[1] === "premiere") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/premiere`, undefined, s));
+  if (p.length === 2 && p[1] === "encores") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/encores`, undefined, s));
   if (p.length === 2 && p[1] === "plan") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/plan`, undefined, s));
   // Live control room (Figma 37:1272).
   if (p.length === 2 && p[1] === "control") return pass(await accountApi("GET", `/v1/me/studio/uploads/${p[0]}/control`, undefined, s));
@@ -279,6 +280,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const { p, s } = g;
   const body = await req.json().catch(() => ({}));
   if (p.length === 1) return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}`, { title: String(body.title ?? "") }, s));
+  // Approving a sell-out encore puts it on sale, so the catalog is refreshed at once.
+  if (p.length === 3 && p[1] === "encores" && /^[1-5]$/.test(p[2])) {
+    const r = await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/encores/${p[2]}`, { approve: body.approve === true }, s);
+    if (r.status === 200 && body.approve === true) await refreshLive(true);
+    return pass(r);
+  }
   if (p.length === 2 && p[1] === "details") {
     const str = (k: string) => String(body[k] ?? "");
     return pass(await accountApi("PUT", `/v1/me/studio/uploads/${p[0]}/details`, { title: str("title"), logline: str("logline"), genres: str("genres"), ageRating: str("ageRating"), castCrew: str("castCrew"), languages: str("languages") }, s));
