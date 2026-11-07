@@ -202,7 +202,8 @@ export async function concierge(messages: Anthropic.Beta.BetaMessageParam[], ses
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
+      // Sonnet answers a multi-step booking several times faster than Opus, with the same tools.
+      model: "claude-sonnet-5-5",
       max_tokens: 16000,
       output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
