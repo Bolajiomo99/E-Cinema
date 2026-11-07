@@ -65,10 +65,12 @@ export async function startSeat(p: Provider, session: string, showtimeId: string
 
 // Confirms a payment with the provider and marks the seat paid. Safe to call twice
 // (the return page and the webhook both do).
-export async function finishSeat(p: Provider, reference: string): Promise<{ paid: boolean; showtimeId: string; why?: string }> {
+export async function finishSeat(p: Provider, reference: string): Promise<{ paid: boolean; showtimeId: string; shopOrder?: string; why?: string }> {
   const v = await verifyPayment(p, reference);
   const showtimeId = v.meta.showtimeId ?? "";
-  if (!covers(v)) return { paid: false, showtimeId, why: v.why ?? "The payment did not cover the seat" };
+  // Shop orders go through the same confirmation: markPaid places the pending order.
+  const shopOrder = v.meta.kind === "shop" ? v.meta.orderId ?? "" : undefined;
+  if (!covers(v)) return { paid: false, showtimeId, shopOrder, why: v.why ?? "The payment did not cover the order" };
   await markPaid(reference, `${reference}~${v.txId}`);
-  return { paid: true, showtimeId };
+  return { paid: true, showtimeId, shopOrder };
 }

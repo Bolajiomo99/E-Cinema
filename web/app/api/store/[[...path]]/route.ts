@@ -9,6 +9,7 @@ import { kidsGate } from "@/lib/family";
 import { json, sameOrigin } from "@/lib/room-gate";
 import { chargeFor, isStaff, myQuote } from "@/lib/store";
 import { switchOn } from "@/lib/platform";
+import { newReference, providerReady, refundPayment, startPayment, type Provider } from "@/lib/local-pay";
 import type { Order, Quote } from "@/lib/store-types";
 
 // The E-Cinema store (Figma 53:925, 96:1194, 53:1111, 89:894): cart, address, checkout with
@@ -17,6 +18,8 @@ import type { Order, Quote } from "@/lib/store-types";
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f-]{36}$/;
+const PAID_ONLINE = new Set(["paypal", "paystack", "flutterwave"]);
+const site = () => (process.env.WEB_URL || "https://e-cinema.net").replace(/\/$/, "");
 const pass = (r: { status: number; body: unknown }) => json(r.status === 204 ? 200 : r.status, r.body ?? {});
 
 async function refund(captureId: string, key: string) {
@@ -24,6 +27,14 @@ async function refund(captureId: string, key: string) {
 }
 
 async function refundId(captureId: string, key: string): Promise<string> {
+  // Paystack and Flutterwave orders keep "reference~transaction" as their capture.
+  const local = /^(PSK|FLW)-[a-f0-9]{20}~(.+)$/.exec(captureId);
+  if (local) {
+    const p: Provider = local[1] === "PSK" ? "paystack" : "flutterwave";
+    const r = await refundPayment(p, captureId.split("~")[0], local[2]).catch(() => ({ ok: false, id: "" }));
+    if (!r.ok) console.error("Shop refund failed", p, key);
+    return r.ok ? r.id || "refunded" : "";
+  }
   try {
     const { result } = await paypalPayments().refundCapturedPayment({ captureId, paypalRequestId: `shop-refund-${key}`, prefer: "return=minimal" });
     return result.id ?? "refunded";
@@ -35,7 +46,7 @@ async function refundId(captureId: string, key: string): Promise<string> {
 
 // An approved refund request on a PayPal order gets its capture refunded and the refund id kept.
 async function payRequest(b: { refund: { id: string; status: string; outcome: string }; method: string; captureId?: string }) {
-  if (b.refund.status !== "approved" || b.refund.outcome !== "refund" || b.method !== "paypal" || !b.captureId) return false;
+  if (b.refund.status !== "approved" || b.refund.outcome !== "refund" || !PAID_ONLINE.has(b.method) || !b.captureId) return false;
   const id = await refundId(b.captureId, `request-${b.refund.id}`);
   if (id) await accountApi("POST", `/v1/shop/refunds/${b.refund.id}/paid`, { refundId: id });
   return Boolean(id);
@@ -96,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
       const r = await accountApi("POST", `/v1/me/orders/${p[1]}/cancel`, {}, session);
       if (r.status !== 200) return pass(r);
       const b = r.body as { order: Order; captureId?: string; method: string };
-      const refunded = b.method === "paypal" && b.captureId ? await refund(b.captureId, b.order.id) : false;
+      const refunded = PAID_ONLINE.has(b.method) && b.captureId ? await refund(b.captureId, b.order.id) : false;
       return json(200, { order: b.order, refunded });
     }
     if (p[2] === "return") return pass(await accountApi("POST", `/v1/me/orders/${p[1]}/return`, { reason: body.reason }, session));
@@ -124,7 +135,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     const b = r.body as { order: Order; captureId?: string };
     // A cancelled paid order or a finished return gets its money back.
     let refunded = false;
-    if (b.order.method === "paypal" && b.captureId && (b.order.status === "cancelled" || b.order.status === "returned")) refunded = await refund(b.captureId, b.order.id);
+    if (PAID_ONLINE.has(b.order.method) && b.captureId && (b.order.status === "cancelled" || b.order.status === "returned")) refunded = await refund(b.captureId, b.order.id);
     return json(200, { order: b.order, refunded });
   }
   if (p[0] === "refunds" && UUID.test(p[1] ?? "")) {
@@ -142,8 +153,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
 // Checkout: pay on delivery places the order now; PayPal creates the order for the buyer to
 // approve and records it as pending until the capture confirms it.
 async function checkout(session: string, country: string, body: Record<string, unknown>) {
-  const method = body.method === "cod" ? "cod" : body.method === "paypal" ? "paypal" : "";
+  const method = ["cod", "paypal", "paystack", "flutterwave"].includes(String(body.method)) ? String(body.method) : "";
   if (!method) return json(400, { error: "Choose how to pay" });
+  if (method === "paystack" || method === "flutterwave") return localCheckout(method, session, country, body);
   const expect = Number(body.expectTotalNgn);
   if (method === "cod" && !switchOn("pay.cod")) return json(503, { error: "Pay on delivery is switched off just now" });
   if (method === "paypal" && !switchOn("pay.paypal")) return json(503, { error: "PayPal is switched off just now" });
@@ -182,5 +194,38 @@ async function checkout(session: string, country: string, body: Record<string, u
     return json(200, { orderId: result.id, order: r.body });
   } catch (err) {
     return paypalError(err);
+  }
+}
+
+// Paystack and Flutterwave: the order waits as pending under the provider reference, and the
+// buyer pays on the provider's page in naira. The return page and the webhook confirm it.
+async function localCheckout(p: Provider, session: string, country: string, body: Record<string, unknown>) {
+  if (!providerReady(p)) return json(503, { error: "This payment method is not switched on yet" });
+  const expect = Number(body.expectTotalNgn);
+  const q: Quote | null = await myQuote(session, country);
+  if (!q) return json(502, { error: "Cart unavailable" });
+  if (!q.lines.length) return json(400, { error: "Your cart is empty" });
+  if (!q.address) return json(400, { error: "Add a delivery address first" });
+  if (q.problems.length) return json(409, { error: q.problems.join(". ") });
+  if (q.totalNgn !== expect) return json(409, { error: "Prices changed while you were paying; please check your cart again" });
+  const me = await currentAccount();
+  if (!me) return json(401, { error: "Sign in first", signIn: true });
+  const reference = newReference(p);
+  const amountKobo = q.totalNgn * 100;
+  const r = await accountApi("POST", "/v1/me/orders", { method: p, country, expectTotalNgn: expect, chargeCurrency: "NGN", chargeCents: amountKobo, paypalOrderId: reference }, session);
+  if (r.status !== 201) return pass(r);
+  const order = r.body as Order;
+  try {
+    const started = await startPayment(p, {
+      reference, amountKobo, email: me.email, name: me.name || "E-Cinema member",
+      title: `E-Cinema shop: ${q.count} item${q.count === 1 ? "" : "s"}`,
+      returnUrl: `${site()}/api/pay/${p}/return`,
+      meta: { kind: "shop", orderId: order.id },
+    });
+    return json(200, { url: started.url, order });
+  } catch (e) {
+    const name = p === "paystack" ? "Paystack" : "Flutterwave";
+    console.error(`${name} shop start failed`, e instanceof Error ? e.message : e);
+    return json(502, { error: e instanceof Error && !/fetch failed|timeout|aborted/i.test(e.message) ? e.message : `${name} is not answering right now. Try again, or pay with PayPal.` });
   }
 }

@@ -14,7 +14,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ provider: s
   const ref = (provider === "paystack" ? u.searchParams.get("reference") ?? u.searchParams.get("trxref") : u.searchParams.get("tx_ref")) ?? "";
   if (!REF.test(ref) || !ref.startsWith(provider === "paystack" ? "PSK-" : "FLW-")) return home("/checkout");
   const r = await finishSeat(provider, ref).catch(() => ({ paid: false, showtimeId: "", why: "We could not confirm the payment" }));
-  if (r.paid) return home(`/tickets/confirmed?film=${encodeURIComponent(r.showtimeId)}`);
   const cancelled = u.searchParams.get("status") === "cancelled";
+  const shop = "shopOrder" in r && r.shopOrder !== undefined;
+  if (shop) {
+    const o = encodeURIComponent((r as { shopOrder?: string }).shopOrder ?? "");
+    if (r.paid) return home(`/shop/orders?o=${o}&placed=1`);
+    return home(`/shop/cart?failed=${cancelled ? "cancelled" : "declined"}`);
+  }
+  if (r.paid) return home(`/tickets/confirmed?film=${encodeURIComponent(r.showtimeId)}`);
   return home(`/checkout/failed?film=${encodeURIComponent(r.showtimeId)}&why=${encodeURIComponent(cancelled ? "You cancelled the payment" : (r.why ?? "The payment did not go through"))}`);
 }
