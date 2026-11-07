@@ -169,10 +169,33 @@ func run() error {
 			} else if n > 0 {
 				slog.Info("studio alerts queued", "count", n)
 			}
+			if n, err := srv.Studios.QueueHookEvents(ctx, time.Now()); err != nil {
+				slog.Error("studio webhooks", "err", err)
+			} else if n > 0 {
+				slog.Info("studio webhooks queued", "count", n)
+			}
 			if n, err := srv.Licensing.QueueStatements(ctx, time.Now()); err != nil {
 				slog.Error("royalty statements", "err", err)
 			} else if n > 0 {
 				slog.Info("royalty statements queued", "count", n)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
+	// Studio webhooks go out on their own loop, so a slow endpoint never holds up the emails.
+	go func() {
+		client := studios.HookClient()
+		t := time.NewTicker(20 * time.Second)
+		defer t.Stop()
+		for {
+			if sent, failed, err := srv.Studios.DeliverHooks(ctx, client, time.Now()); err != nil {
+				slog.Error("deliver webhooks", "err", err)
+			} else if sent+failed > 0 {
+				slog.Info("webhooks delivered", "sent", sent, "failed", failed)
 			}
 			select {
 			case <-ctx.Done():

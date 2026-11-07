@@ -245,6 +245,27 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		l, err := s.Studios.SetAlert(r.Context(), a.ID, a.Email, r.PathValue("kind"), b.On)
 		reply(w, map[string]any{"alerts": l}, err)
 	}))
+	// Webhooks (Figma 39:1073).
+	mux.HandleFunc("GET /v1/me/studio/webhooks", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		l, err := s.Studios.Hooks(r.Context(), a.ID, a.Email)
+		reply(w, map[string]any{"hooks": l, "events": studios.HookEvents}, err)
+	}))
+	mux.HandleFunc("POST /v1/me/studio/webhooks", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			URL    string   `json:"url"`
+			Events []string `json:"events"`
+		}
+		if decode(w, r, &b) {
+			h, err := s.Studios.AddHook(r.Context(), a.ID, a.Email, b.URL, b.Events)
+			reply(w, map[string]any{"hook": h}, err)
+		}
+	}))
+	mux.HandleFunc("DELETE /v1/me/studio/webhooks/{id}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		reply(w, map[string]bool{"ok": true}, s.Studios.DeleteHook(r.Context(), a.ID, a.Email, r.PathValue("id")))
+	}))
+	mux.HandleFunc("POST /v1/me/studio/webhooks/{id}/test", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		reply(w, map[string]bool{"ok": true}, s.Studios.TestHook(r.Context(), a.ID, a.Email, r.PathValue("id"), time.Now()))
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)

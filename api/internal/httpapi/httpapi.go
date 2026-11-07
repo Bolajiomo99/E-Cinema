@@ -407,9 +407,9 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Executives only"})
 	case errors.Is(err, studios.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrBadInput):
+	case errors.Is(err, studios.ErrBadInput), errors.Is(err, studios.ErrHookURL):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrLocked), errors.Is(err, studios.ErrIncomplete), errors.Is(err, studios.ErrNameTaken), errors.Is(err, studios.ErrLastOwner), errors.Is(err, studios.ErrNotVerified), errors.Is(err, studios.ErrTaken), errors.Is(err, studios.ErrFull), errors.Is(err, studios.ErrTooManyFiles), errors.Is(err, studios.ErrDubBusy), errors.Is(err, studios.ErrNotReady), errors.Is(err, studios.ErrTooManyDubs), errors.Is(err, studios.ErrNotLive), errors.Is(err, studios.ErrStarted):
+	case errors.Is(err, studios.ErrLocked), errors.Is(err, studios.ErrIncomplete), errors.Is(err, studios.ErrNameTaken), errors.Is(err, studios.ErrLastOwner), errors.Is(err, studios.ErrNotVerified), errors.Is(err, studios.ErrTaken), errors.Is(err, studios.ErrFull), errors.Is(err, studios.ErrTooManyFiles), errors.Is(err, studios.ErrDubBusy), errors.Is(err, studios.ErrNotReady), errors.Is(err, studios.ErrTooManyDubs), errors.Is(err, studios.ErrNotLive), errors.Is(err, studios.ErrStarted), errors.Is(err, studios.ErrTooManyHooks):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 	case errors.Is(err, accounts.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
