@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { scall } from "./scall";
+import StudioApiKeys, { type ApiKey } from "./StudioApiKeys";
 
 // "Webhooks and API" panel of Studio / Settings (Figma 39:1073): endpoints that hear about
 // sales, premieres, payouts and leaks as they happen, each body signed with its own secret.
@@ -32,7 +33,8 @@ function result(h: Hook) {
   return { text: `${code ? `${code}${ok ? " OK" : ""}` : "No answer"} · ${ago(h.lastAt)}`, tone: ok ? "ok" : "bad" };
 }
 
-export default function StudioWebhooks({ hooks: h0, canEdit }: { hooks: Hook[] | null; canEdit: boolean }) {
+export default function StudioWebhooks({ hooks: h0, keys, canEdit }: { hooks: Hook[] | null; keys: ApiKey[] | null; canEdit: boolean }) {
+  const [showKeys, setShowKeys] = useState(false);
   const [hooks, setHooks] = useState(h0);
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState("");
@@ -115,9 +117,15 @@ export default function StudioWebhooks({ hooks: h0, canEdit }: { hooks: Hook[] |
               </div>
             </form>
           )}
-          {!adding && <div className="pt-btns"><button type="button" className="vf-btn sm" onClick={() => { setAdding(true); setMsg(""); }} disabled={hooks.length >= 5}>Add endpoint</button></div>}
+          {!adding && (
+            <div className="pt-btns">
+              <button type="button" className="vf-btn sm" onClick={() => { setAdding(true); setMsg(""); }} disabled={hooks.length >= 5}>Add endpoint</button>
+              <button type="button" className={`vf-btn sm ${showKeys ? "sec" : "ghost"}`} aria-expanded={showKeys} aria-controls="api-keys" onClick={() => setShowKeys(!showKeys)}>API keys</button>
+            </div>
+          )}
           {msg && <p className="bp-flash" role="status">{msg}</p>}
           {err && <p className="vf-err" role="alert">{err}</p>}
+          {showKeys && <StudioApiKeys keys={keys} />}
           <details className="stwh-doc">
             <summary>How to check a request came from us</summary>
             <p>Each request is a POST with a JSON body: <code>{"{ id, type, createdAt, data }"}</code>. The <code>E-Cinema-Signature</code> header reads <code>t=&lt;unix seconds&gt;,v1=&lt;signature&gt;</code>. Compute HMAC-SHA256 of <code>&lt;t&gt;.&lt;raw body&gt;</code> with your signing secret, hex-encode it, and compare it with <code>v1</code>. Ignore requests whose <code>t</code> is more than five minutes old.</p>

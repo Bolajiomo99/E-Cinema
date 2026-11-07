@@ -388,7 +388,7 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 	case errors.Is(err, identity.ErrNoApplicant):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
+	case errors.Is(err, studios.ErrNotFound), errors.Is(err, studios.ErrNoFilm), errors.Is(err, studios.ErrNoLeak), errors.Is(err, studios.ErrNoCampaign):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 	case errors.Is(err, exec.ErrBadInput):
 		// Wrapped errors carry their own reason ("bad input: pick the kind of partner").

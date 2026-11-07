@@ -4,6 +4,7 @@ import { nameOf } from "@/lib/countries";
 import { can, dayName, type Studio } from "@/lib/studio-types";
 import { scall } from "./scall";
 import StudioWebhooks, { type Hook } from "./StudioWebhooks";
+import type { ApiKey } from "./StudioApiKeys";
 
 // Figma "Studio / Settings" (39:1184). The verified name, country and registration are fixed;
 // anything that needs a person at E-Cinema to change says so.
@@ -23,7 +24,7 @@ const ALERTS: { kind: string; title: string; text: string }[] = [
   { kind: "weekly", title: "Weekly report", text: "Monday 08:00 Lagos: seats, money, countries and leaks" },
 ];
 
-export default function StudioSettings({ studio: s0, alerts: a0, hooks }: { studio: Studio; alerts: string[] | null; hooks: Hook[] | null }) {
+export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: { studio: Studio; alerts: string[] | null; hooks: Hook[] | null; keys: ApiKey[] | null }) {
   const [s, setS] = useState(s0);
   const [alerts, setAlerts] = useState(a0);
   const [alertErr, setAlertErr] = useState("");
@@ -100,7 +101,7 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks }: { stud
       </div>
 
       <div className="pt-row a">
-        <StudioWebhooks hooks={hooks} canEdit={edit} />
+        <StudioWebhooks hooks={hooks} keys={keys} canEdit={edit} />
         <section className="bp-panel" id="notifications">
           <h2>Notifications</h2>
           <p className="pt-hint">Emails to you only. Everyone on your team chooses their own.</p>

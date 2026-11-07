@@ -53,7 +53,7 @@ func TestAPIKeys(t *testing.T) {
 	if err != nil || sales.Seats != 3 || len(sales.Days) != 14 || sales.Countries[0].Country != "GH" {
 		t.Fatalf("sales: %+v %v", sales, err)
 	}
-	if _, err := st.APISales(ctx, k.Key, "test-ak-x", now); !errors.Is(err, studios.ErrNotFound) {
+	if _, err := st.APISales(ctx, k.Key, "test-ak-x", now); !errors.Is(err, studios.ErrNoFilm) {
 		t.Fatalf("another studio's film: %v", err)
 	}
 	if p, err := st.APIPayouts(ctx, k.Key, now); err != nil || p == nil {

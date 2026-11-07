@@ -21,7 +21,8 @@ import (
 const MaxKeys = 5
 
 var (
-	ErrBadKey      = errors.New("this API key is not valid or was revoked")
+	ErrBadKey      = errors.New("This API key is not valid or was revoked")
+	ErrNoFilm      = errors.New("No film with that showtime id belongs to this studio")
 	ErrTooManyKeys = fmt.Errorf("a studio can have up to %d live API keys", MaxKeys)
 	keyRe          = regexp.MustCompile(`^ecs_[0-9a-f]{40}$`)
 )
@@ -144,7 +145,7 @@ func (st Store) APISales(ctx context.Context, key, showtimeID string, now time.T
 		return Sales{}, err
 	}
 	if !ok {
-		return Sales{}, ErrNotFound
+		return Sales{}, ErrNoFilm
 	}
 	return st.salesFor(ctx, showtimeID, now)
 }

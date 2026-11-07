@@ -5642,3 +5642,13 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
   .stwh-ev { flex-direction: row; flex-wrap: wrap; }
   .stwh-act { justify-content: flex-start; }
 }
+.stwh-keys { margin-top: 16px; padding-top: 14px; border-top: 1px solid #1b1b21; }
+.stwh-keys h3 { margin: 0 0 4px; color: var(--text-primary); font: 700 15px/22px Manrope, sans-serif; }
+.stwh-key { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; background: #141418; }
+.stwh-key > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.stwh-key b { color: var(--text-primary); font: 600 13px/18px Manrope, sans-serif; }
+.stwh-key small { color: var(--text-muted); font: 500 12px/18px Manrope, sans-serif; }
+.stwh-key code { font: 600 11px/16px "JetBrains Mono", monospace; color: #f5a524; }
+.stwh-kform { margin-top: 12px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.stwh-kform .vf-field { flex: 1; min-width: 200px; }
+.stwh-doc pre { margin: 8px 0; padding: 10px; border-radius: 6px; background: #0e0e12; overflow-x: auto; }
