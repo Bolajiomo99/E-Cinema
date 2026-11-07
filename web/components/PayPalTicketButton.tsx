@@ -13,7 +13,8 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
   showtimeId?: string; orderId?: string; quality?: string; label?: string; className?: string;
   create?: () => Promise<string>; onPaid?: () => void; disabled?: boolean; card?: boolean;
 }) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const cardSlot = useRef<HTMLDivElement>(null);
+  const cardButton = useRef<HTMLElement | null>(null);
   const createRef = useRef(create);
   const paidRef = useRef(onPaid);
   useEffect(() => {
@@ -72,8 +73,19 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
           if (!r.ok) throw new Error("order failed");
           return (await r.json()) as { orderId: string };
         });
-        await session.start(card && buttonRef.current ? { presentationMode: "auto", targetElement: buttonRef.current } : { presentationMode: "auto" }, order);
+        await session.start(card && cardButton.current ? { presentationMode: "auto", targetElement: cardButton.current } : { presentationMode: "auto" }, order);
       };
+      // PayPal's guest card form opens from its own <paypal-basic-card-button>, inside a
+      // <paypal-basic-card-container> where the inline card fields appear.
+      if (card && cardSlot.current && !cancelled) {
+        cardSlot.current.replaceChildren();
+        const box = document.createElement("paypal-basic-card-container");
+        const btn = document.createElement("paypal-basic-card-button");
+        btn.addEventListener("click", () => void startRef.current?.().catch((e: Error) => { setErr(e.message === "signin" || e.message === "order failed" ? "" : e.message); setStatus(e.message === "signin" ? "signin" : "error"); }));
+        box.appendChild(btn);
+        cardSlot.current.appendChild(box);
+        cardButton.current = btn;
+      }
       if (!cancelled) setStatus("ready");
     })().catch(() => !cancelled && setStatus("error"));
     return () => {
@@ -97,9 +109,11 @@ export default function PayPalTicketButton({ showtimeId, orderId, quality, label
   if (status === "unavailable") return <p className="pp-note">PayPal is not available right now. You have not been charged.</p>;
   return (
     <div>
-      <button ref={buttonRef} className={className} disabled={(status !== "ready" && status !== "error") || disabled} onClick={() => startRef.current?.().catch((e: Error) => { setErr(e.message === "signin" || e.message === "order failed" ? "" : e.message); setStatus(e.message === "signin" ? "signin" : "error"); })}>
-        {status === "loading" ? (card ? "Loading the card form…" : "Loading PayPal…") : status === "paying" ? (card ? "Waiting for your card…" : "Waiting for PayPal…") : label}
-      </button>
+      {card && status !== "loading" && <p className="pp-card-label">{label}. Card details go straight to PayPal; no PayPal account needed.</p>}
+      {card && <div ref={cardSlot} className="pp-card-slot" hidden={status === "loading"} />}
+      {(!card || status === "loading") && <button className={className} disabled={(status !== "ready" && status !== "error") || disabled} onClick={() => startRef.current?.().catch((e: Error) => { setErr(e.message === "signin" || e.message === "order failed" ? "" : e.message); setStatus(e.message === "signin" ? "signin" : "error"); })}>
+        {status === "loading" ? (card ? "Loading the card form…" : "Loading PayPal…") : status === "paying" ? "Waiting for PayPal…" : label}
+      </button>}
       {status === "error" && <p className="pp-note pp-err">{err || "Something went wrong."} You have not been charged.</p>}
     </div>
   );
