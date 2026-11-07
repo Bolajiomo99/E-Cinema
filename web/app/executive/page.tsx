@@ -2,6 +2,7 @@ import { session } from "@/lib/licensing";
 import { commandCenter } from "@/lib/exec";
 import { COMMAND_ROLES } from "@/lib/exec-types";
 import ExecCommand from "@/components/exec/ExecCommand";
+import { uptime } from "@/lib/uptime";
 
 export const metadata = { title: "Command center · Executive · E-Cinema", robots: { index: false } };
 
@@ -23,5 +24,5 @@ export default async function CommandCenter() {
   const hello = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const when = `${DAYS[l.getUTCDay()]} ${l.getUTCDate()} ${MONTHS[l.getUTCMonth()]} ${l.getUTCFullYear()} · ${String(h).padStart(2, "0")}:${String(l.getUTCMinutes()).padStart(2, "0")} WAT`;
   const weekday = DAYS[l.getUTCDay()];
-  return <ExecCommand page={p} hello={`${hello}, ${p.command.name.trim().split(/\s+/)[0] || "there"}`} when={when} weekday={weekday} />;
+  return <ExecCommand up={await uptime()} page={p} hello={`${hello}, ${p.command.name.trim().split(/\s+/)[0] || "there"}`} when={when} weekday={weekday} />;
 }

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CommandPage } from "@/lib/exec";
+import { pct, type Uptime } from "@/lib/uptime-types";
 import { COUNTRIES, MAP_H, MAP_W, countryName, dots, project } from "@/lib/worldmap";
 
 // The command center body (Figma 49:1055): ten tiles, revenue chart, world map, the decisions
@@ -34,7 +35,7 @@ export const DECIDE: Record<string, { title: (c: number) => string; note: string
   payouts: { title: (c) => `${c} studio payout${c === 1 ? "" : "s"} failed`, note: "PayPal could not pay these studios; check their payout email", href: "/studio/desk", act: "Check" },
 };
 
-export default function ExecCommand({ page: p, hello, when, weekday }: { page: CommandPage; hello: string; when: string; weekday: string }) {
+export default function ExecCommand({ page: p, hello, when, weekday, up }: { page: CommandPage; hello: string; when: string; weekday: string; up: Uptime | null }) {
   const c = p.command;
   const [range, setRange] = useState<Range>("live");
   const [by, setBy] = useState<"source" | "country">("source");
@@ -59,7 +60,8 @@ export default function ExecCommand({ page: p, hello, when, weekday }: { page: C
     { label: "Paying members", value: count(c.paying), sub: `${n(c.payingWeek)} this week · ${count(c.members)} members`, up: c.payingWeek > 0 ? true : null },
     { label: "Countries live", value: n(c.countries), sub: `${c.countriesNew} new this month`, up: c.countriesNew > 0 ? true : null },
     { label: "Premieres live", value: n(c.liveNow), sub: p.biggestRoom ? `${n(p.biggestRoom)} in the biggest room` : "No one watching yet" },
-    { label: "Uptime 30 days", value: "", sub: "Needs the uptime monitor key", soon: true },
+    up ? { label: "Uptime 30 days", value: pct(up.month), sub: up.up ? `All ${up.monitors} checks up now · ${pct(up.day)} today` : "A check is down right now", up: up.up && up.month >= 99.9 ? true : up.up ? null : false }
+      : { label: "Uptime 30 days", value: "", sub: "The uptime monitor did not answer", soon: true },
     { label: "Shop orders today", value: n(c.ordersToday), sub: `₦${n(c.shopTodayNgn)} merch` },
     { label: "Studios", value: n(c.studios), sub: `${c.studiosWeek} verified this week`, up: c.studiosWeek > 0 ? true : null },
     { label: "Net promoter", value: c.reviews ? `${c.nps > 0 ? "+" : ""}${c.nps}` : "–", sub: c.reviews ? `${npsD >= 0 ? "" : "−"}${Math.abs(npsD)} · ${n(c.reviews)} ratings` : "No ratings in 90 days", up: c.reviews ? (npsD === 0 ? null : npsD > 0) : null },

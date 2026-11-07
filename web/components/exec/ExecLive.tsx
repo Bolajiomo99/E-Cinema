@@ -1,4 +1,5 @@
 "use client";
+import { pct, type Uptime } from "@/lib/uptime-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LiveData } from "@/lib/exec";
@@ -21,7 +22,7 @@ function lagos(iso: string) {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} WAT`;
 }
 
-export default function ExecLive({ initial }: { initial: LiveData }) {
+export default function ExecLive({ initial, up }: { initial: LiveData; up: Uptime | null }) {
   const [d, setD] = useState(initial);
   useEffect(() => {
     const t = setInterval(() => {
@@ -95,8 +96,16 @@ export default function ExecLive({ initial }: { initial: LiveData }) {
           <p className="exm-note">People in watch rooms by home region. Stream health per region is coming soon.</p>
         </div>
         <div className="exc-card">
-          <h2>Incidents<em className="soon-tag">Soon</em></h2>
-          <p className="exc-empty">Incidents will show here once uptime alerts are connected. Uptime checks already run on the API and checkout every few minutes.</p>
+          <h2>Incidents</h2>
+          {!up ? <p className="exc-empty">The uptime monitor did not answer. Checks still run on the API and checkout every few minutes.</p>
+            : up.incidents.length ? (
+              <ul className="exl-inc">
+                {up.incidents.map((i) => (
+                  <li key={`${i.monitor}${i.at}`}><b className={i.open ? "bad" : ""}>{i.open ? "DOWN NOW" : `${i.minutes} min`}</b><span>{i.monitor}{i.reason ? ` · ${i.reason}` : ""}</span><small>{new Date(i.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC</small></li>
+                ))}
+              </ul>
+            ) : <p className="exc-empty">No outages on record. Uptime {pct(up.month)} over 30 days, {pct(up.quarter)} over 90.</p>}
+          <p className="exm-note">To give viewers a free seat for an outage during a screening, log it in Security operations.</p>
           <p className="exm-note">Only the CEO and the CTO will be able to pause a premiere.</p>
         </div>
       </div>

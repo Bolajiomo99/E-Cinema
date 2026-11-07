@@ -4946,6 +4946,11 @@ a.cp-person:hover { border-color: #44444f; }
 .exa-sec li.ok { color: #d4d4dc; }
 .exa-sec li::before { content: "–"; position: absolute; left: 4px; color: #6e6e7a; }
 .exa-sec li.ok::before { content: "✓"; color: #22c55e; }
+.exl-inc { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.exl-inc li { display: grid; grid-template-columns: 80px 1fr; gap: 2px 12px; font: 500 13px/18px Manrope, sans-serif; color: #c9c9d0; }
+.exl-inc b { grid-row: span 2; font: 700 12px/18px Manrope, sans-serif; color: #f2b84b; }
+.exl-inc b.bad { color: #ef4444; }
+.exl-inc small { color: #8a8a94; font-size: 12px; }
 .exsec-outage { background: rgba(20,184,166,.10); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .exsec-outage > b { font: 600 14px/20px Manrope, sans-serif; color: #f4f4f6; }
 .exsec-outage > span { font: 500 13px/20px Manrope, sans-serif; color: #c9c9d0; }

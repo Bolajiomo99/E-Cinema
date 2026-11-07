@@ -1,6 +1,7 @@
 import { session } from "@/lib/licensing";
 import { commandCenter, execContent, execHiring, execInfra, execLicensing, execOverview, execSecurity } from "@/lib/exec";
 import { convert } from "@/lib/fx";
+import { uptime } from "@/lib/uptime";
 import ExecOverview, { type OverviewView } from "@/components/exec/ExecOverview";
 
 // The 12 Mondays (Lagos time) the weekly chart covers, oldest first, so quiet weeks still show.
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 // All money is shown in naira, converted at today's rate.
 export default async function OverviewPage() {
   const s = await session();
-  const [cc, ov, infra, sec, hiring, lic, content] = await Promise.all([commandCenter(s), execOverview(s), execInfra(s), execSecurity(s), execHiring(s), execLicensing(s), execContent(s)]);
+  const [cc, ov, infra, sec, hiring, lic, content, up] = await Promise.all([commandCenter(s), execOverview(s), execInfra(s), execSecurity(s), execHiring(s), execLicensing(s), execContent(s), uptime()]);
   if (!cc || !ov || cc.command.role !== "ceo") {
     return <section className="exc"><h1>Everything, right now</h1><p className="exc-sub">This overview is for the CEO only. Your pages are in the menu.</p></section>;
   }
@@ -45,7 +46,7 @@ export default async function OverviewPage() {
     spots: (cc.onlineByCountry.length ? cc.onlineByCountry.map((x) => ({ cc: x.country, v: x.watching })) : c.watching.map((x) => ({ cc: x.country, v: x.seats }))),
     live: cc.onlineByCountry.length > 0,
     p50Ms: infra?.p50Ms ?? null, p99Ms: infra?.p99Ms ?? null, dbConns: infra?.dbConns ?? null, dbMaxConns: infra?.dbMaxConns ?? null,
-    backups: infra?.backups ?? [], decisions: c.decisions,
+    backups: infra?.backups ?? [], decisions: c.decisions, uptime30: up?.month ?? null,
   };
   return <ExecOverview v={v} />;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { pct as upPct, type Uptime } from "@/lib/uptime-types";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StakeholderData } from "@/lib/exec";
@@ -11,7 +12,7 @@ const round = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ?
 const usd = (c: number) => `$${round(Math.round(c / 100))}`;
 const pct = (now: number, before: number) => (before > 0 ? Math.round(((now - before) / before) * 100) : null);
 
-export default function ExecStakeholder({ d, revenue, revenuePrev, viewer }: { d: StakeholderData; revenue: number; revenuePrev: number; viewer: string }) {
+export default function ExecStakeholder({ d, revenue, revenuePrev, viewer, up }: { d: StakeholderData; revenue: number; revenuePrev: number; viewer: string; up: Uptime | null }) {
   const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,7 +60,7 @@ export default function ExecStakeholder({ d, revenue, revenuePrev, viewer }: { d
         <div className="exc-tile"><span>Members</span><b>{round(d.members)}</b><small className={mg !== null && mg < 0 ? "down" : "up"}>{mg === null ? "first month" : `${mg >= 0 ? "▲" : "▼"} ${Math.abs(mg)}% this month`}</small></div>
         <div className="exc-tile"><span>Revenue</span><b>{usd(revenue)}</b><small className={rg !== null && rg < 0 ? "down" : "up"}>{rg === null ? "this month so far" : `${rg >= 0 ? "▲" : "▼"} ${Math.abs(rg)}% on last month`}</small></div>
         <div className="exc-tile"><span>Countries</span><b>{d.countries}</b><small>where members live</small></div>
-        <div className="exc-tile"><span>Uptime</span><b className="exin-soon">Soon</b><small>needs the UptimeRobot key</small></div>
+        <div className="exc-tile"><span>Uptime</span>{up ? <><b>{upPct(up.month)}</b><small className="up">last 30 days</small></> : <><b className="exin-soon">–</b><small>the uptime monitor did not answer</small></>}</div>
       </div>
 
       <div className="exc-row exinv-row">

@@ -1,3 +1,4 @@
+import { pct, type Uptime } from "@/lib/uptime-types";
 import type { InfraData } from "@/lib/exec";
 
 // Infrastructure (Figma 50:469). Only what runs today: one Render region, media on Cloudflare R2,
@@ -8,7 +9,7 @@ const size = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 
 const ms = (v: number) => (v >= 100 ? `${Math.round(v)}` : v.toFixed(1));
 const SOON = <i className="exsec-pill">Soon</i>;
 
-export default function ExecInfra({ d, now }: { d: InfraData; now: number }) {
+export default function ExecInfra({ d, now, up }: { d: InfraData; now: number; up: Uptime | null }) {
   const last = d.backups[0];
   const backupOk = !!last && last.restored && now - Date.parse(last.finishedAt) < 36 * 3600_000;
   const normal = d.dbPingMs < 200 && d.dbConns < d.dbMaxConns * 0.8;
@@ -48,7 +49,8 @@ export default function ExecInfra({ d, now }: { d: InfraData; now: number }) {
         <div className="exc-tile"><span>Concurrent viewers</span><b>{d.viewersNow.toLocaleString("en-US")}</b><small>peak on one screening today: {d.peakToday.toLocaleString("en-US")}</small></div>
         <div className="exc-tile"><span>API p99</span><b>{d.requests ? `${ms(d.p99Ms)} ms` : "–"}</b><small className={d.p99Ms < 150 ? "up" : "down"}>{d.requests ? `p50 ${ms(d.p50Ms)} ms · last ${d.requests.toLocaleString("en-US")} requests` : "no requests yet"}</small></div>
         <div className="exc-tile"><span>Stream start p95</span><b className="exin-soon">Soon</b><small>measured from the players</small></div>
-        <div className="exc-tile"><span>Uptime 90 days</span><b className="exin-soon">Soon</b><small>needs the UptimeRobot key</small></div>
+        {up ? <div className="exc-tile"><span>Uptime 90 days</span><b>{pct(up.quarter)}</b><small className={up.up ? "up" : "down"}>{up.up ? `30 days ${pct(up.month)} · all checks up` : "a check is down right now"}</small></div>
+          : <div className="exc-tile"><span>Uptime 90 days</span><b className="exin-soon">–</b><small>the uptime monitor did not answer</small></div>}
         <div className="exc-tile"><span>Last failover drill</span><b className="exin-soon">None yet</b><small>one region today</small></div>
       </div>
 

@@ -1,4 +1,5 @@
 "use client";
+import { pct as upPct } from "@/lib/uptime-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import type { InfraBackup } from "@/lib/exec";
 export type OverviewView = {
   revenueToday: number; revenueWeekAgo: number; revenue30: number; revenuePrev30: number;
   watching: number; peakToday: number | null; members: number; membersToday: number; countries: number; countriesNew: number;
+  uptime30: number | null;
   studios: number; studiosWaiting: number | null; partners: number | null; royaltyNgn: number | null;
   openRoles: number | null; openNg: number; ngTarget: number; blockedToday: number | null; breaches: number; openCritical: number | null;
   weeks: { week: string; streams: Record<string, number> }[]; month: Record<string, number>;
@@ -165,7 +167,9 @@ export default function ExecOverview({ v }: { v: OverviewView }) {
         <div className="exc-card">
           <h2>Health</h2>
           <div className="exov-gauges">
-            <Gauge soon value={0} label="Uptime · needs the monitor key" color="#2bb3a3" />
+            {v.uptime30 != null
+              ? <Gauge value={v.uptime30 / 100} label={`Uptime ${upPct(v.uptime30)} (30 days)`} color={v.uptime30 < 99.5 ? "#f2b84b" : "#2bb3a3"} />
+              : <Gauge soon value={0} label="Uptime · monitor not reachable" color="#2bb3a3" />}
             <Gauge value={v.p50Ms != null ? 1 - Math.min(1, v.p50Ms / 1000) : 0} label={v.p50Ms != null ? `API reply ${Math.round(v.p50Ms)} ms (p50)` : "API reply –"} color="#2bb3a3" />
             <Gauge value={v.dbConns != null && v.dbMaxConns ? v.dbConns / v.dbMaxConns : 0} label={v.dbConns != null ? `Database ${v.dbConns}/${v.dbMaxConns} links` : "Database –"} color={v.dbConns != null && v.dbMaxConns && v.dbConns / v.dbMaxConns > 0.75 ? "#f2b84b" : "#2bb3a3"} />
           </div>
