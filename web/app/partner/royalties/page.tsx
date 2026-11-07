@@ -1,11 +1,13 @@
+import PayRoyalty from "@/components/licensing/PayRoyalty";
 import { PayoutChange, StatementCsv } from "@/components/licensing/RoyaltyTools";
 import { myLicence, partnerPage, session } from "@/lib/licensing";
-import { dateName, monthName, naira, short, type Royalties } from "@/lib/licensing-types";
+import { dateName, invoiceNo, monthName, naira, royaltyDueBy, short, type Royalties } from "@/lib/licensing-types";
 
 // Figma "Licensee / Royalties and payouts" (116:634).
 const PILL: Record<string, [string, string]> = { open: ["amber", "Open"], due: ["red", "Due"], settled: ["teal", "Settled"] };
 
-export default async function PartnerRoyalties() {
+export default async function PartnerRoyalties({ searchParams }: { searchParams: Promise<{ pay?: string }> }) {
+  const { pay } = await searchParams;
   const s = await session();
   const [mine, r] = await Promise.all([myLicence(s), partnerPage<Royalties>(s, "royalties")]);
   if (!mine || !r) return <p className="pt-empty">Royalties could not load. Refresh to try again.</p>;
@@ -38,7 +40,12 @@ export default async function PartnerRoyalties() {
                   <td>{short(x.salesNgn)}</td>
                   <td>{short(x.royaltyNgn)}</td>
                   <td>{short(x.shopNgn)}</td>
-                  <td><span className={`bp-pill ${PILL[x.status][0]}`}>{PILL[x.status][1]}</span></td>
+                  <td>
+                    <span className={`bp-pill ${PILL[x.status][0]}`}>{PILL[x.status][1]}</span>
+                    {x.status === "due" && x.royaltyNgn > 0 && (
+                      <> <PayRoyalty month={x.month} invoice={invoiceNo(l.licence, x.month)} royaltyNgn={x.royaltyNgn} dueBy={royaltyDueBy(x.month)} payReady={Boolean(process.env.PAYPAL_CLIENT_ID)} autoOpen={pay === x.month} /></>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

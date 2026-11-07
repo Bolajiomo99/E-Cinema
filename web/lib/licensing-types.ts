@@ -88,6 +88,13 @@ export function short(n: number) {
   if (Math.abs(n) >= 1e6) return `₦${(n / 1e6).toFixed(1)}M`;
   return naira(n);
 }
+// Royalty invoices (email 41): licence NG-0042, October 2026 → INV-0042-10, due by the 5th of the next month.
+export const invoiceNo = (licence: string, ym: string) => `INV-${licence.split("-").pop()}-${ym.slice(5, 7)}`;
+export function royaltyDueBy(ym: string) {
+  const d = new Date(`${ym}-01T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + 1, 5);
+  return d.toISOString().slice(0, 10);
+}
 export const monthName = (ym: string) => new Date(`${ym}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 export const dateName = (iso: string) => new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 

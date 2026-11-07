@@ -176,6 +176,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
     }
     if (p[1] === "codes") return pass(await accountApi("POST", "/v1/me/partner/codes", { productId: body.productId, count: Number(body.count) }, s));
     if (p[1] === "members") return pass(await accountApi("POST", "/v1/me/partner/members", body, s));
+    // A month's royalty (email 41): the API quotes the month, PayPal takes the money, the capture settles it.
+    if (p[1] === "royalty") {
+      const month = String(body.month ?? "");
+      if (!/^\d{4}-\d{2}$/.test(month)) return json(400, { error: "Pick a month" });
+      const q = await accountApi("POST", "/v1/me/partner/royalty", { month }, s);
+      if (q.status !== 200) return pass(q);
+      const r = q.body as { invoice: string; royaltyNgn: number };
+      try {
+        const orderId = await feeOrder(r.royaltyNgn, "royalty", `royalty:${month}`, `E-Cinema merch royalty, invoice ${r.invoice}`, `Royalty ${r.invoice}`);
+        if (typeof orderId !== "string") return orderId;
+        const at = await accountApi("POST", "/v1/me/partner/royalty", { month, orderId }, s);
+        return at.status === 200 ? json(200, { orderId }) : pass(at);
+      } catch (err) {
+        return paypalError(err);
+      }
+    }
     // A renewal or upgrade: the API quotes the plan, PayPal takes the money, the capture adds the year.
     if (p[1] === "renew") {
       const q = await accountApi("POST", "/v1/me/partner/renew", { plan: body.plan }, s);
