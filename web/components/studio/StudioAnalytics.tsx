@@ -6,9 +6,9 @@ import { dubName } from "@/lib/dub-types";
 import { MONTHS, money } from "@/lib/studio-types";
 
 // Figma "Studio / Analytics": Audience (37:1652) and Reach (37:2861). Every number is the studio's
-// own: watch time, reviews, rewatch parties, tickets and refunds. Parts that need player reports
-// we do not collect yet say "Soon" instead of showing made-up numbers. Retention, hours and
-// devices come from the reports the player sends each minute.
+// own: watch time, reviews, rewatch parties, tickets and refunds. Retention, hours and devices
+// come from the reports the player sends each minute; the funnel top from film page visits and
+// trailer clip plays, counted once per visitor per day.
 
 type Count = { key: string; seats: number };
 export type AnalyticsData = {
@@ -17,11 +17,11 @@ export type AnalyticsData = {
   completion: number; completionPrev: number; rewatch: number; rewatchPrev: number;
   nps: number | null; npsPrev: number | null; reviews: number;
   ages: Count[]; genders: Count[]; withFriends: number; plans: Count[];
-  countries: { country: string; viewers: number; grossCents: number }[];
+  countries: { country: string; viewers: number; prev: number; grossCents: number }[];
   audio: Count[];
   cohorts: { month: string; size: number; back: number[] }[];
   money: { grossCents: number; platformCents: number; refundCents: number; shareCents: number; perViewerCents: number; buyers: number };
-  funnel: { orders: number; seats: number; gifts: number };
+  funnel: { clips: number; pages: number; orders: number; seats: number; gifts: number };
   // From player reports, for screenings in the period: share still watching at 0%, 5% … 100%.
   audience?: { viewers: number; retention: number[]; hours: number[][]; devices: Record<string, number> } | null;
 };
@@ -160,7 +160,7 @@ function csv(d: AnalyticsData) {
 
 export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData; tab: "audience" | "reach" }) {
   const [compare, setCompare] = useState(true);
-  const [layer, setLayer] = useState<"viewers" | "revenue">("viewers");
+  const [layer, setLayer] = useState<"viewers" | "revenue" | "growth">("viewers");
   const share = Math.round(d.shareBps / 100);
   const q = (t: string, days = d.days) => `/studio/analytics?tab=${t}&days=${days}`;
 
@@ -186,8 +186,12 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
   const plans = PLAN_ORDER.map((k) => ({ label: PLAN_LABEL[k], value: d.plans.find((p) => p.key === k)?.seats ?? 0, color: PLAN_COLORS[k] }));
 
   const countries = d.countries.filter((c) => COUNTRIES[c.country]);
-  const metric = (c: { viewers: number; grossCents: number }) => (layer === "viewers" ? c.viewers : c.grossCents);
+  const metric = (c: { viewers: number; prev: number; grossCents: number }) => (layer === "viewers" ? c.viewers : layer === "revenue" ? c.grossCents : Math.abs(c.viewers - c.prev));
+  const growth = (c: { viewers: number; prev: number }) => { const g = c.viewers - c.prev; return `${g > 0 ? "+" : ""}${n(g)} ${Math.abs(g) === 1 ? "viewer" : "viewers"} vs the ${d.days} days before`; };
+  const fTop = Math.max(1, d.funnel.clips, d.funnel.pages, d.funnel.seats);
+  const fw = (v: number) => ({ width: `${Math.max(18, Math.min(100, (v / fTop) * 100))}%` });
   const maxC = Math.max(1, ...countries.map(metric));
+  const dot = (c: { viewers: number; prev: number }) => (layer !== "growth" ? "#f5a524" : c.viewers >= c.prev ? "#26b5a0" : "#e5484d");
   const audio = d.audio.map((a) => ({ label: a.key ? dubName(a.key) : "Original", value: a.seats }));
   const dubbed = d.audio.filter((a) => a.key).reduce((s, a) => s + a.seats, 0);
   const original = d.audio.find((a) => !a.key)?.seats ?? 0;
@@ -277,7 +281,7 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
                 <div className="bp-chips">
                   <button type="button" className={layer === "viewers" ? "on" : ""} aria-pressed={layer === "viewers"} onClick={() => setLayer("viewers")}>Viewers</button>
                   <button type="button" className={layer === "revenue" ? "on" : ""} aria-pressed={layer === "revenue"} onClick={() => setLayer("revenue")}>Revenue</button>
-                  <button type="button" disabled title="Coming soon">Growth <em className="soon-tag">Soon</em></button>
+                  <button type="button" className={layer === "growth" ? "on" : ""} aria-pressed={layer === "growth"} onClick={() => setLayer("growth")}>Growth</button>
                 </div>
               </div>
               <div className="stcr-world">
@@ -287,9 +291,9 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
                     const p = project(COUNTRIES[c.country].lat, COUNTRIES[c.country].lon);
                     return (
                       <g key={c.country}>
-                        <title>{`${countryName(c.country)}: ${layer === "viewers" ? `${n(c.viewers)} viewers` : money(c.grossCents)}`}</title>
-                        <circle cx={p.x} cy={p.y} r={9 + 16 * Math.sqrt(metric(c) / maxC)} fill="#f5a524" fillOpacity={0.25} />
-                        <circle cx={p.x} cy={p.y} r={5} fill="#f5a524" />
+                        <title>{`${countryName(c.country)}: ${layer === "viewers" ? `${n(c.viewers)} viewers` : layer === "revenue" ? money(c.grossCents) : growth(c)}`}</title>
+                        <circle cx={p.x} cy={p.y} r={9 + 16 * Math.sqrt(metric(c) / maxC)} fill={dot(c)} fillOpacity={0.25} />
+                        <circle cx={p.x} cy={p.y} r={5} fill={dot(c)} />
                       </g>
                     );
                   })}
@@ -322,12 +326,12 @@ export default function StudioAnalytics({ data: d, tab }: { data: AnalyticsData;
             <section className="bp-panel stan-funnel" id="funnel" aria-label="Ticket funnel">
               <h2>Ticket funnel · all films</h2>
               <ol>
-                <li><span>Saw a clip</span><b className="soon">Soon</b></li>
-                <li><span>Opened film page</span><b className="soon">Soon</b></li>
-                <li><span>Bought a seat</span><b style={{ width: "100%" }}>{n(d.funnel.seats)} {d.funnel.seats === 1 ? "seat" : "seats"} · {n(d.funnel.orders)} {d.funnel.orders === 1 ? "order" : "orders"}</b></li>
+                <li><span>Saw a clip</span><b style={fw(d.funnel.clips)}>{n(d.funnel.clips)}</b></li>
+                <li><span>Opened film page</span><b style={fw(d.funnel.pages)}>{n(d.funnel.pages)}</b></li>
+                <li><span>Bought a seat</span><b style={fw(d.funnel.seats)}>{n(d.funnel.seats)} {d.funnel.seats === 1 ? "seat" : "seats"} · {n(d.funnel.orders)} {d.funnel.orders === 1 ? "order" : "orders"}</b></li>
                 <li><span>Gifted a seat</span><b style={{ width: `${d.funnel.seats ? Math.max(18, Math.min(100, (d.funnel.gifts / d.funnel.seats) * 100)) : 18}%` }}>{n(d.funnel.gifts)}</b></li>
               </ol>
-              <p className="pt-hint">Clip views and film page visits are counted once page analytics are switched on.</p>
+              <p className="pt-hint">{d.funnel.pages ? `${Math.round((d.funnel.orders / d.funnel.pages) * 1000) / 10}% of film page visitors placed an order. ` : ""}Visitors are counted once per film per day; trailer plays count as clips.</p>
             </section>
             <section className="bp-panel stan-cohort" id="cohorts" aria-label="Repeat viewers by first month">
               <h2>Repeat viewers by first month</h2>
