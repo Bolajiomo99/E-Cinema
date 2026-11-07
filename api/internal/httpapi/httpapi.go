@@ -349,9 +349,10 @@ func (s *Server) Routes() http.Handler {
 
 type schedule struct{ t tickets.Store }
 
-func (s schedule) Start(ctx context.Context, id string) (time.Time, int, error) {
-	st, err := s.t.Get(ctx, id)
-	return st.StartsAt, st.DurationMin, err
+func (s schedule) Timing(ctx context.Context, id string) (sync.Timing, error) {
+	var t sync.Timing
+	err := s.t.DB.QueryRow(ctx, `SELECT starts_at, duration_min, paused_at, paused_ms FROM showtimes WHERE id = $1`, id).Scan(&t.Start, &t.DurationMin, &t.PausedAt, &t.PausedMs)
+	return t, err
 }
 
 func (s *Server) internal(next http.HandlerFunc) http.HandlerFunc {

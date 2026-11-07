@@ -419,6 +419,15 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		reply(w, map[string]any{"dub": d}, err)
 	}))
 	// Live control room (Figma 37:1272): the audience of the film's premiere, right now.
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/pause", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			On bool `json:"on"`
+		}
+		if decode(w, r, &b) {
+			p, err := s.Studios.SetPause(r.Context(), a.ID, a.Email, r.PathValue("id"), b.On, time.Now())
+			reply(w, map[string]any{"pause": p}, err)
+		}
+	}))
 	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/control", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		sid, studio, err := s.Studios.LiveShowtime(r.Context(), a.ID, a.Email, r.PathValue("id"), false)
 		if err != nil {

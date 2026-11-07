@@ -39,21 +39,23 @@ type Said struct {
 }
 
 type Control struct {
-	ShowtimeID  string    `json:"showtimeId"`
-	Film        string    `json:"film"`
-	StartsAt    time.Time `json:"startsAt"`
-	DurationMin int       `json:"durationMin"`
-	Messages    int       `json:"messages"`
-	Spoilers    int       `json:"spoilers"`
-	AutoHidden  int       `json:"autoHidden"`
-	Reports     []Report  `json:"reports"`
-	Phrases     []Phrase  `json:"phrases"`
-	Recent      []Said    `json:"recent"`
+	ShowtimeID  string     `json:"showtimeId"`
+	Film        string     `json:"film"`
+	StartsAt    time.Time  `json:"startsAt"`
+	DurationMin int        `json:"durationMin"`
+	PausedAt    *time.Time `json:"pausedAt"` // set while the studio has the premiere paused
+	PausedMs    int64      `json:"pausedMs"` // total time spent paused so far
+	Messages    int        `json:"messages"`
+	Spoilers    int        `json:"spoilers"`
+	AutoHidden  int        `json:"autoHidden"`
+	Reports     []Report   `json:"reports"`
+	Phrases     []Phrase   `json:"phrases"`
+	Recent      []Said     `json:"recent"`
 }
 
 func (st Store) Control(ctx context.Context, showtimeID string) (Control, error) {
 	c := Control{ShowtimeID: showtimeID}
-	err := st.DB.QueryRow(ctx, `SELECT film, starts_at, duration_min FROM showtimes WHERE id = $1`, showtimeID).Scan(&c.Film, &c.StartsAt, &c.DurationMin)
+	err := st.DB.QueryRow(ctx, `SELECT film, starts_at, duration_min, paused_at, paused_ms FROM showtimes WHERE id = $1`, showtimeID).Scan(&c.Film, &c.StartsAt, &c.DurationMin, &c.PausedAt, &c.PausedMs)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNoMessage
 	}
