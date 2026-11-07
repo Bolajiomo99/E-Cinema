@@ -26,7 +26,7 @@ export type Showtime = {
   local?: Record<string, { currency: string; minor: number }>; // studio's price per country
   blocked?: string[]; // countries the studio does not sell this film in
   studioSlug?: string; // the studio's public page, for live studio premieres
-  encoreOf?: string; // a weekly encore of this lineup screening
+  encoreOf?: string; // a weekly encore of this lineup screening, or a studio's sell-out encore
 };
 
 const blue = "rgba(70,150,255,.45)", amber = "rgba(255,140,40,.45)", red = "rgba(227,24,45,.45)";

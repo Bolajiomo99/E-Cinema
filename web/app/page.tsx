@@ -118,7 +118,7 @@ export default async function Home() {
 
         <div className="lp-hero-copy">
           <div className="lp-badges">
-            <span className="lp-badge live"><i />{hero.encoreOf ? "WEEKLY ENCORE" : t.worldPremiere}</span>
+            <span className="lp-badge live"><i />{hero.encoreOf ? (hero.studioFilm ? "ENCORE" : "WEEKLY ENCORE") : t.worldPremiere}</span>
             <HeroWhen startsAt={hero.startsAt} encore={Boolean(hero.encoreOf)} />
           </div>
           <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>

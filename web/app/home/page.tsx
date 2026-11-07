@@ -115,7 +115,7 @@ export default async function Home() {
               {live ? (
                 <><span className="lp-badge live pulse"><i />{t.liveNow}</span><LiveAudience showtimeId={hero.id} initial={heroStat} /></>
               ) : (
-                <><span className="lp-badge live"><i />{hero.encoreOf ? "WEEKLY ENCORE" : t.worldPremiere}</span><span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span></>
+                <><span className="lp-badge live"><i />{hero.encoreOf ? (hero.studioFilm ? "ENCORE" : "WEEKLY ENCORE") : t.worldPremiere}</span><span className="lp-badge outline">{isNew ? t.welcome : t.welcomeBack}, {first.toUpperCase()}</span></>
               )}
             </div>
             <h1 className="lp-display-xl">{heroLines.filter(Boolean).map((l) => <span key={l}>{l}</span>)}</h1>
