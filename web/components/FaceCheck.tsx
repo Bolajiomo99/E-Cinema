@@ -15,10 +15,16 @@ declare global {
 
 const SDK_URL = "https://static.sumsub.com/idensic/static/sns-websdk-builder.js";
 
-async function call(path: string) {
-  const res = await fetch(`/api/auth/identity/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+class Locked extends Error {}
+
+// With an unlock token (a locked account, signed out) the check runs through /unlock instead.
+async function call(path: "token" | "refresh", unlockToken?: string) {
+  const url = unlockToken ? `/api/auth/unlock/${path === "token" ? "identity" : "finish"}` : `/api/auth/identity/${path}`;
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(unlockToken ? { unlockToken } : {}) });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 423) throw new Locked(data.error ?? "This account is locked");
   if (!res.ok) throw new Error(data.error ?? "Could not reach the identity check");
+  if (unlockToken && path === "refresh") return { check: { status: data.status }, unlocked: data.unlocked };
   return data;
 }
 
@@ -39,10 +45,11 @@ const LABEL: Record<string, string> = {
   pending: "Under review. This usually takes a few minutes.",
   retry: "Please try again with better light and your whole face in view.",
   rejected: "We could not verify this account. If you already have one, sign in to it instead.",
+  locked: "Five face checks failed, so we locked this account and signed every device out. We emailed you a code to unlock it.",
 };
 
 // Liveness selfie plus ID document through Sumsub. Images go straight to Sumsub, never to our servers.
-export default function FaceCheck({ initialStatus, onVerified }: { initialStatus?: string; onVerified?: () => void }) {
+export default function FaceCheck({ initialStatus, onVerified, unlockToken }: { initialStatus?: string; onVerified?: () => void; unlockToken?: string }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(initialStatus ?? "");
   const [error, setError] = useState("");
@@ -50,10 +57,15 @@ export default function FaceCheck({ initialStatus, onVerified }: { initialStatus
 
   const refresh = async () => {
     try {
-      const r = await call("refresh");
+      const r = await call("refresh", unlockToken);
       setStatus(r.check.status);
       if (r.check.status === "approved") onVerified?.();
-    } catch {
+    } catch (e) {
+      // Five failed checks lock the account and sign this device out (email 33).
+      if (e instanceof Locked) {
+        setOpen(false);
+        setStatus("locked");
+      }
       // No applicant yet: nothing to show.
     }
   };
@@ -63,10 +75,10 @@ export default function FaceCheck({ initialStatus, onVerified }: { initialStatus
     let alive = true;
     (async () => {
       try {
-        const [sdk, first] = await Promise.all([loadSdk(), call("token")]);
+        const [sdk, first] = await Promise.all([loadSdk(), call("token", unlockToken)]);
         if (!alive) return;
         sdk
-          .init(first.token, async () => (await call("token")).token)
+          .init(first.token, async () => (await call("token", unlockToken)).token)
           .withConf({ lang: navigator.language.slice(0, 2) || "en", theme: "dark" })
           .withOptions({ addViewportTag: false, adaptIframeHeight: true })
           .on("idCheck.onApplicantSubmitted", () => refresh())
@@ -88,7 +100,8 @@ export default function FaceCheck({ initialStatus, onVerified }: { initialStatus
   return (
     <div className="face-check">
       {status && <p className="muted">{LABEL[status] ?? status}</p>}
-      {!open && status !== "rejected" && (
+      {status === "locked" && <a className="cta" href="/unlock-account">Unlock my account</a>}
+      {!open && status !== "rejected" && status !== "locked" && (
         <div className="inline">
           <button className="cta" onClick={() => { setError(""); setOpen(true); }}>{status ? "Continue check" : "Start face check"}</button>
           {status === "pending" && <button className="ghost" onClick={refresh}>Refresh</button>}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addPasskey, signInWithPasskey } from "@/lib/passkey-client";
+import FaceCheck from "@/components/FaceCheck";
 
 // Sign in (Figma 16:296) and password recovery (Figma 105:1186, 29:556, 105:1239,
 // 105:1314, 105:1357, 105:1402, 105:1447): one card on the red glow.
@@ -120,7 +121,15 @@ function useCountdown(seconds: number) {
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 function Err({ text }: { text: string }) {
-  return text ? <p className="ca-err" role="alert">{text[0].toUpperCase() + text.slice(1)}</p> : null;
+  if (!text) return null;
+  // A face-check lock (email 33) points to the unlock page.
+  const locked = text.includes("unlock page");
+  return (
+    <p className="ca-err" role="alert">
+      {text[0].toUpperCase() + text.slice(1)}{locked && !text.endsWith(".") ? "." : ""}
+      {locked && <> <a className="ca-link strong" href="/unlock-account">Unlock my account</a></>}
+    </p>
+  );
 }
 
 const SIGNIN_ERRORS: Record<string, string> = {
@@ -448,5 +457,82 @@ export function LockCard({ token }: { token: string }) {
       }}>{busy ? "Locking…" : "Yes, lock my account"}</button>
       <a className="ca-btn line" href="/">It was me</a>
     </div>
+  );
+}
+
+// Unlocking after five failed face checks (email 33, Figma 127:215): the emailed code, then a
+// new face check. Nobody can sign in to the account until both pass.
+export function UnlockCard({ initialEmail = "" }: { initialEmail?: string }) {
+  const [stage, setStage] = useState<"code" | "face" | "done">("code");
+  const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState("");
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [note, setNote] = useState("");
+  const [left, setLeft] = useCountdown(0);
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setError("");
+    try { await fn(); } catch (e) { setError((e as Error).message); }
+    setBusy(false);
+  };
+  const verify = (c = code) => run(async () => {
+    if (!email.trim()) throw new Error("Enter the email on your account.");
+    if (c.length !== 6) throw new Error("Enter all 6 digits of the code.");
+    const r = await post("unlock/start", { email, code: c });
+    setToken(r.unlockToken);
+    setStage("face");
+  });
+  const resend = () => run(async () => {
+    if (!email.trim()) throw new Error("Enter the email on your account.");
+    const r = await post("unlock/code", { email });
+    setCode("");
+    setLeft(60);
+    setNote(`If ${r.sentTo} belongs to a locked account, a new code is on its way.`);
+  });
+
+  if (stage === "done") {
+    return (
+      <div className="ca-card center">
+        <Icon name="shield" tone="green" />
+        <h1>Account unlocked</h1>
+        <p className="ca-sub">Thanks for confirming it is you. Sign in again on each of your devices.</p>
+        <a className="ca-btn red" href="/signin">Sign in</a>
+      </div>
+    );
+  }
+  if (stage === "face") {
+    return (
+      <div className="ca-card center">
+        <Bars at={2} of={2} />
+        <Icon name="face" />
+        <h1>Now a face check</h1>
+        <p className="ca-sub">Look at the camera in good light with your whole face in view. When it passes, your account opens again.</p>
+        <FaceCheck unlockToken={token} onVerified={() => setStage("done")} />
+        <Err text={error} />
+        <div className="ca-row"><a className="ca-link" href="/signin">Back to sign in</a><a className="ca-link" href="/help">Get help</a></div>
+      </div>
+    );
+  }
+  return (
+    <form className="ca-card" onSubmit={(e) => { e.preventDefault(); verify(); }}>
+      <Bars at={1} of={2} />
+      <Icon name="lock" />
+      <h1>Unlock your account</h1>
+      <p className="ca-sub">We locked it after five face checks failed. Enter the 6-digit code from our email, then do a new face check. Your tickets and wallet are safe.</p>
+      <Field label="Email"><input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
+      <CodeBoxes value={code} onChange={setCode} onDone={verify} />
+      <Err text={error} />
+      {note && <p className="ca-sub">{note}</p>}
+      <button className="ca-btn red" disabled={busy}>{busy ? "Checking…" : "Continue"}</button>
+      <div className="ca-row">
+        {left > 0
+          ? <span className="ca-link">Send a new code in {clock(left)}</span>
+          : <button type="button" className="ca-link red" disabled={busy} onClick={resend}>Send a new code</button>}
+        <a className="ca-link" href="/signin">Back to sign in</a>
+      </div>
+    </form>
   );
 }

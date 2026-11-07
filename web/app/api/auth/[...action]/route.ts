@@ -229,9 +229,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
       if (!session) return json(401, { error: "not signed in" });
       return relay(await accountApi("POST", "/v1/passkeys/register/finish", { challengeId: b.challengeId, credential: b.credential, name: device }, session));
     case "identity/token":
-    case "identity/refresh":
       if (!session) return json(401, { error: "not signed in" });
-      return relay(await accountApi("POST", `/v1/${action}`, {}, session));
+      return relay(await accountApi("POST", "/v1/identity/token", {}, session));
+    case "identity/refresh": {
+      if (!session) return json(401, { error: "not signed in" });
+      const r = await accountApi("POST", "/v1/identity/refresh", await where(req), session);
+      // Five failed face checks lock the account and sign every device out (email 33).
+      if (r.status === 423) {
+        const res = relay(r);
+        res.cookies.delete(SESSION_COOKIE);
+        return res;
+      }
+      return relay(r);
+    }
+    case "unlock/code":
+    case "unlock/start":
+      return relay(await accountApi("POST", `/v1/${action}`, { email: b.email, code: b.code }));
+    case "unlock/identity":
+    case "unlock/finish":
+      return relay(await accountApi("POST", `/v1/${action}`, { unlockToken: b.unlockToken }));
   }
   return json(404, { error: "not found" });
 }
