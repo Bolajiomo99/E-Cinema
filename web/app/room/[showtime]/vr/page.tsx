@@ -31,8 +31,19 @@ export default async function VrPage({ params }: { params: Promise<{ showtime: s
   if (r.status === 401) redirect(`/signin?next=/room/${showtime}/vr`);
   if (r.status === 404) notFound();
   if (r.status !== 200) throw new Error(`room lookup failed: ${r.status}`);
-  const room = r.body as Room;
+  const room = r.body as Room & { elsewhere?: boolean };
   const film = findShowtime(showtime);
+  if (room.elsewhere) {
+    return (
+      <section className="room-gate">
+        <Link href="/" className="wordmark">E-CINEMA</Link>
+        <h1>{room.showtime.film}</h1>
+        <p className="muted">This ticket is already playing on another device. A ticket plays on one device at a time, so close it there first, then come back here.</p>
+        <Link href={`/room/${room.showtime.id}/vr`} className="cta big">Try again</Link>
+        <p className="muted"><Link href="/account/devices">This was not me</Link></p>
+      </section>
+    );
+  }
 
   const tickets = await myTickets(session).catch(() => []);
   const vrSeat = tickets.some((t) => t.showtimeId === showtime && t.status === "paid" && t.quality === "vr");

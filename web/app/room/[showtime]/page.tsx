@@ -24,6 +24,7 @@ type Room = {
   polls?: Poll[];
   talkLeft?: number;
   lang?: string;
+  elsewhere?: boolean;
 };
 
 export default async function RoomPage({ params }: { params: Promise<{ showtime: string }> }) {
@@ -45,6 +46,19 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
         <h1>{room.showtime.film}</h1>
         <p className="muted">This room is for ticket holders. Get a seat and you can come straight back in.</p>
         <Link href={`/checkout?film=${room.showtime.id}`} className="cta big">Get a seat</Link>
+      </section>
+    );
+  }
+
+  // Email 28 (Figma 127:105): a ticket plays on one device per seat.
+  if (room.elsewhere) {
+    return (
+      <section className="room-gate">
+        <Link href="/" className="wordmark">E-CINEMA</Link>
+        <h1>{room.showtime.film}</h1>
+        <p className="muted">This ticket is already playing on another device. A ticket plays on one device at a time, so close it there first, then come back here.</p>
+        <Link href={`/room/${room.showtime.id}`} className="cta big">Try again</Link>
+        <p className="muted"><Link href="/account/devices">This was not me</Link></p>
       </section>
     );
   }
