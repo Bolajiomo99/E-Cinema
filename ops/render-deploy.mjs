@@ -172,6 +172,8 @@ const webEnv = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   // Sign-in codes, reset links and "This wasn't me" emails go out through Resend.
   RESEND_API_KEY: process.env.RESEND_API_KEY,
+  // Uptime gauges on the executive pages (read-only key).
+  UPTIMEROBOT_API_KEY: process.env.UPTIMEROBOT_API_KEY,
   // Each payment method switches on when its key exists.
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
   PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,

@@ -48,6 +48,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || secrets.GOOGLE_CONSOLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || secrets.GOOGLE_CONSOLE_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
           # Test keys while PayPal is on sandbox; switch both to live together.
           PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY_TEST }}
           PAYSTACK_PUBLIC_KEY: pk_test_66c86e8b76bff2455c85a47a2c3a89da01c23157
