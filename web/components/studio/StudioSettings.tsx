@@ -38,6 +38,13 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
       setAlerts(r.alerts);
     } catch (e) { setAlerts(alerts); setAlertErr((e as Error).message); }
   }
+  const [dubReview, setDubReview] = useState(s0.dubReview !== false);
+  async function toggleDubReview() {
+    const on = !dubReview;
+    setErr(""); setDubReview(on);
+    try { const r = await scall<{ dubReview: boolean }>("PUT", "dub-review", { On: on }); setDubReview(r.dubReview); setMsg(on ? "New dubbed languages will wait for your approval." : "Clean dubs now go live as soon as voicing finishes."); }
+    catch (e) { setDubReview(!on); setErr((e as Error).message); }
+  }
   const [city, setCity] = useState(s0.city);
   const [website, setWebsite] = useState(s0.website);
   const [busy, setBusy] = useState(false);
@@ -95,7 +102,10 @@ export default function StudioSettings({ studio: s0, alerts: a0, hooks, keys }: 
             {s.docsKey && <button className="vf-btn sm" onClick={openDoc}>View</button>}
           </div>
           <Soon title="Default territories" text="Choose where your films can be sold by default" />
-          <Soon title="AI dub approval" text="Every new language needs your approval before release" />
+          <div className="stu-set">
+            <div><b id="set-dubrev">AI dub approval</b><small>{dubReview ? "Every new language needs a reviewer's approval before viewers hear it" : "Off: a language goes live when every line is voiced and nothing is flagged"}</small></div>
+            <button type="button" role="switch" aria-checked={dubReview} aria-labelledby="set-dubrev" disabled={!edit} className={`stu-toggle${dubReview ? " on" : ""}`} onClick={() => void toggleDubReview()}><i /></button>
+          </div>
           <Soon title="Voice cloning of cast" text="Only for cast who signed voice consent" />
         </section>
       </div>

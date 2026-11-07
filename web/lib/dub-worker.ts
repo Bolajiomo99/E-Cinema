@@ -279,7 +279,9 @@ async function run(job: Job) {
   try {
     if (job.status === "translating") await translate(job);
     else await voice(job);
-    await api("POST", `/v1/studio-dubs/${job.upload}/${job.lang}/finish`, { error: "" });
+    const done = await api<{ approved?: boolean }>("POST", `/v1/studio-dubs/${job.upload}/${job.lang}/finish`, { error: "" });
+    // With "AI dub approval" off, a clean voicing run is approved at once; put it on the player.
+    if (done.status === 200 && done.body?.approved) await syncDubs(job.upload);
   } catch (e) {
     console.error("dub", id, job.status, e instanceof Error ? e.message : e);
     await api("POST", `/v1/studio-dubs/${job.upload}/${job.lang}/finish`, { error: plain(e) }).catch(() => {});
