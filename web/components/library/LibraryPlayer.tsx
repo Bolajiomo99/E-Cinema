@@ -46,7 +46,7 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
   }, [stream]);
 
   const tracks = useTracks(dubFilm, dubLanguages, prefAudio, prefSubs, video, Math.min(volume, 1));
-  useWatchBeat(showtimeId ?? "", offline ? "offline" : "replay", playing, tracks.audio, tracks.subs);
+  useWatchBeat(showtimeId ?? "", offline ? "offline" : "replay", playing, tracks.audio, tracks.subs, () => (video.current ? { position: video.current.currentTime } : null));
   useEffect(() => {
     const v = video.current;
     if (!v) return;

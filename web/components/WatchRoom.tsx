@@ -260,10 +260,41 @@ export default function WatchRoom({
     };
   }, [now]);
 
+  // Player reports: drift from the room clock each second, stalls, and join-to-first-frame.
+  const drifts = useRef<number[]>([]);
+  const stall = useRef({ ms: 0, count: 0, since: 0 });
+  const joinedAt = useRef(0);
+  const startMsRef = useRef(0);
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    const wait = () => { if (!stall.current.since) { stall.current.since = performance.now(); stall.current.count++; } };
+    const go = () => {
+      if (stall.current.since) { stall.current.ms += performance.now() - stall.current.since; stall.current.since = 0; }
+      if (joinedAt.current && !startMsRef.current) startMsRef.current = Math.round(performance.now() - joinedAt.current);
+    };
+    v.addEventListener("waiting", wait);
+    v.addEventListener("playing", go);
+    return () => { v.removeEventListener("waiting", wait); v.removeEventListener("playing", go); };
+  }, [stream]);
+  const playerReport = () => {
+    const v = video.current;
+    if (!v) return null;
+    const list = [...drifts.current].sort((a, b) => a - b);
+    drifts.current = [];
+    const st = stall.current;
+    if (st.since) { st.ms += performance.now() - st.since; st.since = performance.now(); }
+    const out = { position: v.currentTime, driftMs: list.length ? Math.round(list[Math.floor(list.length / 2)]) : 0, stallMs: Math.round(st.ms), stalls: st.count, startMs: startMsRef.current > 0 ? startMsRef.current : 0 };
+    st.ms = 0; st.count = 0;
+    if (startMsRef.current > 0) startMsRef.current = -1; // sent once
+    return out;
+  };
+
   useEffect(() => {
     const v = video.current;
     if (!v || !stream || phase !== "playing" || !joined) return;
     const pos = ((now() - startMs) / 1000) % stream.durationSec;
+    if (v.readyState >= 2 && !v.paused) drifts.current.push(Math.abs(v.currentTime - pos) * 1000);
     if (v.readyState >= 1 && Math.abs(v.currentTime - pos) > DRIFT_LIMIT) v.currentTime = pos;
     if (v.paused) v.play().catch(() => setJoined(false));
   }, [nowMs, phase, joined, stream, now, startMs]);
@@ -308,6 +339,7 @@ export default function WatchRoom({
 
   const join = () => {
     setJoined(true);
+    if (!joinedAt.current) joinedAt.current = performance.now();
     const v = video.current;
     if (v && stream) {
       v.currentTime = ((now() - startMs) / 1000) % stream.durationSec;
@@ -322,7 +354,7 @@ export default function WatchRoom({
 
   const wallClock = nowMs === null ? "" : new Date(nowMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const live = phase === "playing";
-  useWatchBeat(showtime.id, "room", live && joined, tracks.audio, tracks.subs);
+  useWatchBeat(showtime.id, "room", live && joined, tracks.audio, tracks.subs, playerReport);
 
   return (
     <div className="room">
