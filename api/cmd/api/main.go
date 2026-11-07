@@ -162,6 +162,11 @@ func run() error {
 			} else if n > 0 {
 				slog.Info("film changes mail queued", "count", n)
 			}
+			if n, err := srv.Studios.QueueAlerts(ctx, time.Now()); err != nil {
+				slog.Error("studio alerts", "err", err)
+			} else if n > 0 {
+				slog.Info("studio alerts queued", "count", n)
+			}
 			if n, err := srv.Licensing.QueueStatements(ctx, time.Now()); err != nil {
 				slog.Error("royalty statements", "err", err)
 			} else if n > 0 {

@@ -226,6 +226,19 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		reply(w, map[string]bool{"ok": true}, err)
 	}))
 	// Notifications (Figma 99:552).
+	// Which notification emails this member gets (Figma 39:1184 Settings · Notifications).
+	mux.HandleFunc("GET /v1/me/studio/alerts", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		l, err := s.Studios.Alerts(r.Context(), a.ID, a.Email)
+		reply(w, map[string]any{"alerts": l}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/alerts/{kind}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct{ On bool }
+		if !decode(w, r, &b) {
+			return
+		}
+		l, err := s.Studios.SetAlert(r.Context(), a.ID, a.Email, r.PathValue("kind"), b.On)
+		reply(w, map[string]any{"alerts": l}, err)
+	}))
 	mux.HandleFunc("GET /v1/me/studio/notices", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		n, err := s.Studios.Notices(r.Context(), a.ID, a.Email, time.Now())
 		reply(w, n, err)
