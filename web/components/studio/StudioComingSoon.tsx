@@ -195,7 +195,7 @@ export default function StudioComingSoon({ upload, premiere, canEdit, rightsDecl
               <li>Early seats go on sale at the early-bird price, rising in stages to release</li>
               <li>Seat money is paid out after the premiere (70% to you)</li>
               <li>Followers and fans of the genre get a notification <em className="soon-tag">Soon</em></li>
-              <li>Refunds handled automatically if you move the date <em className="soon-tag">Soon</em></li>
+              <li>If you move the date, every holder is emailed and can take a full refund for 7 days</li>
             </ul>
           </section>
         </div>

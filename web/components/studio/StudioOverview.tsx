@@ -36,7 +36,7 @@ export default function StudioOverview({ o, films, firstName }: { o: Overview; f
             <b>{o.live.film} premiere · {o.live.seats.toLocaleString("en-GB")} seats sold{o.live.countries ? ` in ${o.live.countries} ${o.live.countries === 1 ? "country" : "countries"}` : ""}</b>
             <small>Started {when(o.live.startsAt)} · {o.live.durationMin} min</small>
           </div>
-          <span className="vf-btn red stu-soon" aria-disabled="true">Open control room <em className="soon-tag">Soon</em></span>
+          <Link className="vf-btn red" href="/studio/control">Open control room</Link>
         </div>
       )}
 
@@ -62,7 +62,7 @@ export default function StudioOverview({ o, films, firstName }: { o: Overview; f
                 <span>{f.seats.toLocaleString("en-GB")} / {f.capacity.toLocaleString("en-GB")} seats</span>
               </div>
             </div>
-          )) : <p className="pt-empty">No premieres booked yet. Scheduling your own premieres is coming to the portal <em className="soon-tag">Soon</em></p>}
+          )) : <p className="pt-empty">No premieres booked yet. <Link href="/studio/premieres">Book a premiere</Link> and it shows here.</p>}
         </section>
       </div>
 
