@@ -1,5 +1,6 @@
 "use client";
 
+import ChatText from "./ChatText";
 import { useEffect, useRef, useState } from "react";
 import type Anthropic from "@anthropic-ai/sdk";
 import PayPalTicketButton from "@/components/PayPalTicketButton";
@@ -85,7 +86,7 @@ export default function ConciergeChat({ compact = false, autoFocus = false, seed
         <ol className="ai-turns" ref={list} aria-live="polite">
           {turns.map((t, i) => (
             <li key={i} className={t.role}>
-              <p>{t.text}</p>
+              {t.role === "agent" ? <ChatText text={t.text} /> : <p>{t.text}</p>}
               {t.orders?.map((o) => (
                 <div key={o.orderId} className="ai-order">
                   <div>
