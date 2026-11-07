@@ -41,6 +41,8 @@ const refBox = (t: string) =>
   `<div style="margin:0 0 20px;background:#f4f4f6;border-radius:12px;padding:22px;text-align:center;font:400 40px/1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:2px;color:#16161a">${esc(t)}</div>`;
 const ghost = (to: string, label: string) =>
   `<p style="margin:0 0 20px"><a href="${esc(to)}" style="display:inline-block;background:#ffffff;color:#16161a;text-decoration:none;font:600 16px/1 ${FONT};padding:15px 23px;border-radius:8px;border:1px solid #c9c9d0">${esc(label)}</a></p>`;
+const bigCode = (code: string) =>
+  `<div style="margin:0 0 20px;background:#f5f5f7;border-radius:10px;padding:18px;text-align:center;font:400 40px/1.1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:0.5px;color:#141418">${esc(code.slice(0, 3))} ${esc(code.slice(3))}</div>`;
 const small = (t: string) => `<p style="margin:0 0 20px;font:500 14px/1.55 ${FONT};color:#7a7a84">${t}</p>`;
 const teal = (t: string) => `<div style="margin:0 0 20px;background:#e6f6f4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
 const steps = (list: string[]) =>
@@ -603,6 +605,21 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
     });
   },
 
+  // 33 Account locked for safety (127:215). Queued by the API when five face checks fail
+  // within 10 minutes; the code and a new face check on /unlock lift the lock.
+  account_locked: (m) => {
+    const code = S(m.data.code), place = S(m.data.place), email = S(m.data.email) || m.to;
+    if (!/^\d{6}$/.test(code)) return null;
+    const from = place ? `from a device in ${place}` : "from one device";
+    return done({
+      from: SENDER.security, tag: "LOCKED", footer: FOOT_ACTION(),
+      subject: "We locked your account for your safety", preview: "Five face checks failed in 10 minutes",
+      title: "Your account is locked",
+      body: p(`Five face checks failed ${esc(from)}. Nobody can sign in until you confirm it is you with a new face check and the code below. Your tickets and wallet are safe. Code:`) +
+        bigCode(code) + button(href(`/unlock-account?email=${encodeURIComponent(email)}`), "Unlock my account"),
+      text: `Five face checks failed ${from}. Nobody can sign in until you confirm it is you with a new face check and this code: ${code}. Your tickets and wallet are safe. ${href("/unlock-account")}`,
+    });
+  },
 };
 
 // Facts an email cannot go out without (the rest check inside their template).
@@ -611,7 +628,7 @@ const NEEDS: Record<string, string[]> = {
   licence_received: ["app"], licence_changes: ["app", "note"], licence_approved: ["licence"],
   design_approved: ["design", "product"], design_rejected: ["design", "product", "note"],
   licence_renewal: ["licence"], late_ticket: ["ticket"], not_joined: ["ticket"], preorder_week: ["ticket"],
-  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
+  gift_waiting: ["gift"], refund: ["what"], premiere_moved: ["ticket"], premiere_cancelled: ["ref"], winback: ["code"], outage_credit: ["code"], second_device: ["code"], account_locked: ["code"], plan_receipt: ["receipt"], studio_payout: ["shareMinor"],
 };
 
 export const mailKinds = () => Object.keys(T);
