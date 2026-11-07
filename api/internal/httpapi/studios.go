@@ -184,6 +184,20 @@ func (s *Server) studioRoutes(mux *http.ServeMux) {
 		p, err := s.Studios.Premiere(r.Context(), a.ID, a.Email, r.PathValue("id"))
 		reply(w, map[string]any{"premiere": p}, err)
 	}))
+	mux.HandleFunc("GET /v1/me/studio/uploads/{id}/encores", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		list, err := s.Studios.Encores(r.Context(), a.ID, a.Email, r.PathValue("id"))
+		reply(w, map[string]any{"encores": list}, err)
+	}))
+	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/encores/{n}", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
+		var b struct {
+			Approve bool `json:"approve"`
+		}
+		n, _ := strconv.Atoi(r.PathValue("n"))
+		if decode(w, r, &b) {
+			e, err := s.Studios.DecideEncore(r.Context(), a.ID, a.Email, r.PathValue("id"), n, b.Approve, time.Now())
+			reply(w, map[string]any{"encore": e}, err)
+		}
+	}))
 	mux.HandleFunc("PUT /v1/me/studio/uploads/{id}/premiere", on(func(w http.ResponseWriter, r *http.Request, a accounts.Account) {
 		var in studios.PremiereInput
 		if decodeN(w, r, 64<<10, &in) {
