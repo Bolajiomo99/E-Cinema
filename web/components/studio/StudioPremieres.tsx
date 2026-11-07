@@ -19,10 +19,10 @@ const MODES: { id: PremiereMode; label: string }[] = [
   { id: "waves", label: "3 waves by region" },
 ];
 const CITIES: [string, string][] = [["Lagos", "Africa/Lagos"], ["Berlin", "Europe/Berlin"], ["Mumbai", "Asia/Kolkata"], ["Tokyo", "Asia/Tokyo"], ["São Paulo", "America/Sao_Paulo"]];
-const RULES: { key: keyof Rules; title: string; sub: string }[] = [
+const RULES: { key: keyof Rules; title: string; sub: string; live?: boolean }[] = [
   { key: "freePlan", title: "Free plan can watch", sub: "Muted after 3 minutes of talk" },
   { key: "groupDiscounts", title: "Group discounts (VIP)", sub: "Up to 25% off for 10+ seats" },
-  { key: "studentPrice", title: "Student price", sub: "30% off with verified student ID" },
+  { key: "studentPrice", title: "Student price", sub: "30% off with verified student ID", live: true },
   { key: "classicRequests", title: "Classic requests after screening", sub: "Unlock at 500 requests" },
   { key: "downloads", title: "Downloads", sub: "Not for premieres. Allowed 30 days after" },
 ];
@@ -172,7 +172,7 @@ export default function StudioPremieres({ films, upload: u, premiere: p0, canEdi
           <h2>Rules</h2>
           {RULES.map((r) => (
             <div key={r.key} className="stpr-rule">
-              <div><b>{r.title} <em className="soon-tag">Soon</em></b><small>{r.sub}</small></div>
+              <div><b>{r.title}{!r.live && <> <em className="soon-tag">Soon</em></>}</b><small>{r.sub}</small></div>
               <Toggle label={r.title} on={rules[r.key]} disabled={!canEdit} onChange={(v) => setRules({ ...rules, [r.key]: v })} />
             </div>
           ))}
