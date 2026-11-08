@@ -1,6 +1,7 @@
 import StudioFilms, { type FilmRow } from "@/components/studio/StudioFilms";
 import { findShowtime } from "@/lib/catalog";
 import { session } from "@/lib/licensing";
+import { dubLanguages, mediaEnabled } from "@/lib/media";
 import { studioPage } from "@/lib/studio";
 import { ago, type Film, type Upload } from "@/lib/studio-types";
 
@@ -35,10 +36,12 @@ export default async function StudioFilmsPage() {
       seats: all.reduce((n, f) => n + f.seats, 0), grossCents: all.reduce((n, f) => n + f.grossCents, 0),
       shareCents: all.reduce((n, f) => n + f.shareCents, 0),
       payout: all.every((f) => f.payout === "sent") ? "sent" : first.payout,
-      kind: kind(first), dubs: findShowtime(first.showtimeId)?.dubs ?? 0,
+      kind: kind(first), dubs: 0,
       screenings: all.length, upcoming: all.filter((f) => f.state === "upcoming").length,
     };
   }).sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt));
+  // Languages counts the AI dub tracks this film really has in storage, not the catalog's plan.
+  if (mediaEnabled) await Promise.all(films.map(async (f) => { f.dubs = (await dubLanguages(f.showtimeId).catch(() => [])).length; }));
   const drafts = (up?.uploads ?? []).filter((u) => u.status === "draft").map((u) => ({ id: u.id, title: u.title, files: u.files.length, saved: ago(u.updatedAt, now) }));
   return <StudioFilms films={films} drafts={drafts} now={now} />;
 }
