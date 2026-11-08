@@ -6,7 +6,7 @@ import type { Party, Poll } from "@/components/room/SidePanel";
 import { accountApi, SESSION_COOKIE } from "@/lib/auth";
 import { myTickets } from "@/lib/api";
 import { dubLanguages, filmStream, mediaEnabled } from "@/lib/media";
-import { findShowtime } from "@/lib/catalog";
+import { findShowtime, showtimes } from "@/lib/catalog";
 import { langName } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
 
@@ -81,6 +81,12 @@ export default async function RoomPage({ params }: { params: Promise<{ showtime:
   let dubLangs: string[] = [];
   if (mediaEnabled) {
     dubLangs = await dubLanguages(showtime).catch(() => []);
+    // An encore plays the dubs its premiere was given.
+    const origin = showtimes.find((s) => s.film === room.showtime.film && !s.encoreOf && s.id !== showtime)?.id;
+    if (!dubLangs.length && origin) {
+      const langs = await dubLanguages(origin).catch(() => []);
+      if (langs.length) [dubFilm, dubLangs] = [origin, langs];
+    }
     if (!dubLangs.length && stream) {
       dubFilm = "stand-in";
       dubLangs = await dubLanguages(dubFilm).catch(() => []);
