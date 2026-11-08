@@ -126,4 +126,6 @@ Production deploys go to Render through `.github/workflows/render-deploy.yml`.
 
 ## License
 
-[MIT](LICENSE)
+Copyright (C) 2026 Online Cinema Ltd, trading as E-Cinema.
+
+The code is licensed under [AGPL-3.0-only](LICENSE): any use of it in distributed software or an online service must release its full source under the same license. Commercial licenses are available from admin@e-cinema.net. The E-Cinema name, logo, designs and content are not licensed. See [NOTICE.md](NOTICE.md).
