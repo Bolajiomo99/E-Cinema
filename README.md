@@ -7,22 +7,22 @@
 <p>Every film premieres once, at one time, for everyone. You pay in your own currency, hear the film dubbed in your language,<br>and talk with the whole room in a world chat translated for you. An AI agent books your seats; you approve every payment with PayPal.</p>
 
 <p>
-  <a href="https://e-cinema.net"><img alt="Live site" src="https://img.shields.io/badge/live-e--cinema.net-E3182D?style=for-the-badge&logo=googlechrome&logoColor=white"></a>
-  <a href="#paypal"><img alt="Payments: PayPal" src="https://img.shields.io/badge/payments-PayPal-003087?style=for-the-badge&logo=paypal&logoColor=white"></a>
-  <a href="#ai"><img alt="AI: Claude" src="https://img.shields.io/badge/agent-Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white"></a>
-  <a href="#license"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-1F6FEB?style=for-the-badge"></a>
+  <a href="https://e-cinema.net"><img alt="Live site" src="docs/badges/live.svg"></a>
+  <a href="#paypal"><img alt="Payments: PayPal" src="docs/badges/paypal.svg"></a>
+  <a href="#ai"><img alt="AI: Claude" src="docs/badges/claude.svg"></a>
+  <a href="#license"><img alt="License: AGPL-3.0" src="docs/badges/license.svg"></a>
 </p>
 
 <p>
-  <img alt="Next.js" src="https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white">
-  <img alt="React" src="https://img.shields.io/badge/React_19-20232A?style=flat-square&logo=react&logoColor=61DAFB">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
-  <img alt="Go" src="https://img.shields.io/badge/Go-00ADD8?style=flat-square&logo=go&logoColor=white">
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white">
-  <img alt="Render" src="https://img.shields.io/badge/Render-000000?style=flat-square&logo=render&logoColor=white">
-  <img alt="ElevenLabs" src="https://img.shields.io/badge/ElevenLabs-000000?style=flat-square&logo=elevenlabs&logoColor=white">
-  <img alt="Cloudflare" src="https://img.shields.io/badge/Cloudflare_R2-F38020?style=flat-square&logo=cloudflare&logoColor=white">
-  <img alt="WebXR" src="https://img.shields.io/badge/WebXR-VR_hall-6D28D9?style=flat-square">
+  <img alt="Next.js" src="docs/badges/nextjs.svg">
+  <img alt="React" src="docs/badges/react.svg">
+  <img alt="TypeScript" src="docs/badges/typescript.svg">
+  <img alt="Go" src="docs/badges/go.svg">
+  <img alt="PostgreSQL" src="docs/badges/postgresql.svg">
+  <img alt="Render" src="docs/badges/render.svg">
+  <img alt="ElevenLabs" src="docs/badges/elevenlabs.svg">
+  <img alt="Cloudflare" src="docs/badges/cloudflare.svg">
+  <img alt="WebXR" src="docs/badges/webxr.svg">
 </p>
 
 <p>
