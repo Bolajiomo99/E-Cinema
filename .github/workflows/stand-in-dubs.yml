@@ -1,0 +1,50 @@
+name: Stand-in dubs
+
+# Dubs the stand-in film that plays in watch rooms until studios upload their own (Tears of
+# Steel, (c) Blender Foundation, CC BY 3.0, mango.blender.org) from its real English subtitles,
+# using the dubFilm Render Workflow task (Claude translates, ElevenLabs voices, R2 stores
+# dubs/stand-in/<lang>/). The room offers these as AI dubs and subtitles.
+on:
+  workflow_dispatch:
+    inputs:
+      languages:
+        description: Languages, comma separated
+        default: yo,fr,hi
+  push:
+    paths: [.github/workflows/stand-in-dubs.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  dub:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Download the script and make it WebVTT
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o subs.srt https://download.blender.org/demo/movies/ToS/subtitles/TOS-en.srt
+          { echo WEBVTT; echo; sed -e 's/\r$//' -e '1s/^\xEF\xBB\xBF//' -e '/-->/ s/,/./g' subs.srt; } > subs.vtt
+          echo "cues: $(grep -c -- '-->' subs.vtt)"; head -8 subs.vtt
+      - name: Start dubFilm and wait for it
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY1 }}
+          LANGS: ${{ inputs.languages || 'yo,fr,hi' }}
+        run: |
+          set -euo pipefail
+          api() { curl -fsS -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" "$@"; }
+          body=$(jq -n --rawfile vtt subs.vtt --arg langs "$LANGS" \
+            '{task: "e-cinema-workflows/dubFilm", input: ["stand-in", $vtt, ($langs | split(",")) ]}')
+          run=$(api -X POST https://api.render.com/v1/task-runs -d "$body" | jq -r .id)
+          echo "task run $run"
+          for i in $(seq 1 330); do
+            res=$(api "https://api.render.com/v1/task-runs/$run")
+            status=$(jq -r .status <<<"$res")
+            case "$status" in
+              completed|succeeded) jq -c '.results[0] | {dubbed: [.dubbed[]? | {language, clips: (.clips // .lines // null)}], failed}' <<<"$res"; jq -e ".results[0].failed | length == 0" <<<"$res" >/dev/null; exit $? ;;
+              failed|canceled) echo "dubFilm $status: $(jq -r .error <<<"$res")"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "dubFilm still running"; exit 1
