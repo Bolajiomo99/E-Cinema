@@ -280,9 +280,12 @@ Every pull request runs the [merge guard](.github/workflows/merge-guard.yml): a 
 
 Copyright © 2026 Online Cinema Ltd, trading as E-Cinema (RC 9947766).
 
-The code is under the [GNU Affero General Public License v3.0](LICENSE). If you use it in software you distribute or in an online service, you must publish your full source under the same license. For any other use, buy a commercial license from admin@e-cinema.net.
+Online Cinema Ltd owns all of E-Cinema: the code, the designs, the brand and the content.
 
-The E-Cinema name, logo, designs, screenshots and content are **not** covered by that license and stay all rights reserved. See [NOTICE.md](NOTICE.md).
+- **Code:** licensed under the [GNU Affero General Public License v3.0](LICENSE). Anyone who uses it in software they distribute or in an online service must publish their full source under the same license. For any other use, a commercial license is available from admin@e-cinema.net.
+- **Designs, name, logo, screenshots and content:** all rights reserved by Online Cinema Ltd. They may not be copied or used without written permission.
+
+See [NOTICE.md](NOTICE.md).
 
 <div align="center">
 <br>
