@@ -15,9 +15,9 @@ Online Cinema Ltd owns the copyright and offers separate commercial licenses for
 
 Use of this code that does not follow the AGPL and is not covered by a commercial license infringes Online Cinema Ltd's copyright.
 
-## Trademarks and content
+## Designs, brand and content
 
-The AGPL covers source code only. It grants no rights to the E-Cinema name, logo, brand, visual designs, film artwork, voice recordings or other content, which remain the property of Online Cinema Ltd or their respective owners. Do not use them to name, brand or promote another product or service.
+The E-Cinema name, logo, brand, visual designs (including the Figma designs), screenshots, film artwork, voice recordings and other content are owned by Online Cinema Ltd, all rights reserved. They may not be copied, adapted or used, including to name, brand or promote another product or service, without written permission from Online Cinema Ltd. Licensing requests: admin@e-cinema.net.
 
 Third-party components keep their own licenses. The stand-in film used in demos is "Tears of Steel" (c) Blender Foundation, mango.blender.org, licensed under CC BY 3.0.
 
