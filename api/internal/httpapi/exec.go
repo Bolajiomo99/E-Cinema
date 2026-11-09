@@ -278,6 +278,9 @@ func (s *Server) execRoutes(mux *http.ServeMux) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "That report was already settled"})
 			return
 		}
+		if err == nil && hidden && s.Hub != nil {
+			s.Hub.Takedown(r.PathValue("showtime"), []int64{id})
+		}
 		reply(w, map[string]bool{"hidden": hidden}, err)
 	}))
 	// Hiring and jobs (Figma 117:948). The CEO and COO post roles; only the CEO changes the Nigeria quota.

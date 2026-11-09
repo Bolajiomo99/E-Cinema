@@ -26,6 +26,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/insights"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/library"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/licensing"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/moderation"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
@@ -79,6 +80,8 @@ type Server struct {
 	Careers careers.Store
 	// Translations is the translation memory for site text, emails and receipts.
 	Translations translations.Store
+	// Moderation is the automatic check on public chat, posts and comments.
+	Moderation moderation.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -346,6 +349,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	s.errorRoutes(mux)
 	s.translationRoutes(mux)
+	s.moderationRoutes(mux)
 	return securityHeaders(s.lat.wrap(recoverPanics(mux)))
 }
 

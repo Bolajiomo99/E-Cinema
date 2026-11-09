@@ -35,6 +35,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/db"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/httpapi"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/moderation"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/translations"
@@ -121,6 +122,7 @@ func run() error {
 		Exec:           exec.Store{DB: pool, CEOs: ceoEmails()},
 		Careers:        careers.Store{DB: pool},
 		Translations:   translations.Store{DB: pool},
+		Moderation:     moderation.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
