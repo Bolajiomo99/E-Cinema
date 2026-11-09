@@ -25,7 +25,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const s = findShowtime((await params).id);
-  return { title: s ? `${s.film} · E-Cinema` : "Film · E-Cinema", description: s?.blurb };
+  const title = s ? `${s.film} · E-Cinema` : "Film · E-Cinema";
+  return { title, description: s?.blurb, openGraph: { title, description: s?.blurb, type: "video.movie" }, twitter: { card: "summary_large_image", title, description: s?.blurb } };
 }
 
 const CODE: Record<string, string> = { English: "en", Yoruba: "yo", Hausa: "ha", Igbo: "ig", French: "fr", Hindi: "hi", Korean: "ko", Spanish: "es", Portuguese: "pt", German: "de", Arabic: "ar", Swahili: "sw" };
