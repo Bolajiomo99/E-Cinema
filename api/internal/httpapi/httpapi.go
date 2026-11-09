@@ -341,7 +341,8 @@ func (s *Server) Routes() http.Handler {
 	s.giftRoutes(mux)
 	s.studentRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
-	return securityHeaders(s.lat.wrap(mux))
+	s.errorRoutes(mux)
+	return securityHeaders(s.lat.wrap(recoverPanics(mux)))
 }
 
 type schedule struct{ t tickets.Store }
@@ -560,6 +561,9 @@ func fail(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	default:
 		slog.Error("request failed", "err", err)
+		if errorSink != nil {
+			errorSink(err.Error(), "", "")
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 	}
 }

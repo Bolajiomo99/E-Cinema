@@ -15,23 +15,27 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 )
 
+// execOnly guards every executive route: signed in, plus the "passkey and face for every
+// executive" switch (Figma 83:386).
+func (s *Server) execOnly(fn func(w http.ResponseWriter, r *http.Request, a accounts.Account)) http.HandlerFunc {
+	return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
+		ok, err := s.Exec.StrongOK(r.Context(), a.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Add a passkey and finish the face check to open the executive area"})
+			return
+		}
+		fn(w, r, a)
+	})
+}
+
 // Executive dashboards (Figma page "07 Executive").
 func (s *Server) execRoutes(mux *http.ServeMux) {
 	// Every executive route checks the "passkey and face for every executive" switch (Figma 83:386).
-	on := func(fn func(w http.ResponseWriter, r *http.Request, a accounts.Account)) http.HandlerFunc {
-		return s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
-			ok, err := s.Exec.StrongOK(r.Context(), a.ID)
-			if err != nil {
-				fail(w, err)
-				return
-			}
-			if !ok {
-				writeJSON(w, http.StatusForbidden, map[string]string{"error": "Add a passkey and finish the face check to open the executive area"})
-				return
-			}
-			fn(w, r, a)
-		})
-	}
+	on := s.execOnly
 	mux.HandleFunc("GET /v1/me/exec", s.signedIn(func(w http.ResponseWriter, r *http.Request, a accounts.Account, _ string) {
 		role, err := s.Exec.Role(r.Context(), a.Email)
 		if err != nil || role == "" {
