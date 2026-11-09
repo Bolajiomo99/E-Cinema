@@ -22,3 +22,9 @@ jobs:
             curl -sS --max-time 30 -o /dev/null -w "page /browse in $l: %{http_code}\n" -H "cookie: ec_lang=$l" https://e-cinema.net/browse
             curl -sS --max-time 30 -H "cookie: ec_lang=$l" https://e-cinema.net/browse | grep -o '<html[^>]*>' | head -1
           done
+      - name: Help centre
+        run: |
+          curl -sS --max-time 30 -o /dev/null -w "/help: %{http_code}\n" https://e-cinema.net/help
+          curl -sS --max-time 30 https://e-cinema.net/help | grep -o 'How can we help?\|Message our team' | sort -u
+          curl -sS --max-time 30 -o /dev/null -w "/help/requests: %{http_code}\n" https://e-cinema.net/help/requests
+          curl -sS --max-time 30 -o /dev/null -w "/support/desk (signed out): %{http_code}\n" https://e-cinema.net/support/desk
