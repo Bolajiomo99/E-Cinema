@@ -101,7 +101,8 @@ export default function WeekCalendar({ items }: { items: Item[] }) {
           </button>
         ))}
       </div>
-      {view === "week" ? (
+      {/* Days and times are drawn in the viewer's own time zone, so they wait for the browser. */}
+      {now === null ? <div className="hm-week" aria-busy="true" style={{ minHeight: 320 }} /> : view === "week" ? (
         <>
           <div className="hm-week">
             {days.map((d) => {

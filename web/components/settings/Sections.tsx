@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMounted } from "@/lib/use-mounted";
 import { addPasskey } from "@/lib/passkey-client";
 import { call, Card, Notice, Pill, Row, Soon, Toggle, usePrefs } from "./ui";
 
@@ -21,8 +22,8 @@ const LANGS: [string, string][] = [
   ["en", "English"], ["yo", "Yorùbá"], ["ha", "Hausa"], ["ig", "Igbo"], ["fr", "Français"], ["hi", "हिन्दी"],
   ["ko", "한국어"], ["es", "Español"], ["pt", "Português"], ["de", "Deutsch"], ["ar", "العربية"], ["sw", "Kiswahili"],
 ];
-const day = (iso: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }) =>
-  new Intl.DateTimeFormat("en-GB", opts).format(new Date(iso));
+const day = (iso: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }, local = true) =>
+  new Intl.DateTimeFormat("en-GB", local ? opts : { ...opts, timeZone: "UTC" }).format(new Date(iso));
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "E";
 const maskPhone = (p?: string) => (p && p.length > 8 ? `${p.slice(0, 4)} ${p.slice(4, 7)} ••• ${p.slice(-4)}` : "");
 const age = (birth?: string) => {
@@ -140,6 +141,7 @@ const deviceIcon = (label: string) =>
 export function SecuritySection({ me, settings, devices: initialDevices, max, signedOutOldest }: {
   me: Me; settings: SettingsData; devices: Device[]; max: number; signedOutOldest: boolean;
 }) {
+  const mounted = useMounted();
   const router = useRouter();
   const [devices, setDevices] = useState(initialDevices);
   const [twoStep, setTwoStep] = useState(settings.twoStep);
@@ -166,7 +168,7 @@ export function SecuritySection({ me, settings, devices: initialDevices, max, si
         {devices.map((d) => (
           <div className="st-device" key={d.id}>
             <span className="st-dev-ico" aria-hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{deviceIcon(d.device)}</svg></span>
-            <div><strong>{d.device}{d.current && <span className="st-this">THIS DEVICE</span>}</strong><small>{d.current ? "Active now" : `Last active ${day(d.lastSeenAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}</small></div>
+            <div><strong>{d.device}{d.current && <span className="st-this">THIS DEVICE</span>}</strong><small>{d.current ? "Active now" : `Last active ${day(d.lastSeenAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, mounted)}`}</small></div>
             {!d.current && (
               <button className="st-btn line" disabled={busy} onClick={() => run(async () => {
                 await call(`/api/auth/devices/${d.id}`, "DELETE");
@@ -191,7 +193,7 @@ export function SecuritySection({ me, settings, devices: initialDevices, max, si
             return v ? "Two-step verification is on. After your password we will ask for a code." : "Two-step verification is off";
           })} />
         </Row>
-        <Row title="Password" sub={!settings.hasPassword ? "You sign in with Google or a passkey" : changedAt ? `Last changed ${day(changedAt)}` : "Set when you joined"}>
+        <Row title="Password" sub={!settings.hasPassword ? "You sign in with Google or a passkey" : changedAt ? `Last changed ${day(changedAt, undefined, mounted)}` : "Set when you joined"}>
           <button className="st-btn grey" onClick={() => setChanging((v) => !v)}>{settings.hasPassword ? "Change" : "Set one"}</button>
         </Row>
         {changing && (

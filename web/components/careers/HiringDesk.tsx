@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useMounted } from "@/lib/use-mounted";
 import { KIND, STAGES, type Application, type Job, type Quote, type Stage } from "@/lib/careers-types";
 
 const EMPTY: Job = { slug: "", title: "", team: "", city: "", country: "NG", remote: false, kind: "full", quota: "ng", pay: "", setup: "", about: "", bring: "", open: true, createdAt: "" };
@@ -11,6 +12,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<{ 
 }
 
 export default function HiringDesk({ jobs: j0, apps: a0, quotes: q0, share: s0, countries }: { jobs: Job[]; apps: Application[]; quotes: Quote[]; share: number; countries: [string, string][] }) {
+  const mounted = useMounted();
   const [jobs, setJobs] = useState(j0);
   const [apps, setApps] = useState(a0);
   const [quotes, setQuotes] = useState(q0);
@@ -136,7 +138,7 @@ export default function HiringDesk({ jobs: j0, apps: a0, quotes: q0, share: s0, 
         {quotes.length === 0 && <p className="jd-muted">No quote requests yet.</p>}
         {quotes.map((q) => (
           <div key={q.id} className="hd-item">
-            <div><b>{q.organisation} · {q.guests.toLocaleString("en-GB")} guests · {q.country}</b><small>{q.email} · {q.kind || "group"} · {new Date(q.createdAt).toLocaleDateString("en-GB")}{q.note ? ` · ${q.note}` : ""}</small></div>
+            <div><b>{q.organisation} · {q.guests.toLocaleString("en-GB")} guests · {q.country}</b><small>{q.email} · {q.kind || "group"} · {new Date(q.createdAt).toLocaleDateString("en-GB", mounted ? undefined : { timeZone: "UTC" })}{q.note ? ` · ${q.note}` : ""}</small></div>
             <select value={q.status} onChange={(e) => quote(q, e.target.value)} aria-label={`Status for ${q.organisation}`}>
               {["new", "contacted", "won", "lost"].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
