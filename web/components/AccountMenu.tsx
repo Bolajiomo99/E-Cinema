@@ -59,7 +59,7 @@ export default function AccountMenu({ name, email }: { name?: string; email?: st
           <Link role="menuitem" href="/tickets" onClick={() => setOpen(false)}>My tickets</Link>
           <Link role="menuitem" href="/settings/security" onClick={() => setOpen(false)}>Devices <small>2 at most</small></Link>
           <Link role="menuitem" href="/settings/account" onClick={() => setOpen(false)}>Settings</Link>
-          <Link role="menuitem" href="/concierge" onClick={() => setOpen(false)}>Help</Link>
+          <Link role="menuitem" href="/help" onClick={() => setOpen(false)}>Help</Link>
           <hr />
           <Link role="menuitem" href="/" onClick={() => setOpen(false)}>Back to the landing page</Link>
           <hr />

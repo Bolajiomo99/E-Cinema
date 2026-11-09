@@ -55,7 +55,7 @@ export default function RefundForm({ info, px, tz }: { info: RefundInfo; px: Pri
         <p className={`rf-note ${f.status === "approved" ? "ok" : f.status === "declined" ? "bad" : ""}`} role="status">{msg}</p>
         <div className="rf-btns">
           <Link className="vf-btn red" href={`/shop/orders?o=${o.id}`}>Back to my orders</Link>
-          <Link className="vf-btn ghost" href="/concierge">Talk to Help</Link>
+          <Link className="vf-btn ghost" href="/help">Talk to Help</Link>
         </div>
       </div>
     );

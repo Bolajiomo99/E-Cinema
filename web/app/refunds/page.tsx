@@ -19,7 +19,7 @@ export default function RefundsPage() {
       ]} />
       <div className="lg-btns">
         <Link className="vf-btn red" href="/help/refund">Request a refund</Link>
-        <Link className="vf-btn ghost" href="/concierge">Talk to Help</Link>
+        <Link className="vf-btn ghost" href="/help">Talk to Help</Link>
       </div>
     </LegalLayout>
   );

@@ -6,7 +6,7 @@ export const FOOTER: [string, [string, string][]][] = [
   ["Watch", [["Premieres", "/#premieres"], ["Watch parties", "/releases"], ["Request a film", "/concierge"]]],
   ["Account", [["Plans", "/plans"], ["Student offer", "/student"], ["Gift a seat", "/gift"]]],
   ["Company", [["About", "/about"], ["Studios and distributors", "/for-studios"], ["Careers", "/careers"], ["For business", "/business"]]],
-  ["Help", [["Help centre", "/concierge"], ["Verify a product", "/verify"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
+  ["Help", [["Help centre", "/help"], ["Verify a product", "/verify"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
 ];
 
 export default function LandingFooter({ heads }: { heads?: Record<string, string> }) {

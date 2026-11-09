@@ -8,7 +8,7 @@ export const revalidate = 3600;
 const PUBLIC = [
   "/", "/browse", "/releases", "/coming-soon", "/classics", "/map", "/search", "/plans", "/student", "/gift", "/family", "/kids",
   "/shop", "/community", "/rewards", "/verify", "/licensing", "/licensing/apply", "/licensing/brand-guide", "/about", "/for-studios",
-  "/business", "/careers", "/concierge", "/help/refund", "/refunds", "/join", "/signin", "/privacy", "/terms", "/cookies",
+  "/business", "/careers", "/concierge", "/help", "/help/refund", "/refunds", "/join", "/signin", "/privacy", "/terms", "/cookies",
   "/legal/community", "/legal/kids", "/legal/studios",
 ];
 

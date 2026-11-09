@@ -424,7 +424,7 @@ export function ForgotFlow({ initialId = "", initialCode = "" }: { initialId?: s
         <button className="ca-btn red" disabled={busy} onClick={() => { setCode(""); id ? send() : setStage("find"); }}>Send a new code</button>
       )}
       <Err text={error} />
-      <div className="ca-row"><a className="ca-link" href="/signin">Back to sign in</a><a className="ca-link" href="/concierge">Get help</a></div>
+      <div className="ca-row"><a className="ca-link" href="/signin">Back to sign in</a><a className="ca-link" href="/help">Get help</a></div>
     </div>
   );
 }
