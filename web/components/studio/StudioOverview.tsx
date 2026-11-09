@@ -45,7 +45,7 @@ export default function StudioOverview({ o, films, firstName }: { o: Overview; f
         <div className="bp-kpi"><span>Tickets sold</span><b>{o.seatsMonth.toLocaleString("en-GB")}</b><em className={seats.up ? "" : "neg"}>{seats.text}</em></div>
         <div className="bp-kpi"><span>Countries reached</span><b>{o.countries}</b><em className={o.newCountries ? "" : "muted"}>{o.newCountries ? `▲ ${o.newCountries} new` : "no new ones this month"}</em></div>
         <div className="bp-kpi"><span>Avg completion</span><b>{Math.round(o.completion * 100)}%</b><em className="muted">of each film watched</em></div>
-        <div className="bp-kpi"><span>Rating</span><b>{o.reviews ? `${o.rating.toFixed(1)} ★` : "–"}</b><em className={o.reviews ? "" : "muted"}>{o.reviews ? `from ${o.reviews.toLocaleString("en-GB")} reviews` : "no reviews yet"}</em></div>
+        <div className="bp-kpi"><span>Rating</span><b>{o.reviews ? `${o.rating.toFixed(1)} ★` : "–"}</b><em className={o.reviews ? "" : "muted"}>{o.reviews ? `from ${o.reviews.toLocaleString("en-GB")} ${o.reviews === 1 ? "review" : "reviews"}` : "no reviews yet"}</em></div>
       </div>
 
       <div className="pt-row a">

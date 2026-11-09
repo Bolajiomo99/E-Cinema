@@ -38,6 +38,8 @@ export default function TabBar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname() ?? "/";
   // Full-screen flows hide the tab bar: watch rooms, and sign-up / sign-in like the Android frames.
   if (/^\/(room\/|join|signin|forgot|account\/lock)/.test(path)) return null;
+  // Studio, partner, executive and staff portals have their own menu.
+  if (/^\/(studio|executive|partner|licensing\/desk|shop\/ops|careers\/desk|rewards\/desk)(\/|$)/.test(path)) return null;
   const home = signedIn ? "/home" : "/";
   const tabs = [
     { key: "home", label: "Home", href: home, on: path === "/" || path === "/home" },
