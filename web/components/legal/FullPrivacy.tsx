@@ -24,16 +24,18 @@ export default function FullPrivacy() {
       <ul>
         <li>To run your account, sell and honour tickets, and stream screenings to you.</li>
         <li>To keep one real person per account, limit sharing and protect films from piracy.</li>
-        <li>To prevent fraud, abuse and payment problems.</li>
+        <li>To prevent fraud, abuse and payment problems, and to hide abusive messages in public chat and community posts.
+          Private messages and party chat are not checked unless someone reports them.</li>
         <li>To send messages about your account and bookings, such as codes and receipts.</li>
       </ul>
 
       <h2>Who helps us</h2>
       <p>
         We use trusted providers who process data only on our instructions: Render (hosting, in Frankfurt, Germany),
-        Cloudflare (network and storage), PayPal (payments), Sumsub (identity checks), Termii (text messages), Anthropic
-        (the AI assistant and translations), ElevenLabs (AI voice dubbing of films, which uses film scripts, not your data)
-        and Resend (email). Some of them process data outside Nigeria; we rely on their contractual safeguards when they do.
+        Cloudflare (network and storage, worldwide), PayPal, Paystack and Flutterwave (payments), Sumsub (identity checks),
+        Termii (text messages, Nigeria), Anthropic (the AI assistant, translations and checking public chat and posts,
+        USA), ElevenLabs (AI voice dubbing of films, which uses film scripts, not your data) and Resend (email, USA). Some of
+        them process data outside Nigeria; we rely on their standard data protection contract clauses when they do.
       </p>
 
       <h2>How long we keep it</h2>
@@ -50,6 +52,12 @@ export default function FullPrivacy() {
         complain to the Nigeria Data Protection Commission or your local data protection authority.
       </p>
 
+      <h2>If something goes wrong</h2>
+      <p>
+        If a breach puts your data at risk, we will tell the Nigeria Data Protection Commission (and, where it applies, the
+        EU or UK regulator) within 72 hours of finding it, and we will tell you without delay.
+      </p>
+
       <h2>Children</h2>
       <p>
         Children may use E-Cinema only through a parent&apos;s account with kids mode on. 18+ titles need a verified ID.
@@ -59,7 +67,8 @@ export default function FullPrivacy() {
       <p>If we change this policy in a way that matters, we will tell you by email or in the app before it takes effect.</p>
 
       <h2>Contact</h2>
-      <p>Online Cinema Ltd, trading as E-Cinema · <a href="mailto:admin@e-cinema.net">admin@e-cinema.net</a></p>
+      <p>Online Cinema Ltd, trading as E-Cinema (RC 9947766), 336 Borno Way, Yaba, Lagos 101212, Nigeria. Data protection
+        contact: <a href="mailto:admin@e-cinema.net">admin@e-cinema.net</a></p>
     </article>
   );
 }
