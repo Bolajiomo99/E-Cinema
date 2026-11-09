@@ -76,7 +76,7 @@ export default function ExecRooms({ d }: { d: RoomsData }) {
 
       <div className="exr-cards">
         {d.types.map((t) => (
-          <button key={t.id} type="button" className="exr-card" onClick={() => d.canAdd && edit(t)} disabled={!d.canAdd} aria-label={d.canAdd ? `Edit ${t.name}` : t.name}>
+          <button key={t.id} type="button" className="exr-card" onClick={() => d.canAdd && edit(t)} disabled={!d.canAdd}>
             <div className={`exr-art exr-${t.scene}`} aria-hidden><i className="exr-scr" /><i className="exr-seats" /></div>
             <div className="exr-top"><b>{t.name}</b><span className={t.live ? "exr-live" : "exr-draft"}>{t.live ? "Live" : "Draft"}</span></div>
             <small>{KIND_NAME[t.kind]} · {t.seats} {t.kind === "vr" || t.kind === "ar" ? "seats" : "people"}</small>

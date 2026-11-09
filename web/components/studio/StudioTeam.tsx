@@ -92,7 +92,7 @@ export default function StudioTeam({ initial, myRole }: { initial: Member[]; myR
 
       <section className="bp-panel">
         <h2>What each role can do</h2>
-        <div className="stu-mx" role="table" aria-label="Role permissions">
+        <div className="stu-mx" role="table" tabIndex={0} aria-label="Role permissions">
           <div className="stu-mr hdr" role="row"><span role="columnheader">Permission</span>{ROLES.map((r) => <span key={r} role="columnheader">{ROLE_NAMES[r]}</span>)}</div>
           {MATRIX.map(([what, who]) => (
             <div key={what} className="stu-mr" role="row">

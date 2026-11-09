@@ -91,9 +91,9 @@ export default function ExecHiring({ d, countries }: { d: HiringData; countries:
       <div className="exc-row exn-row">
         <div className="exc-card">
           <h2>Pipeline</h2>
-          <div className="exn-table" role="table" aria-label="Pipeline">
-            <div className="exn-th exh-g" role="row"><span>Stage</span><span>Nigeria</span><span>World</span></div>
-            {d.pipeline.map((p) => <div key={p.stage} className="exn-tr exh-g" role="row"><span>{STAGE[p.stage] ?? p.stage}</span><span>{p.ng.toLocaleString("en-US")}</span><span>{p.world.toLocaleString("en-US")}</span></div>)}
+          <div className="exn-table" role="table" tabIndex={0} aria-label="Pipeline">
+            <div className="exn-th exh-g" role="row"><span role="columnheader">Stage</span><span role="columnheader">Nigeria</span><span role="columnheader">World</span></div>
+            {d.pipeline.map((p) => <div key={p.stage} className="exn-tr exh-g" role="row"><span role="cell">{STAGE[p.stage] ?? p.stage}</span><span role="cell">{p.ng.toLocaleString("en-US")}</span><span role="cell">{p.world.toLocaleString("en-US")}</span></div>)}
           </div>
           <p className="epf-hint">Nigerian citizens abroad count as Nigeria. Move applicants on the <Link href="/careers/desk">hiring desk</Link>.</p>
         </div>

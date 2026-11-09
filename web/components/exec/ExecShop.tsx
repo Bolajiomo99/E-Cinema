@@ -38,8 +38,8 @@ export default function ExecShop({ d, ngnPerUsd }: { d: ShopData; ngnPerUsd: num
 
       <div className="exc-card exl-card">
         <h2>Products</h2>
-        <div className="exn-table" role="table" aria-label="Products">
-          <div className="exn-th exs2-g" role="row"><span>Product</span><span>Stock</span><span>Sold (30 d)</span><span>Revenue</span><span>Fulfilment</span><span /></div>
+        <div className="exn-table" role="table" tabIndex={0} aria-label="Products">
+          <div className="exn-th exs2-g" role="row"><span role="columnheader">Product</span><span role="columnheader">Stock</span><span role="columnheader">Sold (30 d)</span><span role="columnheader">Revenue</span><span role="columnheader">Fulfilment</span><span /></div>
           {d.products.map((p) => (
             <div key={p.id} className={`exn-tr exs2-g${p.active ? "" : " exs2-off"}`} role="row">
               <span role="cell" className="exs2-prod"><ProductArt id={p.id} name={p.name} images={p.images} size={22} className="exs2-art" /><span><b>{p.name}</b>{!p.active && <small>Draft · not in the shop</small>}{p.licence && <small>Licensee product</small>}</span></span>

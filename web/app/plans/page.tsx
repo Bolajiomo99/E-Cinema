@@ -38,7 +38,7 @@ export default async function Plans() {
   const current = profile ? (profile.planStatus === "active" ? profile.plan ?? "free" : "free") : undefined;
 
   return (
-    <main className="pl">
+    <main id="main" className="pl">
       <nav className="pl-nav">
         <Logo />
         <div className="pl-nav-r">
@@ -61,7 +61,7 @@ export default async function Plans() {
         </div>
         <Link href={me ? "/plans#vip" : "/join?plan=vip"} className="state-btn">Plan a group night</Link>
       </section>
-      <div className="pl-compare" role="table" aria-label="Compare plans">
+      <div className="pl-compare" role="table" tabIndex={0} aria-label="Compare plans">
         <div className="pl-tr head" role="row">
           <span role="columnheader" />
           {["Free", "Student", "Pro", "VIP group", "Enterprise"].map((n) => <span key={n} role="columnheader">{n}</span>)}
@@ -72,7 +72,7 @@ export default async function Plans() {
             {cells.map((c, i) => (
               <span role="cell" key={i}>
                 {c === YES ? <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2fbf71" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Included"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-                  : c === NO ? <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6e6e7a" strokeWidth="2" strokeLinecap="round" aria-label="Not included"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></svg>
+                  : c === NO ? <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8e8e99" strokeWidth="2" strokeLinecap="round" aria-label="Not included"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></svg>
                   : c}
               </span>
             ))}

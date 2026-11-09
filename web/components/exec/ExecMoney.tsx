@@ -14,7 +14,7 @@ export type MoneyView = {
   original: { currency: string; minor: number }[];
   missing: string[];
 };
-const COLORS = ["#e3182d", "#8b7cf6", "#d4a23a", "#2bb3a3", "#4696ff", "#ff8c28", "#6e6e7a"];
+const COLORS = ["#e3182d", "#8b7cf6", "#d4a23a", "#2bb3a3", "#4696ff", "#ff8c28", "#8e8e99"];
 const NAME: Record<string, string> = { paystack: "Paystack", flutterwave: "Flutterwave", paypal: "PayPal", cash: "Cash on delivery" };
 function usd(c: number) {
   const v = c / 100;

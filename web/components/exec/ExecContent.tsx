@@ -65,8 +65,8 @@ export default function ExecContent({ c, canApprove, now }: { c: Omit<ContentDat
 
       <div className="exc-card exn-films">
         <div className="exc-card-h"><h2>Films</h2>{c.films.some((f) => f.state === "ended") && <button className="exa-edit" onClick={() => setAll(!all)}>{all ? "Hide ended" : "Show ended too"}</button>}</div>
-        <div className="exn-table" role="table" aria-label="Films">
-          <div className="exn-th" role="row"><span>Title</span><span>Studio</span><span>Type</span><span>Countries</span><span>Tickets</span><span>Status</span></div>
+        <div className="exn-table" role="table" tabIndex={0} aria-label="Films">
+          <div className="exn-th" role="row"><span role="columnheader">Title</span><span role="columnheader">Studio</span><span role="columnheader">Type</span><span role="columnheader">Countries</span><span role="columnheader">Tickets</span><span role="columnheader">Status</span></div>
           {films.map((f) => (
             <div key={f.film + f.studio + f.state} className="exn-tr" role="row">
               <span role="cell"><b>{f.showtime ? <Link href={`/film/${f.showtime}`}>{f.film}</Link> : f.film}</b></span>

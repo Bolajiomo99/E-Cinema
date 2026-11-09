@@ -129,11 +129,11 @@ export default function ExecProduct({ product, rates }: { product: ShopProduct |
           <div className="exc-card">
             <h2>Price in each country</h2>
             <label className="epf-f epf-price"><span>Price in Nigeria (₦)</span><input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))} placeholder="389000" /></label>
-            <div className="exn-table epf-tbl" role="table" aria-label="Price in each country">
-              <div className="exn-th epf-g" role="row"><span>Country</span><span>Price</span><span>Stock</span><span>Ships from</span></div>
-              <div className="exn-tr epf-g" role="row"><span>Nigeria</span><span>{naira ? `₦${naira.toLocaleString("en-NG")}` : "–"}</span><span className="exl-soon">Soon</span><span>Lagos</span></div>
+            <div className="exn-table epf-tbl" role="table" tabIndex={0} aria-label="Price in each country">
+              <div className="exn-th epf-g" role="row"><span role="columnheader">Country</span><span role="columnheader">Price</span><span role="columnheader">Stock</span><span role="columnheader">Ships from</span></div>
+              <div className="exn-tr epf-g" role="row"><span role="cell">Nigeria</span><span role="cell">{naira ? `₦${naira.toLocaleString("en-NG")}` : "–"}</span><span role="cell" className="exl-soon">Soon</span><span role="cell">Lagos</span></div>
               {COUNTRIES.map((c) => (
-                <div key={c.cur} className="exn-tr epf-g" role="row"><span>{c.name}</span><span>{local(c.cur) === "–" ? "–" : `${c.sym}${local(c.cur)}`}</span><span className="exl-soon">Soon</span><span>{ships === "world" || ships === "digital" ? "Lagos" : "Not shipped"}</span></div>
+                <div key={c.cur} className="exn-tr epf-g" role="row"><span role="cell">{c.name}</span><span role="cell">{local(c.cur) === "–" ? "–" : `${c.sym}${local(c.cur)}`}</span><span role="cell" className="exl-soon">Soon</span><span role="cell">{ships === "world" || ships === "digital" ? "Lagos" : "Not shipped"}</span></div>
               ))}
             </div>
             <p className="epf-hint">Other currencies follow today&apos;s exchange rate. Local price overrides and AI price suggestions <span className="exl-soon">Soon</span></p>

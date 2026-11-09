@@ -75,10 +75,10 @@ export default function ExecInfra({ d, now, up, errors }: { d: InfraData; now: n
 
       <div className="exc-card">
         <h2>Copies of the database</h2>
-        <div className="exn-table" role="table" aria-label="Copies of the database">
-          <div className="exn-th exin-g" role="row"><span>Copy</span><span>Where</span><span>How often</span><span>Last check</span></div>
+        <div className="exn-table" role="table" tabIndex={0} aria-label="Copies of the database">
+          <div className="exn-th exin-g" role="row"><span role="columnheader">Copy</span><span role="columnheader">Where</span><span role="columnheader">How often</span><span role="columnheader">Last check</span></div>
           {copies.map(([c, w, h, l]) => (
-            <div key={c} className="exn-tr exin-g" role="row"><span className="exin-copy">{c}</span><span>{w}</span><span>{h}</span><span>{l}</span></div>
+            <div key={c} className="exn-tr exin-g" role="row"><span role="cell" className="exin-copy">{c}</span><span role="cell">{w}</span><span role="cell">{h}</span><span role="cell">{l}</span></div>
           ))}
         </div>
         {last && <p className="epf-hint">Last copy: {size(last.bytes)}, {last.tables} tables read back from a scratch restore. The database is {size(d.dbBytes)}.</p>}

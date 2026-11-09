@@ -27,19 +27,19 @@ export default function ExecErrors({ list, now }: { list: AppError[]; now: numbe
       <h2>Errors, last 30 days</h2>
       <p className="epf-hint">{live.length === 0 ? "No open errors. You and the CTO get an email when a new one happens." : `${live.length} open. You and the CTO get an email when a new one happens, at most once every six hours for each.`}</p>
       {rows.length > 0 && (
-        <div className="exn-table" role="table" aria-label="Errors">
-          <div className="exn-th exerr-g" role="row"><span>Error</span><span>Where</span><span>Times</span><span>Last seen</span><span /></div>
+        <div className="exn-table" role="table" tabIndex={0} aria-label="Errors">
+          <div className="exn-th exerr-g" role="row"><span role="columnheader">Error</span><span role="columnheader">Where</span><span role="columnheader">Times</span><span role="columnheader">Last seen</span><span /></div>
           {rows.map((e) => (
             <div key={e.fingerprint} className={`exn-tr exerr-g${e.resolvedAt ? " exerr-done" : ""}`} role="row">
-              <span className="exerr-msg">
+              <span role="cell" className="exerr-msg">
                 <button type="button" className="exerr-open" aria-expanded={open === e.fingerprint} onClick={() => setOpen(open === e.fingerprint ? null : e.fingerprint)}>{e.message}</button>
                 {e.path && <small>{e.path}</small>}
                 {open === e.fingerprint && e.stack && <pre className="exerr-stack">{e.stack}</pre>}
               </span>
-              <span>{WHERE[e.source]}</span>
-              <span>{e.count.toLocaleString("en-US")}</span>
-              <span>{ago(e.lastSeen, now)}</span>
-              <span>{e.resolvedAt ? <small className="exin-muted">Fixed</small> : <button type="button" className="lp-btn sm ghost" disabled={busy === e.fingerprint} onClick={() => fix(e.fingerprint)}>Mark fixed</button>}</span>
+              <span role="cell">{WHERE[e.source]}</span>
+              <span role="cell">{e.count.toLocaleString("en-US")}</span>
+              <span role="cell">{ago(e.lastSeen, now)}</span>
+              <span role="cell">{e.resolvedAt ? <small className="exin-muted">Fixed</small> : <button type="button" className="lp-btn sm ghost" disabled={busy === e.fingerprint} onClick={() => fix(e.fingerprint)}>Mark fixed</button>}</span>
             </div>
           ))}
         </div>

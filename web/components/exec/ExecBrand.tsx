@@ -42,15 +42,15 @@ export default function ExecBrand({ d }: { d: BrandData }) {
         <div className="exc-card">
           <h2>Report queue</h2>
           {d.queue.length === 0 ? <p className="exc-empty">No reports waiting.</p> : (
-            <div className="exn-table" role="table" aria-label="Report queue">
-              <div className="exn-th exb-g" role="row"><span>Report</span><span>Where</span><span>AI check</span><span>Status</span><span /></div>
+            <div className="exn-table" role="table" tabIndex={0} aria-label="Report queue">
+              <div className="exn-th exb-g" role="row"><span role="columnheader">Report</span><span role="columnheader">Where</span><span role="columnheader">AI check</span><span role="columnheader">Status</span><span /></div>
               {d.queue.map((q) => (
                 <div key={q.id} className="exn-tr exb-g" role="row">
-                  <span className="exb-sell">{q.selling}</span>
-                  <span>{PLACE[q.place] ?? q.place}{q.country ? `, ${countryName(q.country, true)}` : ""}</span>
-                  <span className="exb-ai" title={q.aiNote}>{q.aiNote || "–"}</span>
-                  <span><i className={`exb-st ${STATUS[q.status]?.[1] ?? ""}`}>{STATUS[q.status]?.[0] ?? q.status}</i></span>
-                  <span><Link href="/rewards/desk" className="exa-edit exn-btn">Open</Link></span>
+                  <span role="cell" className="exb-sell">{q.selling}</span>
+                  <span role="cell">{PLACE[q.place] ?? q.place}{q.country ? `, ${countryName(q.country, true)}` : ""}</span>
+                  <span role="cell" className="exb-ai" title={q.aiNote}>{q.aiNote || "–"}</span>
+                  <span role="cell"><i className={`exb-st ${STATUS[q.status]?.[1] ?? ""}`}>{STATUS[q.status]?.[0] ?? q.status}</i></span>
+                  <span role="cell"><Link href="/rewards/desk" className="exa-edit exn-btn">Open</Link></span>
                 </div>
               ))}
             </div>

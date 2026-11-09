@@ -77,19 +77,19 @@ export default function ExecNotifications({ d, email, ai }: { d: CampaignsData; 
       <div className="exc-card">
         <h2>Campaigns</h2>
         <div className="exrc-table exnt-table" role="table">
-          <div className="exrc-tr exrc-th" role="row"><span>Campaign</span><span>Audience</span><span>Channels</span><span>Sent</span><span>Opened</span><span>Came back</span><span>Status</span></div>
+          <div className="exrc-tr exrc-th" role="row"><span role="columnheader">Campaign</span><span role="columnheader">Audience</span><span role="columnheader">Channels</span><span role="columnheader">Sent</span><span role="columnheader">Opened</span><span role="columnheader">Came back</span><span role="columnheader">Status</span></div>
           {d.campaigns.length === 0 && d.automatic.length === 0 && <p className="exc-empty">Nothing sent yet. Write your first announcement below.</p>}
           {d.campaigns.map((c) => {
             const sent = c.sent + c.testSent;
             return (
               <div key={c.id} className="exrc-tr" role="row">
-                <span className="exnt-name"><b>{c.title}</b>{c.langs > 0 && <small>English + {c.langs} languages</small>}</span>
-                <span>{c.audience === "country" ? countryName(c.country) : AUDIENCE[c.audience]}</span>
-                <span>{c.channels.map((x) => CHANNEL[x] ?? x).join(", ")}</span>
-                <span>{sent ? num(sent + c.emailed) : "–"}</span>
-                <span>{c.channels.includes("inapp") && sent ? pct(c.opened, sent) : "–"}</span>
-                <span className="exrc-ok">{sent ? num(c.booked) : "–"}</span>
-                <span className="exnt-st">
+                <span role="cell" className="exnt-name"><b>{c.title}</b>{c.langs > 0 && <small>English + {c.langs} languages</small>}</span>
+                <span role="cell">{c.audience === "country" ? countryName(c.country) : AUDIENCE[c.audience]}</span>
+                <span role="cell">{c.channels.map((x) => CHANNEL[x] ?? x).join(", ")}</span>
+                <span role="cell">{sent ? num(sent + c.emailed) : "–"}</span>
+                <span role="cell">{c.channels.includes("inapp") && sent ? pct(c.opened, sent) : "–"}</span>
+                <span role="cell" className="exrc-ok">{sent ? num(c.booked) : "–"}</span>
+                <span role="cell" className="exnt-st">
                   {c.status === "scheduled" ? (
                     <>
                       <em className="exnt-pill sch">SCHEDULED</em><small>{when(c.sendAt)}</small>
@@ -105,13 +105,13 @@ export default function ExecNotifications({ d, email, ai }: { d: CampaignsData; 
           })}
           {d.automatic.map((a) => (
             <div key={a.kind} className="exrc-tr" role="row">
-              <span className="exnt-name"><b>{AUTO[a.kind] ?? a.kind}</b><small>Automatic</small></span>
-              <span>{a.kind === "premiere" ? "Ticket holders" : a.kind === "party" || a.kind === "friend" ? "Friends" : "Members it concerns"}</span>
-              <span>In-app</span>
-              <span>{num(a.sent)}</span>
-              <span>{pct(a.opened, a.sent)}</span>
-              <span>–</span>
-              <span className="exnt-st"><em className="exnt-pill live"><i />ALWAYS ON</em></span>
+              <span role="cell" className="exnt-name"><b>{AUTO[a.kind] ?? a.kind}</b><small>Automatic</small></span>
+              <span role="cell">{a.kind === "premiere" ? "Ticket holders" : a.kind === "party" || a.kind === "friend" ? "Friends" : "Members it concerns"}</span>
+              <span role="cell">In-app</span>
+              <span role="cell">{num(a.sent)}</span>
+              <span role="cell">{pct(a.opened, a.sent)}</span>
+              <span role="cell">–</span>
+              <span role="cell" className="exnt-st"><em className="exnt-pill live"><i />ALWAYS ON</em></span>
             </div>
           ))}
         </div>

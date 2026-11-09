@@ -6,7 +6,7 @@ import { countryName } from "@/lib/worldmap";
 // Growth and users (Figma 82:409). Every number is live; the visit step of the funnel waits on
 // site analytics and says so.
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const PLAN: [string, string, string][] = [["free", "Free", "#6e6e7a"], ["pro", "Pro", "#e3182d"], ["vip", "VIP", "#d4a23a"], ["student", "Student", "#2bb3a3"], ["enterprise", "Enterprise", "#8b7cf6"]];
+const PLAN: [string, string, string][] = [["free", "Free", "#8e8e99"], ["pro", "Pro", "#e3182d"], ["vip", "VIP", "#d4a23a"], ["student", "Student", "#2bb3a3"], ["enterprise", "Enterprise", "#8b7cf6"]];
 function k(v: number) {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
   if (v >= 1e4) return `${Math.round(v / 1e3)}K`;

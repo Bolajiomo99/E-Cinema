@@ -131,14 +131,14 @@ export default function ExecSafety({ d, ai, auto }: { d: SafetyData; ai: Record<
       <div className="exc-card exl-card">
         <h2>Piracy watch</h2>
         {d.leaks.length === 0 ? <p className="exc-empty">No leaks reported yet. Studios report them from their piracy page.</p> : (
-          <div className="exn-table" role="table" aria-label="Piracy watch">
-            <div className="exn-th exf-g" role="row"><span>Where</span><span>Film</span><span>Found by</span><span>Status</span></div>
+          <div className="exn-table" role="table" tabIndex={0} aria-label="Piracy watch">
+            <div className="exn-th exf-g" role="row"><span role="columnheader">Where</span><span role="columnheader">Film</span><span role="columnheader">Found by</span><span role="columnheader">Status</span></div>
             {d.leaks.map((l, i) => (
               <div key={i} className="exn-tr exf-g" role="row">
-                <span>{PLACE[l.place] ?? l.place}, {KIND[l.kind] ?? l.kind}</span>
-                <span>{l.film || "–"}</span>
-                <span>{l.traced ? "Studio report, viewer code traced" : "Studio report"}</span>
-                <span><i className={`exf-st ${l.status}`}>{l.status === "taken_down" ? (l.mins ? `Taken down in ${l.mins < 120 ? `${l.mins} min` : `${Math.round(l.mins / 60)} h`}` : "Taken down") : l.status === "takedown_sent" ? "Notice sent" : l.status === "allowed" ? "Allowed" : "Open"}</i></span>
+                <span role="cell">{PLACE[l.place] ?? l.place}, {KIND[l.kind] ?? l.kind}</span>
+                <span role="cell">{l.film || "–"}</span>
+                <span role="cell">{l.traced ? "Studio report, viewer code traced" : "Studio report"}</span>
+                <span role="cell"><i className={`exf-st ${l.status}`}>{l.status === "taken_down" ? (l.mins ? `Taken down in ${l.mins < 120 ? `${l.mins} min` : `${Math.round(l.mins / 60)} h`}` : "Taken down") : l.status === "takedown_sent" ? "Notice sent" : l.status === "allowed" ? "Allowed" : "Open"}</i></span>
               </div>
             ))}
           </div>

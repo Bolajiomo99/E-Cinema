@@ -76,9 +76,9 @@ export default function ExecSettings({ d, countries, configured }: { d: Settings
           <h2>Countries</h2>
           {countries.length === 0 ? <p className="exc-empty">No members with a home country yet.</p> : (
             <div className="exrc-table exst-table" role="table">
-              <div className="exrc-tr exrc-th" role="row"><span>Country</span><span>Members</span><span>Currency</span><span>Payments</span></div>
+              <div className="exrc-tr exrc-th" role="row"><span role="columnheader">Country</span><span role="columnheader">Members</span><span role="columnheader">Currency</span><span role="columnheader">Payments</span></div>
               {countries.map((c) => (
-                <div key={c.country} className="exrc-tr" role="row"><span>{countryName(c.country)}</span><span>{c.members.toLocaleString("en-US")}</span><span>{c.currency}</span><span>{c.methods.join(", ") || "None switched on"}</span></div>
+                <div key={c.country} className="exrc-tr" role="row"><span role="cell">{countryName(c.country)}</span><span role="cell">{c.members.toLocaleString("en-US")}</span><span role="cell">{c.currency}</span><span role="cell">{c.methods.join(", ") || "None switched on"}</span></div>
               ))}
             </div>
           )}

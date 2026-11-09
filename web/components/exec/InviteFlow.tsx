@@ -31,7 +31,7 @@ export default function InviteFlow({ token, v }: { token: string; v: InviteView 
       <p>Private dashboards for the CEO, cabinet, investors, stakeholders and partners. By invitation only.</p>
     </aside>
   );
-  const shell = (body: React.ReactNode) => <main className="inv">{art}<section className="inv-main"><div className="inv-card">{body}</div></section></main>;
+  const shell = (body: React.ReactNode) => <main id="main" className="inv">{art}<section className="inv-main"><div className="inv-card">{body}</div></section></main>;
 
   if (!v || v.gone) {
     return shell(<>

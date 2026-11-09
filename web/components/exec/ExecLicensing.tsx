@@ -67,16 +67,16 @@ export default function ExecLicensing({ d }: { d: LicensingData }) {
       <div className="exc-card">
         <h2>Partners</h2>
         {d.rows.length === 0 ? <p className="exc-empty">No licensed partners yet.</p> : (
-          <div className="exn-table" role="table" aria-label="Partners">
-            <div className="exn-th exlc-g" role="row"><span>Partner</span><span>Country</span><span>Plan</span><span>Sales, 30 days</span><span>Compliance</span><span>Status</span></div>
+          <div className="exn-table" role="table" tabIndex={0} aria-label="Partners">
+            <div className="exn-th exlc-g" role="row"><span role="columnheader">Partner</span><span role="columnheader">Country</span><span role="columnheader">Plan</span><span role="columnheader">Sales, 30 days</span><span role="columnheader">Compliance</span><span role="columnheader">Status</span></div>
             {d.rows.map((r) => (
               <div key={r.licence} className="exn-tr exlc-g" role="row">
-                <span className="exlc-name"><b>{r.name}</b><small>{r.licence}</small></span>
-                <span>{countryName(r.country, true)}</span>
-                <span>{PLAN[r.plan]?.[0] ?? r.plan}</span>
-                <span>{ngn(r.sales30Ngn)}</span>
-                <span className="exlc-score"><i><em style={{ width: `${r.compliance}%`, background: r.compliance >= 80 ? "#2bb3a3" : r.compliance >= 60 ? "#e8b34b" : "#e3182d" }} /></i>{r.compliance}</span>
-                <span><i className={`exlc-st ${STATUS[r.status]?.[1] ?? ""}`}>{STATUS[r.status]?.[0] ?? r.status}</i></span>
+                <span role="cell" className="exlc-name"><b>{r.name}</b><small>{r.licence}</small></span>
+                <span role="cell">{countryName(r.country, true)}</span>
+                <span role="cell">{PLAN[r.plan]?.[0] ?? r.plan}</span>
+                <span role="cell">{ngn(r.sales30Ngn)}</span>
+                <span role="cell" className="exlc-score"><i><em style={{ width: `${r.compliance}%`, background: r.compliance >= 80 ? "#2bb3a3" : r.compliance >= 60 ? "#e8b34b" : "#e3182d" }} /></i>{r.compliance}</span>
+                <span role="cell"><i className={`exlc-st ${STATUS[r.status]?.[1] ?? ""}`}>{STATUS[r.status]?.[0] ?? r.status}</i></span>
               </div>
             ))}
           </div>

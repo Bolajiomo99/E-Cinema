@@ -79,15 +79,15 @@ export default function ExecRecipients({ d, paid, received }: { d: RecipientsDat
           <p className="exc-empty">{tab === "pending" || tab === "paused" ? `Nobody is ${title.toLowerCase()}.` : `No ${title.toLowerCase()} yet. Until one is active, viewers pay this stage to the E-Cinema fund.`}</p>
         ) : (
           <div className="exrc-table" role="table">
-            <div className="exrc-tr exrc-th" role="row"><span>Recipient</span><span>Country</span><span>Verification</span><span>Received (30 d)</span><span>Active</span><span /></div>
+            <div className="exrc-tr exrc-th" role="row"><span role="columnheader">Recipient</span><span role="columnheader">Country</span><span role="columnheader">Verification</span><span role="columnheader">Received (30 d)</span><span role="columnheader">Active</span><span /></div>
             {rows.map((r) => (
               <div key={r.id} className="exrc-tr" role="row">
-                <span className="exrc-who"><i aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" /></svg></i><span><b>{r.name}</b><small>{[r.city, countryName(r.country)].filter(Boolean).join(", ")}{tab === "pending" || tab === "paused" ? ` · ${KINDS.find((x) => x.k === r.kind)!.one}` : ""}</small></span></span>
-                <span>{countryName(r.country)}</span>
-                <span className={r.status === "active" ? "exrc-ok" : "exrc-wait"}>{r.status === "active" ? `Active · ${r.bank || "bank"} ••${r.accountLast}` : r.status === "paused" ? "Paused" : r.accountLast ? "Pending · bank on file" : "Pending · needs bank account"}</span>
-                <span>{received[r.id] >= 0 ? usd(received[r.id]) : "–"}</span>
-                <span><button type="button" className={`st-toggle ${r.status === "active" ? "on" : ""}`} role="switch" aria-checked={r.status === "active"} aria-label={`${r.name} active`} disabled={busy === r.id} onClick={() => toggle(r)}><i /></button></span>
-                <span><button type="button" className="exa-ghost exrc-edit" onClick={() => edit(r)}>Edit</button></span>
+                <span role="cell" className="exrc-who"><i aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" /></svg></i><span><b>{r.name}</b><small>{[r.city, countryName(r.country)].filter(Boolean).join(", ")}{tab === "pending" || tab === "paused" ? ` · ${KINDS.find((x) => x.k === r.kind)!.one}` : ""}</small></span></span>
+                <span role="cell">{countryName(r.country)}</span>
+                <span role="cell" className={r.status === "active" ? "exrc-ok" : "exrc-wait"}>{r.status === "active" ? `Active · ${r.bank || "bank"} ••${r.accountLast}` : r.status === "paused" ? "Paused" : r.accountLast ? "Pending · bank on file" : "Pending · needs bank account"}</span>
+                <span role="cell">{received[r.id] >= 0 ? usd(received[r.id]) : "–"}</span>
+                <span role="cell"><button type="button" className={`st-toggle ${r.status === "active" ? "on" : ""}`} role="switch" aria-checked={r.status === "active"} aria-label={`${r.name} active`} disabled={busy === r.id} onClick={() => toggle(r)}><i /></button></span>
+                <span role="cell"><button type="button" className="exa-ghost exrc-edit" onClick={() => edit(r)}>Edit</button></span>
               </div>
             ))}
           </div>

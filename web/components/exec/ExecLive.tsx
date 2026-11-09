@@ -72,8 +72,8 @@ export default function ExecLive({ initial, up }: { initial: LiveData; up: Uptim
 
       <div className="exc-card exl-card">
         <h2>Premieres playing now</h2>
-        <div className="exn-table" role="table" aria-label="Premieres playing now">
-          <div className="exn-th exl-g" role="row"><span>Film</span><span>Started</span><span>Watching</span><span>Regions</span><span>Health</span><span /></div>
+        <div className="exn-table" role="table" tabIndex={0} aria-label="Premieres playing now">
+          <div className="exn-th exl-g" role="row"><span role="columnheader">Film</span><span role="columnheader">Started</span><span role="columnheader">Watching</span><span role="columnheader">Regions</span><span role="columnheader">Health</span><span /></div>
           {d.playing.map((p) => (
             <div key={p.id} className="exn-tr exl-g" role="row">
               <span role="cell"><b>{p.film}</b><small className="exl-studio">{p.studio}</small></span>

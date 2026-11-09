@@ -76,7 +76,7 @@ export default function ExecShell({ name, role, money, idleMinutes = 0, children
         </nav>
       </aside>
       {open && <button className="pt-scrim" aria-label="Close menu" onClick={() => setOpen(false)} />}
-      <main className="pt-main">
+      <main id="main" className="pt-main">
         <button className="pt-menu" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
