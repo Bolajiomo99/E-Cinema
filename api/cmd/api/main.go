@@ -37,6 +37,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/moderation"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/support"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/translations"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -123,6 +124,7 @@ func run() error {
 		Careers:        careers.Store{DB: pool},
 		Translations:   translations.Store{DB: pool},
 		Moderation:     moderation.Store{DB: pool},
+		Support:        support.Store{DB: pool, Staff: staffEmails()},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
@@ -267,4 +269,14 @@ func ceoEmails() []string {
 		}
 	}
 	return out
+}
+
+// staffEmails are the E-Cinema staff who answer the support inbox (STAFF_EMAILS, comma separated;
+// the same list the web app uses for its desks).
+func staffEmails() []string {
+	v := os.Getenv("STAFF_EMAILS")
+	if v == "" {
+		v = "admin@e-cinema.net"
+	}
+	return strings.Split(v, ",")
 }

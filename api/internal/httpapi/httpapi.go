@@ -30,6 +30,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/notify"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/parties"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/support"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/translations"
@@ -82,6 +83,8 @@ type Server struct {
 	Translations translations.Store
 	// Moderation is the automatic check on public chat, posts and comments.
 	Moderation moderation.Store
+	// Support is the help inbox the support desk answers.
+	Support support.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -350,6 +353,7 @@ func (s *Server) Routes() http.Handler {
 	s.errorRoutes(mux)
 	s.translationRoutes(mux)
 	s.moderationRoutes(mux)
+	s.supportRoutes(mux)
 	return securityHeaders(s.lat.wrap(recoverPanics(mux)))
 }
 
