@@ -23,7 +23,7 @@ async function deliver(m: Outgoing): Promise<string> {
   if (!rendered) return "no design for this email";
   // In the member's language: the one they picked, else their country's (English in Nigeria).
   const lang = isLang(m.lang) ? m.lang : langForCountry(m.country);
-  const mail = lang === "en" || m.kind === "error_alert" ? rendered : {
+  const mail = lang === "en" || m.kind === "error_alert" || m.kind === "support_new" ? rendered : {
     ...rendered,
     subject: await translateText(lang, rendered.subject),
     html: (await translateHtml(lang, rendered.html)).replace("<html>", `<html lang="${lang}" dir="${dirOf(lang)}">`),

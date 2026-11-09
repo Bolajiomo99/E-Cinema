@@ -29,6 +29,7 @@ const SENDER = {
   payouts: "E-Cinema Studios <payouts@e-cinema.net>",
   rewards: "E-Cinema <rewards@e-cinema.net>",
   licensing: "E-Cinema <licensing@e-cinema.net>",
+  support: "E-Cinema Support <support@e-cinema.net>",
 } as const;
 
 // Footers: service mail cannot be switched off; the others link to the email settings.
@@ -409,6 +410,48 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
         ["Seats sold", `${sold.toLocaleString("en-GB")} of ${cap.toLocaleString("en-GB")}`],
       ]) + (out ? p("Fans who missed out can still book an encore once you add one in Premieres and pricing.") : "") + button(link, "See pre-sales"),
       text: `${film}: ${sold} of ${cap} seats sold (${pct}%). Pre-sales: ${link}`,
+    });
+  },
+  // Support inbox (gap list item 10; no Figma frame, built on the service email layout).
+  support_received: (m) => {
+    const token = S(m.data.token), subject = S(m.data.subject), n = N(m.data.number);
+    if (!token || !subject) return null;
+    return done({
+      from: SENDER.support, tag: "HELP",
+      subject: `We got your message: ${subject.slice(0, 80)}`, preview: "A person from our team will answer you here",
+      title: "We got your message",
+      body: p(`Thank you for writing to us. A person from the E-Cinema team will read it and answer you by email. Your request number is <b>${n}</b>.`) +
+        facts([["About", subject], ["Request", `#${n}`]]) +
+        button(href(`/help/r/${token}`), "See my request") +
+        small("To add anything, open your request with the button above. Replies to this email are not read."),
+      text: `We got your message about "${subject}" (request #${n}). A person from the E-Cinema team will answer you by email. See or add to your request: ${href(`/help/r/${token}`)}`,
+    });
+  },
+  support_reply: (m) => {
+    const token = S(m.data.token), subject = S(m.data.subject), body = S(m.data.body), n = N(m.data.number);
+    if (!token || !body) return null;
+    const closed = m.data.closed === true;
+    return done({
+      from: SENDER.support, tag: "HELP",
+      subject: `Re: ${subject.slice(0, 90)} [#${n}]`, preview: body.slice(0, 90),
+      title: "The E-Cinema team answered",
+      body: `<div style="margin:0 0 20px;background:#f4f4f6;border-radius:10px;padding:16px;font:15px/1.6 Manrope,Arial,sans-serif;color:#1a1a20;white-space:pre-wrap">${esc(body)}</div>` +
+        button(href(`/help/r/${token}`), closed ? "See the conversation" : "Reply") +
+        small(closed ? "We marked this request as solved. If it is not, open it and reply; it opens again." : "To answer, open your request with the button above. Replies to this email are not read."),
+      text: `The E-Cinema team answered your request #${n} (${subject}):\n\n${body}\n\nReply here: ${href(`/help/r/${token}`)}`,
+    });
+  },
+  support_new: (m) => {
+    const subject = S(m.data.subject), n = N(m.data.number);
+    if (!subject || !n) return null;
+    return done({
+      from: SENDER.support, tag: "SUPPORT DESK", footer: { html: "You get this as E-Cinema staff on the support desk." },
+      subject: `[#${n}] ${subject.slice(0, 90)}`, preview: `${S(m.data.from)} · ${S(m.data.topic)}`,
+      title: "A new message for the support desk",
+      body: facts([["From", S(m.data.from)], ["Topic", S(m.data.topic)], ["About", subject]]) +
+        `<div style="margin:0 0 20px;background:#f4f4f6;border-radius:10px;padding:16px;font:14px/1.6 Manrope,Arial,sans-serif;color:#1a1a20;white-space:pre-wrap">${esc(S(m.data.body))}</div>` +
+        button(href(`/support/desk?id=${n}`), "Answer on the desk"),
+      text: `New support message #${n} from ${S(m.data.from)} (${S(m.data.topic)}): ${subject}\n\n${S(m.data.body)}\n\n${href(`/support/desk?id=${n}`)}`,
     });
   },
   // Error alert to the CEO and CTO: a crash viewers or the servers hit (no Figma frame; internal mail).
