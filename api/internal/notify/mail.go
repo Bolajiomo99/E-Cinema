@@ -29,6 +29,7 @@ type Outgoing struct {
 	To      string          `json:"to"`
 	Name    string          `json:"name"`
 	Country string          `json:"country"`
+	Lang    string          `json:"lang"` // the member's app language, when they picked one
 	Data    json.RawMessage `json:"data"`
 }
 
@@ -108,7 +109,8 @@ func (s Store) DueMail(ctx context.Context, limit int) ([]Outgoing, error) {
 	    ORDER BY send_after, id LIMIT $1 FOR UPDATE SKIP LOCKED)
 	  UPDATE mail_outbox m SET claimed_at = now(), tries = m.tries + 1 FROM due WHERE m.id = due.id
 	  RETURNING m.id, m.kind, m.to_email, m.to_name,
-	    coalesce((SELECT a.country FROM accounts a WHERE a.email = m.to_email), ''), m.data`, limit)
+	    coalesce((SELECT a.country FROM accounts a WHERE a.email = m.to_email), ''),
+	    coalesce((SELECT a.app_language FROM accounts a WHERE a.email = m.to_email), ''), m.data`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +118,7 @@ func (s Store) DueMail(ctx context.Context, limit int) ([]Outgoing, error) {
 	out := []Outgoing{}
 	for rows.Next() {
 		var o Outgoing
-		if err := rows.Scan(&o.ID, &o.Kind, &o.To, &o.Name, &o.Country, &o.Data); err != nil {
+		if err := rows.Scan(&o.ID, &o.Kind, &o.To, &o.Name, &o.Country, &o.Lang, &o.Data); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

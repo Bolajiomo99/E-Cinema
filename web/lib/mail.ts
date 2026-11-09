@@ -7,7 +7,7 @@ import { countryName as countryLabel, vatRate } from "@/lib/plans";
 // (api/internal/notify/mail.go); this file turns them into the email. Each template returns
 // null when the facts it needs are missing, and the email is then given up, never half sent.
 
-export type Outgoing = { id: number; kind: string; to: string; name: string; country: string; data: Record<string, unknown> };
+export type Outgoing = { id: number; kind: string; to: string; name: string; country: string; lang?: string; data: Record<string, unknown> };
 export type Rendered = { from: string; subject: string; html: string; text: string; headers?: Record<string, string> };
 
 const S = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");

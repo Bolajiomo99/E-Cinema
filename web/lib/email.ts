@@ -44,6 +44,18 @@ export const facts = (rows: [string, string][]) =>
 
 export async function send(to: string, subject: string, html: string, text: string, from = FROM) {
   if (!emailEnabled) throw new Error("Email is not switched on here");
+  // In the language of the person who asked for it (their pick, else their country's). Mail to
+  // our own team stays in English.
+  let lang = "en";
+  if (!/@e-cinema\.net$/i.test(to)) {
+    try { lang = (await (await import("@/lib/locale")).readLocale()).lang; } catch { lang = "en"; }
+  }
+  if (lang !== "en") {
+    const { translateHtml, translateText } = await import("@/lib/translate");
+    const { dirOf } = await import("@/lib/i18n");
+    [subject, html, text] = await Promise.all([translateText(lang, subject), translateHtml(lang, html), translateText(lang, text)]);
+    html = html.replace("<html>", `<html lang="${lang}" dir="${dirOf(lang)}">`);
+  }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },

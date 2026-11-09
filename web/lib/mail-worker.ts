@@ -1,6 +1,8 @@
 import "server-only";
 import { emailEnabled } from "@/lib/email";
+import { dirOf, isLang, langForCountry } from "@/lib/i18n";
 import { renderMail, type Outgoing } from "@/lib/mail";
+import { translateHtml, translateText } from "@/lib/translate";
 
 // Sends the email outbox (Figma page 08 Emails): every minute it collects due emails from the
 // API, renders each design and sends it through Resend, then reports the outcome so failures
@@ -17,8 +19,16 @@ async function internal<T>(path: string, body: unknown = {}): Promise<T | null> 
 }
 
 async function deliver(m: Outgoing): Promise<string> {
-  const mail = renderMail(m);
-  if (!mail) return "no design for this email";
+  const rendered = renderMail(m);
+  if (!rendered) return "no design for this email";
+  // In the member's language: the one they picked, else their country's (English in Nigeria).
+  const lang = isLang(m.lang) ? m.lang : langForCountry(m.country);
+  const mail = lang === "en" || m.kind === "error_alert" ? rendered : {
+    ...rendered,
+    subject: await translateText(lang, rendered.subject),
+    html: (await translateHtml(lang, rendered.html)).replace("<html>", `<html lang="${lang}" dir="${dirOf(lang)}">`),
+    text: await translateText(lang, rendered.text),
+  };
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `outbox-${m.id}` },
