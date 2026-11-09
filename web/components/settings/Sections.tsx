@@ -18,10 +18,7 @@ export type ProfileData = { country?: string; birthDate?: string; appLanguage?: 
 type Passkey = { id: string; name: string; createdAt: string; lastUsedAt?: string };
 type Device = { id: string; device: string; lastSeenAt: string; current: boolean };
 
-const LANGS: [string, string][] = [
-  ["en", "English"], ["yo", "Yorùbá"], ["ha", "Hausa"], ["ig", "Igbo"], ["fr", "Français"], ["hi", "हिन्दी"],
-  ["ko", "한국어"], ["es", "Español"], ["pt", "Português"], ["de", "Deutsch"], ["ar", "العربية"], ["sw", "Kiswahili"],
-];
+import { APP_LANGS, LANGS } from "@/lib/i18n";
 const day = (iso: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }, local = true) =>
   new Intl.DateTimeFormat("en-GB", local ? opts : { ...opts, timeZone: "UTC" }).format(new Date(iso));
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "E";
@@ -273,7 +270,7 @@ export function LanguageSection({ profile, settings, countryLabel }: { profile: 
         <p className="st-info">When you move country, re-verify once and everything switches: language, currency, payment methods and local times.</p>
       </Card>
       <Card title="Languages">
-        <Row title="App language" sub="Menus, emails and notifications">{select(app, (v) => { setApp(v); saveProfile({ appLanguage: v }); fetch("/api/locale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: v }) }).then(() => router.refresh()).catch(() => {}); }, LANGS, "App language")}</Row>
+        <Row title="App language" sub="Every page, email and receipt">{select(app, (v) => { setApp(v); saveProfile({ appLanguage: v }); fetch("/api/locale", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: v }) }).then(() => location.reload()).catch(() => {}); }, APP_LANGS, "App language")}</Row>
         <Row title="Audio language" sub="Dub track to play first. Change per film any time">{select(audio, (v) => { setAudio(v); saveProfile({ audioLanguage: v }); }, LANGS, "Audio language")}</Row>
         <Row title="Subtitles" sub="Shown when audio is not in your app language">{select(String(prefs.subtitles), (v) => set("subtitles", v), [["off", "Off"], ...LANGS], "Subtitles")}</Row>
         <Row title="Translate chat" sub="Messages from other languages appear in yours, with the original one tap away"><Toggle label="Translate chat" on={Boolean(prefs.translateChat)} onChange={(v) => set("translateChat", v)} /></Row>

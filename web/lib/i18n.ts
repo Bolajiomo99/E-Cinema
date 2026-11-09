@@ -1,14 +1,55 @@
 // App languages and the translated strings for the shared chrome (nav, hero, section titles).
-// Pages not yet translated fall back to English; the locale picker says so.
+// Everything else on a page is translated in the browser from the translation memory
+// (components/i18n/AutoTranslate.tsx, lib/translate.ts), so every page shows in the visitor's language.
 
+// Languages the films are dubbed into (dub chips, audio and subtitle settings).
 export const LANGS: [string, string][] = [
   ["en", "English"], ["yo", "Yorùbá"], ["ha", "Hausa"], ["ig", "Igbo"], ["fr", "Français"], ["hi", "हिन्दी"],
   ["ko", "한국어"], ["es", "Español"], ["pt", "Português"], ["de", "Deutsch"], ["ar", "العربية"], ["sw", "Kiswahili"],
 ];
-export type Lang = (typeof LANGS)[number][0];
-export const isLang = (v?: string | null): v is Lang => Boolean(v && LANGS.some(([c]) => c === v));
-export const langName = (code: string) => LANGS.find(([c]) => c === code)?.[1] ?? "English";
-export const dirOf = (lang: string) => (lang === "ar" ? "rtl" : "ltr");
+// Languages the whole site, emails and receipts can be shown in.
+export const APP_LANGS: [string, string][] = [
+  ...LANGS,
+  ["it", "Italiano"], ["nl", "Nederlands"], ["pl", "Polski"], ["ro", "Română"], ["el", "Ελληνικά"], ["cs", "Čeština"],
+  ["hu", "Magyar"], ["sv", "Svenska"], ["da", "Dansk"], ["fi", "Suomi"], ["no", "Norsk"], ["uk", "Українська"], ["ru", "Русский"],
+  ["tr", "Türkçe"], ["he", "עברית"], ["fa", "فارسی"], ["ur", "اردو"], ["bn", "বাংলা"], ["ta", "தமிழ்"], ["am", "አማርኛ"],
+  ["so", "Soomaali"], ["zu", "isiZulu"], ["id", "Bahasa Indonesia"], ["ms", "Bahasa Melayu"], ["th", "ไทย"], ["vi", "Tiếng Việt"],
+  ["ja", "日本語"], ["zh", "中文"],
+];
+export type Lang = string;
+export const isLang = (v?: string | null): v is Lang => Boolean(v && APP_LANGS.some(([c]) => c === v));
+export const langName = (code: string) => APP_LANGS.find(([c]) => c === code)?.[1] ?? "English";
+export const englishName = (code: string) => {
+  try { return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code; } catch { return code; }
+};
+const RTL = new Set(["ar", "he", "fa", "ur"]);
+export const dirOf = (lang: string) => (RTL.has(lang) ? "rtl" : "ltr");
+
+// The language a country reads most, for visitors who have not picked one. Countries where
+// English is the everyday language of the web (Nigeria, Ghana, Kenya, India, the UK, the US...)
+// stay in English; the visitor can switch in the language picker at any time.
+const BY_COUNTRY: Record<string, string> = {
+  // French
+  FR: "fr", BE: "fr", LU: "fr", MC: "fr", CH: "de", SN: "fr", CI: "fr", ML: "fr", BF: "fr", NE: "fr", TG: "fr", BJ: "fr", GN: "fr",
+  CM: "fr", GA: "fr", CG: "fr", CD: "fr", CF: "fr", TD: "fr", MG: "fr", DJ: "fr", KM: "fr", HT: "fr", BI: "fr",
+  MA: "ar", DZ: "ar", TN: "ar", MR: "ar",
+  // Arabic
+  EG: "ar", SA: "ar", AE: "ar", QA: "ar", KW: "ar", BH: "ar", OM: "ar", JO: "ar", LB: "ar", SY: "ar", IQ: "ar", YE: "ar", LY: "ar",
+  SD: "ar", PS: "ar",
+  // Portuguese and Spanish
+  PT: "pt", BR: "pt", AO: "pt", MZ: "pt", CV: "pt", GW: "pt", ST: "pt", TL: "pt",
+  ES: "es", MX: "es", AR: "es", CO: "es", CL: "es", PE: "es", VE: "es", EC: "es", GT: "es", CU: "es", BO: "es", DO: "es", HN: "es",
+  PY: "es", SV: "es", NI: "es", CR: "es", PA: "es", UY: "es", GQ: "es",
+  // East Africa
+  TZ: "sw", ET: "am", SO: "so",
+  // Europe
+  DE: "de", AT: "de", LI: "de", IT: "it", SM: "it", VA: "it", NL: "nl", PL: "pl", RO: "ro", MD: "ro", GR: "el", CY: "el", CZ: "cs",
+  HU: "hu", SE: "sv", DK: "da", FI: "fi", NO: "no", UA: "uk", RU: "ru", BY: "ru", KZ: "ru", KG: "ru", TR: "tr",
+  // Asia
+  IL: "he", IR: "fa", AF: "fa", PK: "ur", BD: "bn", LK: "ta", KR: "ko", JP: "ja", CN: "zh", TW: "zh", HK: "zh", MO: "zh",
+  ID: "id", MY: "ms", BN: "ms", TH: "th", VN: "vi",
+};
+export const langForCountry = (country?: string) => (country && BY_COUNTRY[country]) || "en";
 
 const EN = {
   premieres: "Premieres",
@@ -166,6 +207,6 @@ export function dict(lang: string): Record<Key, string> {
 // "Yorùbá (AI dub)", "Hindi subtitles", "Original audio" for the Insights languages card.
 export function trackLabel(code: string, kind: "audio" | "subs"): string {
   if (!code) return "Original audio";
-  const name = LANGS.find(([c]) => c === code.split("-")[0])?.[1] ?? code.toUpperCase();
+  const name = APP_LANGS.find(([c]) => c === code.split("-")[0])?.[1] ?? code.toUpperCase();
   return kind === "audio" ? `${name} (AI dub)` : `${name} subtitles`;
 }
