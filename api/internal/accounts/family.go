@@ -28,12 +28,16 @@ var (
 )
 
 // Ratings from the catalog mapped to the youngest age that may see them.
-var ratingAge = map[string]int{"G": 0, "U": 0, "PG": 7, "PG-13": 12, "12A": 12, "15": 16, "16": 16, "R": 16, "18+": 18, "18": 18}
+var ratingAge = map[string]int{"G": 0, "U": 0, "ALL AGES": 0, "7+": 7, "PG": 7, "PG-13": 12, "12A": 12, "12": 12, "13+": 12, "15": 16, "16+": 16, "16": 16, "R": 16, "18+": 18, "18": 18}
 var maxAge = map[string]int{"all": 0, "7": 7, "12": 12, "16": 16, "18": 18}
 var bedtimeRe = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
 
 // Allowed says whether a film with this rating is fine under a profile's maximum.
 func Allowed(rating, max string) bool {
+	// A studio may write the certificate after the rating: "15 (NFVCB 2026/123)".
+	if i := strings.Index(rating, " ("); i > 0 {
+		rating = rating[:i]
+	}
 	age, ok := ratingAge[strings.ToUpper(strings.TrimSpace(rating))]
 	if !ok {
 		age = 18 // unknown ratings are treated as adult

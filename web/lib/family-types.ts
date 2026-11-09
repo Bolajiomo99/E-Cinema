@@ -21,12 +21,12 @@ export type Family = { profiles: Member[]; pinSet: boolean; requests: KidsReques
 
 export type ActiveStatus = { profile: Member; blocked?: "bedtime" | "screen-time"; message?: string };
 
-const ratingAge: Record<string, number> = { G: 0, U: 0, PG: 7, "PG-13": 12, "12A": 12, "15": 16, "16": 16, R: 16, "18+": 18, "18": 18 };
+const ratingAge: Record<string, number> = { G: 0, U: 0, "ALL AGES": 0, "7+": 7, PG: 7, "PG-13": 12, "12A": 12, "12": 12, "13+": 12, "15": 16, "16+": 16, "16": 16, R: 16, "18+": 18, "18": 18 };
 const maxAge: Record<MaxRating, number> = { all: 0, "7": 7, "12": 12, "16": 16, "18": 18 };
 
 // Mirrors accounts.Allowed in the Go API: unknown ratings count as adult.
 export function allowed(rating: string | undefined, max: MaxRating): boolean {
-  const age = ratingAge[(rating ?? "").trim().toUpperCase()] ?? 18;
+  const age = ratingAge[(rating ?? "").split(" (")[0].trim().toUpperCase()] ?? 18;
   return age <= maxAge[max];
 }
 

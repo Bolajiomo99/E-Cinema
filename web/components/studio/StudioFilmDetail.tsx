@@ -151,9 +151,9 @@ export default function StudioFilmDetail({ tab = "details", children, upload: u0
               <label className="vf-field"><span>Logline</span><div className="vf-box"><input value={d.logline} onChange={set("logline")} maxLength={300} placeholder="One sentence that makes someone want a seat" disabled={!canEdit} /></div></label>
               <div className="stfd-pair">
                 <label className="vf-field"><span>Genre</span><div className="vf-box"><input value={d.genres} onChange={set("genres")} maxLength={80} placeholder="Drama, thriller" disabled={!canEdit} /></div></label>
-                <label className="vf-field"><span>Age rating</span><div className="vf-box"><input value={d.ageRating} onChange={set("ageRating")} maxLength={60} placeholder={suggestion ? suggestion.split(" (")[0] : "16+ (NFVCB)"} disabled={!canEdit} /></div></label>
+                <label className="vf-field"><span>Age rating</span><div className="vf-box"><input value={d.ageRating} onChange={set("ageRating")} maxLength={60} placeholder={suggestion ? suggestion.split(" (")[0] : "15 (NFVCB certificate no.)"} disabled={!canEdit} /></div></label>
               </div>
-              {suggestion && !d.ageRating && <p className="pt-hint">AI suggests {suggestion} from your subtitles. You decide the rating.</p>}
+              {suggestion && !d.ageRating && <p className="pt-hint">AI suggests {suggestion} from your subtitles. The rating that counts in Nigeria is the one on your NFVCB certificate (G, PG, 12, 12A, 15, 18).</p>}
               <label className="vf-field"><span>Languages</span><div className="vf-box"><input value={d.languages} onChange={set("languages")} maxLength={80} placeholder="Yorùbá and English" disabled={!canEdit} /></div></label>
               <label className="vf-field"><span>Cast and crew</span><div className="vf-box"><input value={d.castCrew} onChange={set("castCrew")} maxLength={400} placeholder="Cast names · directed by …" disabled={!canEdit} /></div></label>
             </form>

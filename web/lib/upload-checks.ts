@@ -219,14 +219,14 @@ async function rateDialogue(text: string): Promise<{ rating: string; reasons: st
         schema: {
           type: "object", additionalProperties: false, required: ["rating", "reasons", "language"],
           properties: {
-            rating: { type: "string", enum: ["All ages", "7+", "13+", "16+", "18+"] },
+            rating: { type: "string", enum: ["G", "PG", "12", "12A", "15", "18"] },
             reasons: { type: "array", items: { type: "string", description: "One or two words, such as violence or strong language" }, maxItems: 4 },
             language: { type: "string", description: "The language of the dialogue in English, such as Yoruba" },
           },
         },
       },
     },
-    system: "You suggest an age rating for a film from its subtitles, for the studio to confirm. Judge only what the dialogue shows: violence, strong language, sex, drugs, frightening scenes. Be conservative.",
+    system: "You suggest an age rating for a film from its subtitles, for the studio to confirm, on the Nigerian NFVCB scale: G (all ages), PG (parental guidance), 12, 12A (under 12 only with an adult), 15, 18. Judge only what the dialogue shows: violence, strong language, sex, drugs, frightening scenes. Be conservative.",
     messages: [{ role: "user", content: text.slice(0, 60_000) }],
   }, { timeout: 60_000, maxRetries: 1 });
   if (res.stop_reason === "refusal") return null;
