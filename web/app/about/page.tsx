@@ -36,6 +36,12 @@ export default async function AboutPage() {
           <Person initials="CT" name="Chief Technology Officer" role="We are hiring" href="/careers" />
         </div>
       </Section>
+      <Section title="Contact us">
+        <address className="cp-p" style={{ fontStyle: "normal" }}>
+          Online Cinema Ltd<br />336 Borno Way, Yaba<br />Lagos 101212, Lagos State, Nigeria<br />
+          <a href="mailto:admin@e-cinema.net">admin@e-cinema.net</a>
+        </address>
+      </Section>
       <Section title="Press and partnerships">
         <p className="cp-p"><a href="mailto:admin@e-cinema.net?subject=Press">Press enquiries</a> · <a href="mailto:admin@e-cinema.net?subject=Partnerships">Partnerships</a></p>
         <p className="cp-fine">Online Cinema Ltd, trading as E-Cinema. Registered in Nigeria, RC 9947766.</p>

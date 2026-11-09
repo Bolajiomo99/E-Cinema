@@ -436,6 +436,7 @@ body:has(.lp), body:has(.su) { background: #0a0a0c; }
 .lp-footer { display: flex; justify-content: space-between; gap: 40px; padding: 56px 64px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; }
 .lp-footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
 .lp-footer-brand p { font: 500 13px/18px Manrope, sans-serif; color: var(--text-muted); }
+.lp-footer-addr { font: 500 13px/18px Manrope, sans-serif; font-style: normal; color: var(--text-muted); }
 .lp-footer-cols { display: flex; gap: 80px; flex-wrap: wrap; }
 .lp-footer-cols div { display: flex; flex-direction: column; gap: 10px; }
 .lp-footer-cols p { font: 600 13px/20px Manrope, sans-serif; letter-spacing: .1px; color: var(--text-secondary); }

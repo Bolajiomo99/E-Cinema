@@ -14,7 +14,8 @@ export default function LandingFooter({ heads }: { heads?: Record<string, string
     <footer className="lp-footer">
       <div className="lp-footer-brand">
         <Logo />
-        <p>© 2026 Online Cinema Ltd, trading as E-Cinema. Premieres, together. Help: <a href={`mailto:${supportEmail()}`}>{supportEmail()}</a></p>
+        <p>© 2026 Online Cinema Ltd, trading as E-Cinema. RC 9947766. Premieres, together. Help: <a href={`mailto:${supportEmail()}`}>{supportEmail()}</a></p>
+        <address className="lp-footer-addr">336 Borno Way, Yaba, Lagos 101212, Nigeria</address>
       </div>
       <div className="lp-footer-cols">
         {FOOTER.map(([head, links]) => (
