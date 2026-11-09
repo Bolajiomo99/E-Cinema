@@ -361,3 +361,13 @@ export async function execPayPal(s: string, days: number): Promise<PayPalData | 
   const r = await accountApi("GET", `/v1/me/exec/paypal?days=${days}`, undefined, s);
   return r.status === 200 ? (r.body as PayPalData) : null;
 }
+
+// Error alerts on Infrastructure: crashes viewers and the servers hit in the last 30 days.
+export type AppError = {
+  fingerprint: string; source: "browser" | "web" | "api"; message: string; stack: string; path: string; agent: string;
+  release: string; count: number; firstSeen: string; lastSeen: string; resolvedAt?: string;
+};
+export async function execErrors(s: string): Promise<AppError[]> {
+  const r = await accountApi("GET", "/v1/me/exec/errors", undefined, s).catch(() => ({ status: 0, body: null }));
+  return r.status === 200 ? ((r.body as { errors: AppError[] }).errors ?? []) : [];
+}

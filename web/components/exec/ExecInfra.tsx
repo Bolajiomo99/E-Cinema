@@ -1,5 +1,6 @@
 import { pct, type Uptime } from "@/lib/uptime-types";
-import type { InfraData } from "@/lib/exec";
+import type { AppError, InfraData } from "@/lib/exec";
+import ExecErrors from "@/components/exec/ExecErrors";
 
 // Infrastructure (Figma 50:469). Only what runs today: one Render region, media on Cloudflare R2,
 // and a nightly database copy on R2 that is test-restored before it counts. The rest says Soon.
@@ -9,7 +10,7 @@ const size = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 
 const ms = (v: number) => (v >= 100 ? `${Math.round(v)}` : v.toFixed(1));
 const SOON = <i className="exsec-pill">Soon</i>;
 
-export default function ExecInfra({ d, now, up }: { d: InfraData; now: number; up: Uptime | null }) {
+export default function ExecInfra({ d, now, up, errors }: { d: InfraData; now: number; up: Uptime | null; errors: AppError[] }) {
   const last = d.backups[0];
   const backupOk = !!last && last.restored && now - Date.parse(last.finishedAt) < 36 * 3600_000;
   const normal = d.dbPingMs < 200 && d.dbConns < d.dbMaxConns * 0.8;
@@ -69,6 +70,8 @@ export default function ExecInfra({ d, now, up }: { d: InfraData; now: number; u
         </div>
         <p className="epf-hint">The bar is database connections in use ({d.dbConns} of {d.dbMaxConns}). Planned regions are not running yet.</p>
       </div>
+
+      <ExecErrors list={errors} now={now} />
 
       <div className="exc-card">
         <h2>Copies of the database</h2>

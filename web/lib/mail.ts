@@ -411,6 +411,25 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
       text: `${film}: ${sold} of ${cap} seats sold (${pct}%). Pre-sales: ${link}`,
     });
   },
+  // Error alert to the CEO and CTO: a crash viewers or the servers hit (no Figma frame; internal mail).
+  error_alert: (m) => {
+    const message = S(m.data.message), source = S(m.data.source);
+    if (!message || !source) return null;
+    const WHERE: Record<string, string> = { browser: "a viewer's browser", web: "the web server", api: "the API" };
+    const count = N(m.data.count);
+    const stack = S(m.data.stack);
+    return done({
+      from: SENDER.exec, tag: "ERROR ALERT", footer: { html: "You get this as an E-Cinema executive with access to Infrastructure." },
+      subject: `Error on E-Cinema: ${message.slice(0, 80)}`, preview: `${WHERE[source] ?? source} · ${S(m.data.path) || "unknown page"}`,
+      title: count > 1 ? "An error came back" : "A new error on E-Cinema",
+      body: p(`It happened in ${esc(WHERE[source] ?? source)}${S(m.data.path) ? ` on <b>${esc(S(m.data.path))}</b>` : ""}.`) +
+        facts([["Error", message], ["Times seen", String(Math.max(1, count))], ...(S(m.data.release) ? [["Version", S(m.data.release).slice(0, 7)] as [string, string]] : [])]) +
+        (stack ? `<pre style="margin:0 0 20px;background:#f4f4f6;border-radius:10px;padding:14px;font:12px/1.5 Menlo,Consolas,monospace;color:#3a3a42;white-space:pre-wrap;word-break:break-word">${esc(stack.split("\n").slice(0, 12).join("\n"))}</pre>` : "") +
+        p("You will not get another email about this one for six hours, unless it is marked fixed and comes back.") +
+        button(href("/executive/infra#errors"), "Open Infrastructure"),
+      text: `Error on E-Cinema (${source}${S(m.data.path) ? `, ${S(m.data.path)}` : ""}): ${message}. Seen ${Math.max(1, count)} times. ${href("/executive/infra#errors")}`,
+    });
+  },
   studio_incident: (m) => {
     const film = S(m.data.film), title = S(m.data.title), mins = N(m.data.minutes);
     if (!film || !title) return null;

@@ -5735,3 +5735,13 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 
 /* Installed as an app on a phone: keep the page clear of the notch and status bar. */
 @media (display-mode: standalone) { body { padding-top: env(safe-area-inset-top); } }
+
+/* Infrastructure · errors */
+.exerr-g { display: grid; grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr) 60px 90px 110px; gap: 12px; align-items: start; }
+.exerr-msg { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.exerr-msg small { color: var(--text-muted); overflow-wrap: anywhere; }
+.exerr-open { all: unset; cursor: pointer; color: var(--text); overflow-wrap: anywhere; min-height: 24px; }
+.exerr-open:focus-visible { outline: 2px solid #e3182d; outline-offset: 2px; }
+.exerr-stack { margin: 6px 0 0; padding: 10px; background: #0d0d10; border-radius: 8px; font: 12px/1.5 Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
+.exerr-done { opacity: .55; }
+@media (max-width: 640px) { .exerr-g { grid-template-columns: minmax(0, 1fr) auto; } .exerr-g > :nth-child(2), .exerr-g > :nth-child(4) { display: none; } .exn-th.exerr-g > :nth-child(3) { display: none; } .exerr-g > :nth-child(3) { display: none; } }
