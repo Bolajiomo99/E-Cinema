@@ -5732,3 +5732,6 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 .pp-card-label { margin: 0 0 8px; font: 600 14px/20px Manrope, sans-serif; color: #c9c9d1; }
 .pp-card-slot { width: 100%; min-height: 48px; }
 .pp-card-slot paypal-basic-card-container, .pp-card-slot paypal-basic-card-button { display: block; width: 100%; }
+
+/* Installed as an app on a phone: keep the page clear of the notch and status bar. */
+@media (display-mode: standalone) { body { padding-top: env(safe-area-inset-top); } }
