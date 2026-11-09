@@ -166,6 +166,15 @@ export async function execSafety(s: string): Promise<SafetyData | null> {
   return r.status === 200 ? (r.body as SafetyData) : null;
 }
 
+// Caught automatically: public chat, posts and comments the moderation check flagged.
+export type AutoFlag = { source: "room" | "post" | "comment"; id: number; place: string; body: string; label: string; pct: number; hidden: boolean; at: string };
+export type AutoFlags = { flags: AutoFlag[]; today: number; hideAt: number };
+
+export async function execAutoFlags(s: string): Promise<AutoFlags | null> {
+  const r = await accountApi("GET", "/v1/me/exec/auto-flags", undefined, s);
+  return r.status === 200 ? (r.body as AutoFlags) : null;
+}
+
 const verdicts = new Map<string, Verdict>();
 
 // Claude reads each reported chat message once and says how likely it breaks the rules; a person decides.

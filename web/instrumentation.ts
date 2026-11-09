@@ -1,4 +1,4 @@
-// Runs once when the server starts. Keeps studio-published premieres in the catalog, moves AI dubs along sends due announcements and the email outbox, refunds withdrawn premieres and charges shop instalments.
+// Runs once when the server starts. Keeps studio-published premieres in the catalog, moves AI dubs along sends due announcements and the email outbox, refunds withdrawn premieres, charges shop instalments and checks new public chat and posts.
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { startLiveCatalog } = await import("@/lib/live-catalog");
@@ -13,6 +13,8 @@ export async function register() {
   startRefundWorker();
   const { startInstalmentWorker } = await import("@/lib/instalment-worker");
   startInstalmentWorker();
+  const { startModerationWorker } = await import("@/lib/moderation-worker");
+  startModerationWorker();
 }
 
 // Server-side crashes while rendering a page or running a route: reported to the API so the

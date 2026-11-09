@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { SafetyData, Verdict } from "@/lib/exec";
+import type { AutoFlags, SafetyData, Verdict } from "@/lib/exec";
 import { countryName } from "@/lib/worldmap";
 
 // Safety and trust (Figma 82:1075). Claude gives a hint on each reported message; a person decides.
@@ -10,12 +10,15 @@ const REASON: Record<string, string> = { harassment: "Insult or harassment", hat
 const PLACE: Record<string, string> = { website: "Website", telegram: "Telegram channel", tiktok: "TikTok", youtube: "YouTube", x: "X", instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", other: "Elsewhere" };
 const KIND: Record<string, string> = { clip: "clip", full: "full film", screenshot: "screenshot", other: "copy" };
 const BAD = new Set(["abusive", "hateful", "unsafe"]);
+const FLAG: Record<string, string> = { abusive: "Abuse", hateful: "Hate", sexual: "Sexual", threat: "Threat", selfharm: "May hurt themselves", spam: "Spam", scam: "Scam", piracy: "Pirated film" };
+const SOURCE: Record<string, string> = { room: "World chat", post: "Post", comment: "Comment" };
 
-export default function ExecSafety({ d, ai }: { d: SafetyData; ai: Record<string, Verdict> }) {
+export default function ExecSafety({ d, ai, auto }: { d: SafetyData; ai: Record<string, Verdict>; auto: AutoFlags | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState<number | null>(null);
   const [done, setDone] = useState<Record<number, string>>({});
   const [err, setErr] = useState("");
+  const [flagDone, setFlagDone] = useState<Record<string, string>>({});
   const settled = d.reportsToday ? Math.round((d.settledToday / d.reportsToday) * 100) : 0;
   const signals: [string, number, string][] = [
     ["Wrong passwords (locked out)", d.lockouts, "#e3182d"],
@@ -32,6 +35,17 @@ export default function ExecSafety({ d, ai }: { d: SafetyData; ai: Record<string
     setBusy(null);
     if (!r?.ok) { setErr(b.error ?? "Could not settle that report"); return; }
     setDone((x) => ({ ...x, [messageId]: remove ? "Removed for everyone" : "Kept" }));
+    router.refresh();
+  }
+
+  async function review(source: string, id: number, remove: boolean) {
+    const k = `${source}-${id}`;
+    setErr(""); setBusy(-id);
+    const r = await fetch(`/api/executive/auto-flags/${source}/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ remove }) }).catch(() => null);
+    const b = (await r?.json().catch(() => ({}))) as { error?: string };
+    setBusy(null);
+    if (!r?.ok) { setErr(b.error ?? "Could not settle that flag"); return; }
+    setFlagDone((x) => ({ ...x, [k]: remove ? "Hidden for everyone" : "Put back" }));
     router.refresh();
   }
 
@@ -88,6 +102,30 @@ export default function ExecSafety({ d, ai }: { d: SafetyData; ai: Record<string
           <div className="exf-sig off"><span>VPN to a cheaper country</span><small className="exl-soon">Soon</small></div>
           <p className="epf-hint">Each account can be signed in on two devices; a third signs out the oldest.</p>
         </div>
+      </div>
+
+      <div className="exc-card exl-card" id="auto">
+        <h2>Caught automatically</h2>
+        <p className="exc-sub">AI reads every new world-chat message, community post and comment. It hides what it is {auto?.hideAt ?? 85}% or more sure breaks the rules, and lists the rest here. Private messages and party chat are not read.{auto ? ` ${auto.today.toLocaleString("en-US")} flagged today.` : ""}</p>
+        {!auto ? <p className="exc-empty">Could not load the automatic flags.</p> : auto.flags.length === 0 ? <p className="exc-empty">Nothing is waiting. New flags show here within a minute.</p> : auto.flags.map((f) => {
+          const k = `${f.source}-${f.id}`;
+          return (
+            <div key={k} className="exf-case">
+              <div className="exf-txt">
+                <b translate="no">“{f.body}”</b>
+                <small>{SOURCE[f.source]}{f.place ? ` · ${f.place}` : ""} · {f.hidden ? "hidden for now" : "still showing"}</small>
+              </div>
+              <span className={`exf-ai ${f.label === "selfharm" ? "mid" : "bad"}`}>AI: {f.pct}% {FLAG[f.label] ?? f.label}</span>
+              {flagDone[k] ? <span className="exf-done">{flagDone[k]}</span> : (
+                <span className="exf-acts">
+                  <button type="button" className="exa-ghost" disabled={busy === -f.id} onClick={() => review(f.source, f.id, false)}>{f.hidden ? "Put back" : "Keep"}</button>
+                  <button type="button" className="exa-edit exf-rm" disabled={busy === -f.id} onClick={() => review(f.source, f.id, true)}>{f.hidden ? "Keep hidden" : "Hide"}</button>
+                </span>
+              )}
+            </div>
+          );
+        })}
+        <p className="epf-hint">When someone writes that they may hurt themselves, the message stays up and waits here so a person can reach out.</p>
       </div>
 
       <div className="exc-card exl-card">

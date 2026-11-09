@@ -5,7 +5,7 @@ export const metadata = { title: "Community rules · E-Cinema" };
 
 export default function CommunityRules() {
   return (
-    <LegalLayout here="/legal/community" title="Community rules" lead="Rooms are for watching together. These rules keep them fun in every language. AI translates and checks chat; people review anything it is unsure about.">
+    <LegalLayout here="/legal/community" title="Community rules" lead="Rooms are for watching together. These rules keep them fun in every language. AI translates and checks world chat and community posts; people review what it flags. Private messages are only looked at when someone reports them.">
       <Sections items={[
         ["Be kind", "No hate, threats, bullying or harassment, in any language."],
         ["No spoilers", "Spoilers are hidden behind a tap in world chat until the film ends."],
