@@ -173,7 +173,7 @@ export default function StudioFilmDetail({ tab = "details", children, upload: u0
           <section className="bp-panel">
             <h2>Poster and trailer</h2>
             <div className="stfd-art">
-              <button type="button" className="stfd-poster" onClick={() => canEdit && pick.current?.click()} disabled={!canEdit} aria-label={u.posterKey ? "Change poster" : "Add a poster"}>
+              <button type="button" className="stfd-poster" onClick={() => canEdit && pick.current?.click()} disabled={!canEdit}>
                 {u.posterKey
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={`/api/studio/uploads/${u.id}/poster?v=${posterAt || u.updatedAt}`} alt={`${u.title} poster`} />

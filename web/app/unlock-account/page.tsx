@@ -7,7 +7,7 @@ export const metadata = { title: "Unlock your account · E-Cinema" };
 export default async function UnlockAccountPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
   const { email } = await searchParams;
   return (
-    <main className="ca">
+    <main id="main" className="ca">
       <header className="ca-top"><Logo /></header>
       <UnlockCard initialEmail={typeof email === "string" ? email.slice(0, 254) : ""} />
     </main>

@@ -51,7 +51,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   return (
     <DashShell defaultOpen>
-      <main className="lib">
+      <main id="main" className="lib">
         <div className="lib-bar"><SidebarToggle /></div>
         {hero && hs ? (
           <section className="lib-hero" style={{ ["--lib-glow" as string]: glow }}>

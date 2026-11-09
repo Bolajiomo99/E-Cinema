@@ -18,7 +18,7 @@ export default async function StudioDeskPage() {
     <DashShell>
       <div className="lp bp">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="bp-body"><StudioDesk /></main>
+        <main id="main" className="bp-body"><StudioDesk /></main>
       </div>
     </DashShell>
   );

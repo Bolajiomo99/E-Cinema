@@ -28,7 +28,7 @@ export default async function AgreementPage() {
   const body = (
     <div className="lp li">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="li-guide">
+      <main id="main" className="li-guide">
         <p className="lp-eyebrow">LICENSING</p>
         <h1>Merch licence agreement</h1>
         <ol className="li-terms">{TERMS.map(([t, d]) => <li key={t}><b>{t}</b><p>{d}</p></li>)}</ol>

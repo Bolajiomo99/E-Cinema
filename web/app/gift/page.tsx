@@ -33,7 +33,7 @@ export default async function GiftPage({ searchParams }: { searchParams: Promise
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="gf-photo" src="/img/gift-card.png" alt="A black E-Cinema gift card with a red ribbon" width={420} height={280} />
       </header>
-      <main className="gf-main">
+      <main id="main" className="gf-main">
         <h2>Build your gift</h2>
         <GiftBuilder shows={shows} prices={{ pro1: giftPrice("pro1", {})!.cents, vip3: giftPrice("vip3", {})!.cents }} signedIn={Boolean(me)} initialFilm={sp.film} initialKind={kind} />
       </main>

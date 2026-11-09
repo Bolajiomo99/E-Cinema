@@ -25,7 +25,7 @@ export default async function NewParty({ searchParams }: { searchParams: Promise
   const rooms = rr?.status === 200 ? (rr.body as RoomOption[]) : [];
 
   return (
-    <main className="wp" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
+    <main id="main" className="wp" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
       <span className="wp-glow" style={{ background: `radial-gradient(circle, ${p.glow}, transparent 70%)` }} aria-hidden />
       <span className="wp-dim" aria-hidden />
       <section className="wp-modal" aria-labelledby="wp-title">

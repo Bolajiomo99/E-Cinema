@@ -19,7 +19,7 @@ export default async function PartiesPage() {
   const next = showtimes.find((s) => endsAt(s) > nowMs()) ?? showtimes[0];
   return (
     <DashShell defaultOpen>
-      <main className="cl">
+      <main id="main" className="cl">
         <div className="cl-top"><span className="dash-brand"><SidebarToggle /><Logo /></span></div>
         <PartiesRow parties={list} heroId={next.id} />
       </main>

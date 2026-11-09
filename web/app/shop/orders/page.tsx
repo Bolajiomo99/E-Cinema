@@ -22,7 +22,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     <DashShell>
       <div className="lp sh">
         <TopNav me={me} active="shop" t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="ord">
+        <main id="main" className="ord">
           <OrdersApp initial={orders} reviewable={reviewable} px={px} tz={loc.country === "NG" || !loc.country ? "Africa/Lagos" : "UTC"} focus={sp.o} placed={sp.placed === "1"} />
         </main>
       </div>

@@ -44,9 +44,9 @@ export default async function PreorderPage({ params, searchParams }: { params: P
   const body = (
     <div className="lp po">
       <TopNav me={me} active="coming" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="po-row">
+      <main id="main" className="po-row">
         <section className="po-l">
-          <TrailerButton film={s.id} title={s.film} className="po-trailer" ariaLabel={`Play the ${s.film} trailer`}>
+          <TrailerButton film={s.id} title={s.film} className="po-trailer">
             <span className="po-trailer-bg" style={{ background: `linear-gradient(180deg, ${s.poster?.from ?? "#2b2f36"} 0%, ${s.poster?.via ?? "#111317"} 60%, #000 100%)` }} aria-hidden />
             <span className="po-glow" style={{ background: `radial-gradient(closest-side, ${s.poster?.glow ?? "rgba(227,24,45,.45)"}, transparent)` }} aria-hidden />
             <span className="po-play" aria-hidden><svg viewBox="0 0 28 28"><path d="M10 7.5v13l10-6.5z" fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" /></svg></span>

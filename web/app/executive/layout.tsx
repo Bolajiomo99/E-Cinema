@@ -18,7 +18,7 @@ export default async function Executive({ children }: { children: ReactNode }) {
   const role = who === null ? null : who.role;
   if (!who || !role) {
     return (
-      <main className="exs-none">
+      <main id="main" className="exs-none">
         <h1>{role === null ? "The executive area is not reachable just now" : "Executives only"}</h1>
         <p>{role === null ? "Try again in a minute." : "This part of E-Cinema is for the company's leadership. If you should have access, ask the CEO to add you under Access and roles."}</p>
         <Link href="/home" className="exs-back">Back to E-Cinema</Link>
@@ -28,7 +28,7 @@ export default async function Executive({ children }: { children: ReactNode }) {
   // Settings > "Passkey and face for every executive" (Figma 83:386).
   if (who.needsStrong) {
     return (
-      <main className="exs-none">
+      <main id="main" className="exs-none">
         <h1>Add a passkey and a face check first</h1>
         <p>The CEO requires every executive to sign in with a passkey and to finish the ID and face check before opening the executive area.</p>
         <Link href="/settings/security" className="exs-back">Add a passkey</Link>{" "}

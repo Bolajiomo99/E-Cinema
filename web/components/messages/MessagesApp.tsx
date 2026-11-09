@@ -224,7 +224,7 @@ export default function MessagesApp({ me, initial, requestCount, parties, openId
   };
 
   return (
-    <main className={`msg${mobileChat ? " chat-open" : ""}`}>
+    <main id="main" className={`msg${mobileChat ? " chat-open" : ""}`}>
       <section className="msg-list" aria-label="Chats">
         <div className="msg-list-h">
           <h1>Messages</h1>

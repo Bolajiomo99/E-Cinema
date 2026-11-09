@@ -35,7 +35,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
     <DashShell>
       <div className="lp bp">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="bp-body">
+        <main id="main" className="bp-body">
           <header className="bp-head">
             <div>
               <h1>Community rewards</h1>

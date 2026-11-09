@@ -27,7 +27,7 @@ export default async function CompanyLayout({ kicker, title, lead, actions, chil
           </div>
         </div>
       </header>
-      <main className="cp-main">{children}</main>
+      <main id="main" className="cp-main">{children}</main>
       <LandingFooter />
     </div>
   );

@@ -102,7 +102,7 @@ export default function StudioPayouts({ studio: s, rows, films, months, canMoney
             <div><b>{hasBank ? `${s.payoutBank} ···${last4}` : "Bank transfer"}</b><small>{hasBank ? `${s.payoutName} · ${s.payoutCurrency} · default · after each premiere` : "Local currency to a bank account, through Flutterwave"}</small></div>
             {canMoney && !edit && <button type="button" className="vf-btn sm ghost" onClick={() => setEdit("bank")}>{hasBank ? "Change" : hasPaypal ? "Use" : "Add"}</button>}
           </div>
-          <div className="stu-acc off"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6e6e7a" strokeWidth="1.6" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M9 9h4.5a1.5 1.5 0 0 1 0 3H9h5a1.5 1.5 0 0 1 0 3H9M11 7v10" /></svg><div><b>USDC wallet <em className="soon-tag">Soon</em></b><small>Optional · on request</small></div></div>
+          <div className="stu-acc off"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8e8e99" strokeWidth="1.6" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M9 9h4.5a1.5 1.5 0 0 1 0 3H9h5a1.5 1.5 0 0 1 0 3H9M11 7v10" /></svg><div><b>USDC wallet <em className="soon-tag">Soon</em></b><small>Optional · on request</small></div></div>
           {canMoney ? (edit === "paypal" ? (
             <form className="pt-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
               <label className="vf-field"><span>PayPal email</span><div className="vf-box"><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="finance@yourstudio.com" /></div></label>

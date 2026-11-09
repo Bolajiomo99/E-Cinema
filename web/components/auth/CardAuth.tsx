@@ -52,7 +52,7 @@ function Icon({ name, tone = "red", small }: { name: keyof typeof ICONS; tone?: 
 
 function Bars({ at, of = 4, tone = "red" }: { at: number; of?: number; tone?: "red" | "teal" }) {
   return (
-    <div className={`ca-bars ${tone}`} aria-label={tone === "red" ? `Step ${at} of ${of}` : undefined}>
+    <div className={`ca-bars ${tone}`} role={tone === "red" ? "img" : undefined} aria-label={tone === "red" ? `Step ${at} of ${of}` : undefined}>
       {Array.from({ length: of }, (_, i) => <i key={i} className={i < at ? "on" : ""} />)}
     </div>
   );

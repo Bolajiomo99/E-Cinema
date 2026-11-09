@@ -27,7 +27,7 @@ export default async function PlanSuccess() {
   const plan = PLANS.find((p) => p.id === profile.plan)!;
   const renews = profile.renewsAt ? new Date(profile.renewsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
-    <main className="ok-page">
+    <main id="main" className="ok-page">
       <div className="ok-top"><Logo /></div>
       <span className="ok-check" aria-hidden>
         <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>

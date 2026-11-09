@@ -124,7 +124,7 @@ export default function DubbedPlayer({ film, title }: { film: string; title: str
       </div>
       <div className="controls">
         <button onClick={toggle} disabled={!clips.length}>{playing ? "Pause" : "Play"}</button>
-        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={length} aria-valuenow={Math.floor(pos)}>
+        <div className="progress" role="progressbar" aria-label="Film progress" aria-valuemin={0} aria-valuemax={length} aria-valuenow={Math.floor(pos)}>
           <span style={{ width: length ? `${Math.min(100, (pos / length) * 100)}%` : 0 }} />
         </div>
         <span className="time">{clock(pos)} / {clock(length)}</span>

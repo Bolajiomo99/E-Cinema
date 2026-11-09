@@ -23,7 +23,7 @@ ${banner ? `<tr><td style="background:#2a0a0f;background-image:linear-gradient(9
 <h1 style="margin:0 0 20px;font:800 28px/1.2 ${FONT};color:#16161a">${esc(title)}</h1>
 ${body}
 </td></tr>
-<tr><td style="background:#f4f4f6;padding:24px 36px;font:500 12px/1.6 ${FONT};color:#7a7a84">
+<tr><td style="background:#f4f4f6;padding:24px 36px;font:500 12px/1.6 ${FONT};color:#8e8e99">
 <p style="margin:0 0 8px">${footer ? (typeof footer === "string" ? esc(footer) : footer.html) : "This is a service message about your account. You cannot unsubscribe from security, payment and order emails."}</p>
 <p style="margin:0 0 8px">Online Cinema Ltd, trading as E-Cinema · Lagos, Nigeria · e-cinema.net · Help: help@e-cinema.net</p>
 <p style="margin:0">We never ask for your password, code or card number by email, phone or chat.</p>
@@ -39,7 +39,7 @@ export const note = (t: string) =>
   `<div style="margin:0;background:#f8efe4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
 export const facts = (rows: [string, string][]) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #e2e2e6;border-radius:10px;border-collapse:separate;overflow:hidden">${rows
-    .map(([k, v], i) => `<tr style="background:${i % 2 ? "#ffffff" : "#f4f4f6"}"><td style="padding:12px 16px;font:500 14px ${FONT};color:#7a7a84">${esc(k)}</td><td align="right" style="padding:12px 16px;font:600 14px ${FONT};color:#16161a">${esc(v)}</td></tr>`)
+    .map(([k, v], i) => `<tr style="background:${i % 2 ? "#ffffff" : "#f4f4f6"}"><td style="padding:12px 16px;font:500 14px ${FONT};color:#8e8e99">${esc(k)}</td><td align="right" style="padding:12px 16px;font:600 14px ${FONT};color:#16161a">${esc(v)}</td></tr>`)
     .join("")}</table>`;
 
 export async function send(to: string, subject: string, html: string, text: string, from = FROM) {
@@ -76,7 +76,7 @@ export async function sendEmailConfirm(to: string, code: string) {
     layout("Enter it within 10 minutes", "Confirm your email",
       p("Enter this code in E-Cinema to finish signing up.") +
       codeBox(code) +
-      `<p style="margin:0;font:500 14px/1.55 ${FONT};color:#7a7a84">It works for 10 minutes. If you did not try to sign up, ignore this email.</p>`, "VERIFY"),
+      `<p style="margin:0;font:500 14px/1.55 ${FONT};color:#8e8e99">It works for 10 minutes. If you did not try to sign up, ignore this email.</p>`, "VERIFY"),
     `Your E-Cinema code is ${spaced}. Enter it in E-Cinema to finish signing up. It works for 10 minutes. If you did not try to sign up, ignore this email.`,
   );
 }
@@ -222,7 +222,7 @@ export async function sendGift(to: string, name: string, giver: string, what: st
     `${giver} sent you ${what} on E-Cinema`,
     layout(message || "Open it to claim your gift", `${name ? `${name}, you` : "You"} have a gift`,
       p(`${esc(giver)} sent you <b>${esc(what)}</b>.`) +
-      (message ? note(`“${esc(message)}”<br><span style="color:#7a7a84">${esc(giver)}</span>`) + `<div style="height:20px"></div>` : "") +
+      (message ? note(`“${esc(message)}”<br><span style="color:#8e8e99">${esc(giver)}</span>`) + `<div style="height:20px"></div>` : "") +
       button(link, "Claim my gift") +
       facts([["Gift code", code], ["Works in", "Any country, any currency"]]) +
       p("Sign in or join free to claim it. The gift is yours once you claim it; until then nobody else can use the code without this email."),
@@ -379,7 +379,7 @@ export async function sendCampaignEmails(items: CampaignMail[], link: string): P
   for (let i = 0; i < items.length; i += 100) {
     const chunk = items.slice(i, i + 100).map((m) => ({
       from: NEWS_FROM, to: [m.email], subject: m.title,
-      html: layout(m.body || m.title, m.title, `${m.body ? p(esc(m.body)) : ""}${button(href, "Open E-Cinema")}<p style="margin:0;font:500 13px/1.5 ${FONT};color:#7a7a84"><a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Email settings</a></p>`, "NEWS", footer),
+      html: layout(m.body || m.title, m.title, `${m.body ? p(esc(m.body)) : ""}${button(href, "Open E-Cinema")}<p style="margin:0;font:500 13px/1.5 ${FONT};color:#8e8e99"><a href="${esc(site())}/settings/notifications" style="color:#8e8e99">Email settings</a></p>`, "NEWS", footer),
       text: `${m.title}\n\n${m.body ? m.body + "\n\n" : ""}${href}\n\nEmail settings: ${site()}/settings/notifications`,
       headers: { "List-Unsubscribe": `<${site()}/settings/notifications>` },
     }));

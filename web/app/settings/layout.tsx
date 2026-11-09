@@ -10,7 +10,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   return (
     <div className="st">
       <SettingsNav />
-      <main className="st-main">{children}</main>
+      <main id="main" className="st-main">{children}</main>
     </div>
   );
 }

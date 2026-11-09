@@ -50,7 +50,7 @@ export default async function PaymentFailed({ searchParams }: { searchParams: Pr
   return (
     <>
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="pf">
+      <main id="main" className="pf">
         <section className="pf-card" aria-labelledby="pf-h">
           <span className="pf-ic" aria-hidden>
             <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#e3182d" strokeWidth="2.2" strokeLinecap="round"><path d="M9 9l12 12M21 9 9 21" /></svg>

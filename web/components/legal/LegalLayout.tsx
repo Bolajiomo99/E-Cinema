@@ -29,7 +29,7 @@ export default async function LegalLayout({ here, title, lead, children, after }
           <b>Legal</b>
           {LEGAL.map(([t, href]) => <Link key={href} href={href} className={href === here ? "on" : ""} aria-current={href === here ? "page" : undefined}>{t}</Link>)}
         </nav>
-        <main className="lg-doc">
+        <main id="main" className="lg-doc">
           <h1>{title}</h1>
           <p className="lg-lead">{lead}</p>
           {children}

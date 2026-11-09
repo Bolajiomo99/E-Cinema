@@ -15,7 +15,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const body = (
     <div className="lp br">
       <TopNav me={me} active="home" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="sr-body">
+      <main id="main" className="sr-body">
         <h1 className="sr-only">Search</h1>
         <SearchBox initialQ={q} initial={initial} lang={loc.lang} />
       </main>

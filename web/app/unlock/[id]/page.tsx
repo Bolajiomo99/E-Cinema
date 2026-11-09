@@ -47,7 +47,7 @@ export default async function UnlockPage({ params }: { params: Promise<{ id: str
   const verifiedOn = state.status.verifiedAt ? new Date(state.status.verifiedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "";
 
   return (
-    <main className="ul">
+    <main id="main" className="ul">
       <i className="ul-glow" aria-hidden />
       <section className="ul-modal" role="dialog" aria-modal="true" aria-labelledby="ul-h">
         <header className="ul-h">
@@ -111,6 +111,6 @@ function Ico({ n }: { n: string }) {
     case "moon": return <svg {...p}><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg>;
     case "key": return <svg {...p}><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8M16 7l2 2M14 9l2 2" /></svg>;
     case "shield": return <svg {...p} stroke="#22c55e"><path d="M12 3 4.5 6v6c0 4.6 3.2 7.7 7.5 9 4.3-1.3 7.5-4.4 7.5-9V6z" /></svg>;
-    default: return <svg {...p} stroke="#6e6e7a"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>;
+    default: return <svg {...p} stroke="#8e8e99"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>;
   }
 }

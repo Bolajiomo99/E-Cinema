@@ -32,7 +32,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   if (!s) {
     const open = showtimes.filter((x) => endsAt(x) > Date.now());
     return (
-      <main className="co">
+      <main id="main" className="co">
         <HashToFilm />
         <div className="co-pay">
           <Logo href={me ? "/home" : "/"} />
@@ -79,7 +79,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const qualName = q.quality === "hd" ? "" : ` · ${QUALITIES.find((x) => x.id === q.quality)!.name}`;
 
   return (
-    <main className="co">
+    <main id="main" className="co">
       <div className="co-pay">
         <Logo href={me ? "/home" : "/"} />
         <Link href={me ? "/home" : "/"} className="su-back">← Back to premieres</Link>

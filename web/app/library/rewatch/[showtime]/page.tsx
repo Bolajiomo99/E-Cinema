@@ -20,7 +20,7 @@ export default async function RewatchStart({ params }: { params: Promise<{ showt
   const access = await accountApi("GET", `/v1/me/library/${encodeURIComponent(s.id)}`, undefined, session);
   return (
     <DashShell defaultOpen>
-      <main className="tk rw">
+      <main id="main" className="tk rw">
         <div className="tk-head">
           <div>
             <div className="tk-title"><SidebarToggle /><h1>Rewatch with friends</h1></div>

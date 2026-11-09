@@ -31,7 +31,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
     <DashShell>
       <div className="lp sh">
         <TopNav me={me} active="shop" t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="ct">
+        <main id="main" className="ct">
           {q ? (
             <CartApp initial={q} px={px} country={country} countryLabel={countryName(country) || "your country"} paypal={Boolean(process.env.PAYPAL_CLIENT_ID)}
               paystack={providerReady("paystack")} flutterwave={providerReady("flutterwave")}

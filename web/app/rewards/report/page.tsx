@@ -20,7 +20,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
     <DashShell>
       <div className="lp bp">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="bp-center">
+        <main id="main" className="bp-center">
           <ReportForm code={code} photosOn={mediaEnabled} />
         </main>
       </div>

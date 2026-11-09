@@ -28,7 +28,7 @@ export default function Lobby({ showtimeId, film, untilStart, syncMs, online, wa
         <Link href="/home" className="lb-logo" aria-label="Leave the room">E-CINEMA<svg viewBox="0 0 116 8" aria-hidden><path d="M2 6 Q58 -2 114 6" fill="none" stroke="#e3182d" strokeWidth="2.4" strokeLinecap="round" /></svg></Link>
         <div className="lb-badges"><span>ROOM · {film.toUpperCase()}</span><span>{watching.toLocaleString("en")} HERE</span></div>
       </header>
-      <main className="lb-main">
+      <main id="main" className="lb-main">
         <p className="lb-eyebrow">{film.toUpperCase()} STARTS IN</p>
         <div className="lb-count" aria-live="off">{count}</div>
         <p className="lb-sub">Everyone in the world sees frame one at the same second.</p>

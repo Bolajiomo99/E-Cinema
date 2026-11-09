@@ -22,7 +22,7 @@ export default async function ClassicsPage() {
 
   return (
     <DashShell defaultOpen>
-      <main className="cl">
+      <main id="main" className="cl">
         <div className="cl-top"><span className="dash-brand"><SidebarToggle /><Logo /></span></div>
         <div className="cl-head">
           <div>

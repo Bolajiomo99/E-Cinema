@@ -20,7 +20,7 @@ export default async function DeletePage() {
   const tickets = u.status === 200 ? (u.body as { tickets: number }).tickets : 0;
   const plan = p.status === 200 ? (p.body as { plan: string }).plan : "free";
   return (
-    <main className="ca st-del">
+    <main id="main" className="ca st-del">
       <header className="ca-top st-del-top"><Logo /><AccountMenu name={me.name} email={me.email} /></header>
       <DeleteCard tickets={tickets} plan={plan} />
     </main>

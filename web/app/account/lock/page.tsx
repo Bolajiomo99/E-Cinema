@@ -9,7 +9,7 @@ export const metadata = { title: "Lock your account · E-Cinema", robots: { inde
 export default async function LockPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
   const { t = "" } = await searchParams;
   return (
-    <main className="ca">
+    <main id="main" className="ca">
       <header className="ca-top"><Logo /></header>
       <LockCard token={t.slice(0, 200)} />
     </main>

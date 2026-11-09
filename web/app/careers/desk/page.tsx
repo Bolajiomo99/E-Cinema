@@ -23,7 +23,7 @@ export default async function HiringDeskPage() {
     <DashShell>
       <div className="lp cpg">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="ma">
+        <main id="main" className="ma">
           <header className="ma-head"><div><h1>Hiring desk</h1><p>Roles, applicants and group screening quotes</p></div></header>
           <HiringDesk
             jobs={(jobs.body as { jobs: Job[] | null })?.jobs ?? []}

@@ -54,7 +54,7 @@ export default async function RefundPage({ searchParams }: { searchParams: Promi
     <DashShell>
       <div className="lp rf">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="rf-center">{card}</main>
+        <main id="main" className="rf-center">{card}</main>
       </div>
     </DashShell>
   );

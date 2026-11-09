@@ -48,7 +48,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
 
   return (
     <DashShell defaultOpen>
-      <main className="tk in">
+      <main id="main" className="tk in">
         <div className="tk-head">
           <div>
             <div className="tk-title"><SidebarToggle /><h1>Your insights</h1></div>

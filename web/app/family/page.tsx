@@ -20,7 +20,7 @@ export default async function FamilyPage() {
     <DashShell>
       <div className="lp cpg">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="fm">
+        <main id="main" className="fm">
           <FamilyApp initial={f.family} active={f.active} kidsFilms={kidsFilms()} />
         </main>
       </div>

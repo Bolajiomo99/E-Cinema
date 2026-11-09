@@ -13,7 +13,7 @@ export default async function ReleasesPage() {
       <div className="hero slim">
         <SiteNav signedIn={Boolean(me)} />
       </div>
-      <main className="band">
+      <main id="main" className="band">
         <ReleaseCalendar />
       </main>
       <div className="band"><SiteFooter /></div>

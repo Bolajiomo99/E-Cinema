@@ -33,7 +33,7 @@ export default async function JobPage({ params }: { params: Promise<{ slug: stri
   const body = (
     <div className="lp cpg">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="jd">
+      <main id="main" className="jd">
         <article className="jd-copy">
           <p className="cp-kicker">{j.team.toUpperCase()} · {place} · {KIND[j.kind].toUpperCase()}</p>
           <h1>{j.title}</h1>

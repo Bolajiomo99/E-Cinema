@@ -54,7 +54,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const body = (
     <div className="lp sh">
       <TopNav me={me} active="shop" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="pd">
+      <main id="main" className="pd">
         <div className="pd-gal">
           <ProductArt id={p.id} name={p.name} images={p.images} className="pd-photo" size={180} />
           {p.images.length > 1 && (

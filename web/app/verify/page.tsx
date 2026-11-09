@@ -14,7 +14,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const body = (
     <div className="lp vf">
       <TopNav me={me} active="shop" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main>
+      <main id="main">
         <VerifyApp initial={typeof sp.code === "string" ? sp.code.slice(0, 200) : undefined} />
       </main>
       <LandingFooter />

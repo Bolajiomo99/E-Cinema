@@ -150,7 +150,7 @@ export default function PostCard({ post: initial, me, compactView = false, onGon
   return (
     <article className={`cm-post ${compactView ? "slim" : ""}`}>
       <header className="cm-post-h">
-        <Link href={`/u/${post.author.id}`} className="cm-who" aria-label={post.author.name}><Avatar id={post.author.id} name={post.author.name} size={compactView ? 34 : 40} /></Link>
+        <Link href={`/u/${post.author.id}`} className="cm-who" aria-hidden tabIndex={-1}><Avatar id={post.author.id} name={post.author.name} size={compactView ? 34 : 40} /></Link>
         <div className="cm-post-t">
           <Link href={`/u/${post.author.id}`}>{post.author.name}</Link>
           <span>{post.community && !compactView ? <><Link href={`/community/${post.community.slug}`}>{post.community.name}</Link>{meta.slice(post.community.name.length)}</> : meta}</span>
@@ -184,8 +184,8 @@ export default function PostCard({ post: initial, me, compactView = false, onGon
       {post.kind === "poll" && <Poll post={post} onChange={upd} say={say} />}
       {!compactView && (
         <footer className="cm-acts">
-          <button type="button" className={post.liked ? "on" : ""} onClick={like} aria-pressed={post.liked} aria-label={post.liked ? "Unlike" : "Like"}><Heart on={post.liked} /><span>{compact(post.likes)}</span></button>
-          <button type="button" onClick={() => setTalk((t) => !t)} aria-expanded={talk} aria-label="Comments"><Bubble /><span>{compact(post.comments)}</span></button>
+          <button type="button" className={post.liked ? "on" : ""} onClick={like} aria-pressed={post.liked} aria-label={`${post.liked ? "Unlike" : "Like"}, ${compact(post.likes)}`}><Heart on={post.liked} /><span>{compact(post.likes)}</span></button>
+          <button type="button" onClick={() => setTalk((t) => !t)} aria-expanded={talk} aria-label={`Comments, ${compact(post.comments)}`}><Bubble /><span>{compact(post.comments)}</span></button>
           <button type="button" onClick={share}><ShareIc /><span>Share</span></button>
           <span className="cm-sp" />
           {tr ? (
@@ -199,8 +199,8 @@ export default function PostCard({ post: initial, me, compactView = false, onGon
       )}
       {compactView && (
         <footer className="cm-acts slim">
-          <button type="button" className={post.liked ? "on" : ""} onClick={like} aria-pressed={post.liked} aria-label={post.liked ? "Unlike" : "Like"}><Heart on={post.liked} /><span>{compact(post.likes)}</span></button>
-          <button type="button" onClick={() => setTalk((t) => !t)} aria-expanded={talk} aria-label="Comments"><Bubble /><span>{compact(post.comments)}</span></button>
+          <button type="button" className={post.liked ? "on" : ""} onClick={like} aria-pressed={post.liked} aria-label={`${post.liked ? "Unlike" : "Like"}, ${compact(post.likes)}`}><Heart on={post.liked} /><span>{compact(post.likes)}</span></button>
+          <button type="button" onClick={() => setTalk((t) => !t)} aria-expanded={talk} aria-label={`Comments, ${compact(post.comments)}`}><Bubble /><span>{compact(post.comments)}</span></button>
           <button type="button" onClick={share} aria-label="Share"><ShareIc /></button>
           {canTranslate && <button type="button" className="cm-tr" onClick={translate} disabled={trBusy}>{tr ? (original ? "See translation" : "See original") : trBusy ? "Translating…" : "Translate"}</button>}
         </footer>

@@ -47,7 +47,7 @@ function FileIcon() {
 function CheckIcon({ state }: { state: UploadCheck["state"] }) {
   if (state === "ok") return <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-label="Passed"><path d="m3 8.5 3 3 7-7" /></svg>;
   if (state === "warn") return <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#d4a23a" strokeWidth="1.6" strokeLinecap="round" aria-label="Look at this"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M3.4 12.6l2.1-2.1M10.5 5.5l2.1-2.1" /></svg>;
-  return <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#6e6e7a" strokeWidth="1.6" aria-label="Coming soon"><circle cx="8" cy="8" r="5.5" /></svg>;
+  return <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="#8e8e99" strokeWidth="1.6" aria-label="Coming soon"><circle cx="8" cy="8" r="5.5" /></svg>;
 }
 
 export default function StudioUpload({ upload: u0, canEdit, now: now0 }: { upload: Upload; canEdit: boolean; now: number }) {

@@ -49,6 +49,7 @@ export default async function RootLayout({
         </head>
       )}
       <body>
+        <a href="#main" className="skip-link">Skip to content</a>
         {children}
         <CookieBanner />
         <ErrorReporter />

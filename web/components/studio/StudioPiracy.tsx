@@ -200,12 +200,12 @@ export default function StudioPiracy({ initial, films, canEdit, failed }: { init
         <section className="bp-panel" aria-label="Protection on your films">
           <h2>Protection on your films</h2>
           <ul className="stpy-guards">
-            <li><span>Viewer code burned into every stream</span><i className="on" aria-label="On" /></li>
-            <li><span>One account per person, face-verified, 2 devices</span><i className="on" aria-label="On" /></li>
-            <li><span>Takedown notices written by Studio AI</span><i className="on" aria-label="On" /></li>
-            <li><span>Multi-DRM (Widevine, PlayReady, FairPlay) <em className="soon-tag">Soon</em></span><i aria-label="Not yet" /></li>
-            <li><span>Screen capture blocking on Android <em className="soon-tag">Soon</em></span><i aria-label="Not yet" /></li>
-            <li><span>Seats sold only in the countries you allow (Settings, Default territories)</span><i className="on" aria-label="On" /></li>
+            <li><span>Viewer code burned into every stream</span><i className="on" role="img" aria-label="On" /></li>
+            <li><span>One account per person, face-verified, 2 devices</span><i className="on" role="img" aria-label="On" /></li>
+            <li><span>Takedown notices written by Studio AI</span><i className="on" role="img" aria-label="On" /></li>
+            <li><span>Multi-DRM (Widevine, PlayReady, FairPlay) <em className="soon-tag">Soon</em></span><i role="img" aria-label="Not yet" /></li>
+            <li><span>Screen capture blocking on Android <em className="soon-tag">Soon</em></span><i role="img" aria-label="Not yet" /></li>
+            <li><span>Seats sold only in the countries you allow (Settings, Default territories)</span><i className="on" role="img" aria-label="On" /></li>
           </ul>
         </section>
         <section className="bp-panel" aria-label="What we do when a leak is found">

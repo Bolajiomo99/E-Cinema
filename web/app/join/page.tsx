@@ -42,9 +42,9 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
   const art = ART[step];
   const cur = currencyFor(country);
   return (
-    <main className={`su ${art ? "split" : "solo"}`}>
+    <main id="main" className={`su ${art ? "split" : "solo"}`}>
       {art ? (
-        <aside className="su-art" aria-hidden>
+        <aside className="su-art">
           <span className="su-glow" />
           <div className="su-posters">
             <span className="su-poster a"><b>ORBIT<br />ZERO</b></span>

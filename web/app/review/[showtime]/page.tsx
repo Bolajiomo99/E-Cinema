@@ -35,7 +35,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ showtim
   const body = (
     <div className="lp rv-page">
       <TopNav me={me} active="live" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="rv-wrap">
+      <main id="main" className="rv-wrap">
         {started ? (
           <ReviewCard showtimeId={s.id} eyebrow={`${s.film.toUpperCase()} · ${ended ? "THE END" : "NOW SHOWING"}`}
             initial={(mine?.status === 200 ? (mine.body as { review?: { stars: number; tags: string[]; body: string } | null }).review : null) ?? null} next={next} />

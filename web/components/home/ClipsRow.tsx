@@ -12,7 +12,7 @@ export default function ClipsRow({ films }: { films: Showtime[] }) {
         {films.slice(0, 6).map((s) => {
           const c = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
           return (
-            <TrailerButton key={s.id} film={s.id} title={s.film} className="hm-clip" ariaLabel={`Play the ${s.film} trailer`}>
+            <TrailerButton key={s.id} film={s.id} title={s.film} className="hm-clip">
               <span className="hm-clip-bg" style={{ background: `linear-gradient(180deg, ${c.from} 0%, ${c.via} 60%, ${c.to} 100%)` }} />
               <span className="hm-clip-glow" style={{ background: `radial-gradient(circle, ${c.glow}, transparent 70%)` }} />
               <span className="hm-clip-shade" />

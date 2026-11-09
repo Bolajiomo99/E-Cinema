@@ -22,7 +22,7 @@ export default async function MyApplicationsPage() {
     <DashShell>
       <div className="lp cpg">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="ma">
+        <main id="main" className="ma">
           <header className="ma-head">
             <div><h1>My applications</h1><p>Track every job you applied for at E‑Cinema</p></div>
             <Link className="vf-btn ghost" href="/careers/jobs">Find more roles</Link>

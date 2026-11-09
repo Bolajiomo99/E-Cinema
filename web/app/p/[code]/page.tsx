@@ -34,7 +34,7 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
   const here = `/p/${party.code}`;
 
   return (
-    <main className="wp party" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
+    <main id="main" className="wp party" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
       <span className="wp-glow" style={{ background: `radial-gradient(circle, ${p.glow}, transparent 70%)` }} aria-hidden />
       <span className="wp-dim" aria-hidden />
       <nav className="party-nav"><Logo href={me ? "/home" : "/"} /></nav>

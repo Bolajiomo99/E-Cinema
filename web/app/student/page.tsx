@@ -38,7 +38,7 @@ export default async function StudentPage() {
           <div><a href="#verify" className="lp-btn">Verify and save {save}%</a></div>
         </div>
       </header>
-      <main>
+      <main id="main">
         <section className="gf-main">
           <h2>How to get it</h2>
           <ol className="sd-steps">

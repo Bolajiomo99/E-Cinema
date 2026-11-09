@@ -30,7 +30,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
 
   return (
     <DashShell defaultOpen>
-      <main className="tk nt">
+      <main id="main" className="tk nt">
         <div className="tk-head">
           <div className="tk-title"><SidebarToggle /><h1>Notifications</h1></div>
           <div className="tk-chips nt-chips">

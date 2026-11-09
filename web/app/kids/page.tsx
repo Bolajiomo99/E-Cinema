@@ -23,7 +23,7 @@ export default async function KidsPage() {
     <DashShell>
       <div className="lp cpg">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="fm">
+        <main id="main" className="fm">
           <KidsCinema active={active} films={films} lang={loc.lang ?? "en"} whenText={whenText(films)} />
         </main>
       </div>

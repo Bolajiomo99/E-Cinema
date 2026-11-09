@@ -22,7 +22,7 @@ export default async function DownloadsPage() {
   const remote: Remote[] = dl?.status === 200 ? ((dl.body as { downloads: Remote[] }).downloads ?? []) : [];
   return (
     <DashShell defaultOpen>
-      <main className="tk dl">
+      <main id="main" className="tk dl">
         <DownloadsManager owned={owned} remote={remote} title={<div className="tk-title"><SidebarToggle /><h1>Downloads</h1></div>} />
       </main>
     </DashShell>

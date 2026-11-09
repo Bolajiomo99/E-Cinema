@@ -40,7 +40,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
   const body = (
     <div className="lp br">
       <TopNav me={me} active="home" t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="br-body">
+      <main id="main" className="br-body">
         <header className="br-head">
           <div>
             <h1>{type ? TYPES.find((x) => x.id === type)!.label : "Browse"}</h1>

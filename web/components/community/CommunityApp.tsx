@@ -109,7 +109,7 @@ export default function CommunityApp({ me, groups, posts, more, query, heading, 
           <h2>People to follow</h2>
           {side.people.length === 0 ? <p className="cm-muted">As people post, you will find fans to follow here.</p> : side.people.map((p) => (
             <div key={p.id} className="cm-person">
-              <Link href={`/u/${p.id}`}><Avatar id={p.id} name={p.name} size={36} /></Link>
+              <Link href={`/u/${p.id}`} aria-hidden tabIndex={-1}><Avatar id={p.id} name={p.name} size={36} /></Link>
               <div><Link href={`/u/${p.id}`}>{p.name}</Link><span>{[p.country && countryName(p.country), p.note].filter(Boolean).join(" · ")}</span></div>
               <FollowButton id={p.id} following={p.following} say={say} />
             </div>

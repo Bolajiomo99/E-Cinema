@@ -32,10 +32,10 @@ const SENDER = {
 } as const;
 
 // Footers: service mail cannot be switched off; the others link to the email settings.
-const settingsLink = () => `<a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Email settings</a>`;
+const settingsLink = () => `<a href="${esc(site())}/settings/notifications" style="color:#8e8e99">Email settings</a>`;
 const FOOT_ACTION = () => ({ html: `You get this because of an action on your E-Cinema account. ${settingsLink()}` });
-const FOOT_STUDIO = () => ({ html: `You get this as a member of a studio on E-Cinema. <a href="${esc(site())}/studio/settings#notifications" style="color:#7a7a84">Choose which studio emails you get</a>` });
-const FOOT_NEWS = () => ({ html: `You get this because you said yes to news from E-Cinema. <a href="${esc(site())}/settings/notifications" style="color:#7a7a84">Unsubscribe</a> · ${settingsLink()}` });
+const FOOT_STUDIO = () => ({ html: `You get this as a member of a studio on E-Cinema. <a href="${esc(site())}/studio/settings#notifications" style="color:#8e8e99">Choose which studio emails you get</a>` });
+const FOOT_NEWS = () => ({ html: `You get this because you said yes to news from E-Cinema. <a href="${esc(site())}/settings/notifications" style="color:#8e8e99">Unsubscribe</a> · ${settingsLink()}` });
 
 // Pieces of the designs that only these emails use.
 const refBox = (t: string) =>
@@ -44,7 +44,7 @@ const ghost = (to: string, label: string) =>
   `<p style="margin:0 0 20px"><a href="${esc(to)}" style="display:inline-block;background:#ffffff;color:#16161a;text-decoration:none;font:600 16px/1 ${FONT};padding:15px 23px;border-radius:8px;border:1px solid #c9c9d0">${esc(label)}</a></p>`;
 const bigCode = (code: string) =>
   `<div style="margin:0 0 20px;background:#f5f5f7;border-radius:10px;padding:18px;text-align:center;font:400 40px/1.1 'Bebas Neue',Impact,'Arial Narrow',sans-serif;letter-spacing:0.5px;color:#141418">${/^\d{6}$/.test(code) ? `${code.slice(0, 3)} ${code.slice(3)}` : esc(code)}</div>`;
-const small = (t: string) => `<p style="margin:0 0 20px;font:500 14px/1.55 ${FONT};color:#7a7a84">${t}</p>`;
+const small = (t: string) => `<p style="margin:0 0 20px;font:500 14px/1.55 ${FONT};color:#8e8e99">${t}</p>`;
 const teal = (t: string) => `<div style="margin:0 0 20px;background:#e6f6f4;border-radius:10px;padding:14px 16px;font:500 14px/1.55 ${FONT};color:#3a3a42">${t}</div>`;
 const steps = (list: string[]) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">${list
@@ -52,7 +52,7 @@ const steps = (list: string[]) =>
     .join("")}</table>`;
 const picks = (rows: { title: string; sub: string; to: string }[]) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px">${rows
-    .map((r) => `<tr><td style="padding:12px 0;border-bottom:1px solid #e2e2e6"><a href="${esc(r.to)}" style="text-decoration:none"><b style="display:block;font:700 16px/1.3 ${FONT};color:#16161a">${esc(r.title)}</b><span style="font:500 14px/1.5 ${FONT};color:#7a7a84">${esc(r.sub)}</span></a></td></tr>`)
+    .map((r) => `<tr><td style="padding:12px 0;border-bottom:1px solid #e2e2e6"><a href="${esc(r.to)}" style="text-decoration:none"><b style="display:block;font:700 16px/1.3 ${FONT};color:#16161a">${esc(r.title)}</b><span style="font:500 14px/1.5 ${FONT};color:#8e8e99">${esc(r.sub)}</span></a></td></tr>`)
     .join("")}</table>`;
 
 // Money and time in the member's own country.
@@ -352,7 +352,7 @@ const T: Record<string, (m: Outgoing) => Rendered | null> = {
       title: "Delivered",
       body: p(`Your order ${esc(S(m.data.order))} arrived${at ? ` at ${clock(at, m.country)}` : ""}. Enjoy it, and tell other fans what you think with a review.`) +
         button(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`), "See my order") +
-        small(`Something wrong? <a href="${esc(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`))}" style="color:#7a7a84">Return it</a> within 14 days.`),
+        small(`Something wrong? <a href="${esc(href(`/shop/orders?o=${encodeURIComponent(S(m.data.orderId))}`))}" style="color:#8e8e99">Return it</a> within 14 days.`),
       text: `Order ${S(m.data.order)} was delivered. Returns within 14 days: ${href("/shop/orders")}`,
     });
   },

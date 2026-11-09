@@ -144,7 +144,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
         </div>
       </header>
 
-      <main className="fd-body">
+      <main id="main" className="fd-body">
         <div className="fd-left">
           <section>
             <h2 className="fd-h2">Watch it in</h2>

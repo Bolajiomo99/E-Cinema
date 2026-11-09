@@ -41,7 +41,7 @@ export default async function Redeem({ params }: { params: Promise<{ code: strin
   const body = (
     <div className="lp gf">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="gf-redeem">
+      <main id="main" className="gf-redeem">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="gf-photo" src="/img/gift-card.png" alt="" width={420} height={280} />
         <section className="gf-claim">{card}</section>

@@ -37,7 +37,7 @@ export default async function SoldOut({ params }: { params: Promise<{ id: string
   const odds = l.entries > l.freeSeats ? `1 in ${Math.ceil(l.entries / l.freeSeats)}` : l.entries ? "1 in 1" : "—";
 
   return (
-    <main className="so">
+    <main id="main" className="so">
       <div className="so-top">
         <Logo href={me ? "/home" : "/"} />
         <LocalePicker country={loc.country} lang={loc.lang} signedIn={Boolean(me)} />

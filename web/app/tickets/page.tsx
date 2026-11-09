@@ -34,7 +34,7 @@ export default async function Tickets({ searchParams }: { searchParams: Promise<
 
   return (
     <DashShell defaultOpen>
-      <main className="tk">
+      <main id="main" className="tk">
         <div className="tk-head">
           <div>
             <div className="tk-title"><SidebarToggle /><h1>My tickets</h1></div>

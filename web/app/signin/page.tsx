@@ -11,7 +11,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const { error, next } = await searchParams;
   if (!error && (await currentAccount())) redirect("/home");
   return (
-    <main className="ca">
+    <main id="main" className="ca">
       <header className="ca-top"><Logo /></header>
       <SignInCard initialError={error} next={next} />
     </main>

@@ -8,7 +8,7 @@ export const metadata = { title: "Reset your password · E-Cinema" };
 export default async function ForgotPage({ searchParams }: { searchParams: Promise<{ id?: string; code?: string }> }) {
   const { id = "", code = "" } = await searchParams;
   return (
-    <main className="ca">
+    <main id="main" className="ca">
       <header className="ca-top"><Logo /></header>
       <ForgotFlow initialId={id.slice(0, 200)} initialCode={/^\d{6}$/.test(code) ? code : ""} />
     </main>

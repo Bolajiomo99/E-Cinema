@@ -21,7 +21,7 @@ export default async function BrandGuidePage() {
   const body = (
     <div className="lp li">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-      <main className="li-guide">
+      <main id="main" className="li-guide">
         <p className="lp-eyebrow">BRAND GUIDE</p>
         <h1>Designing official E‑Cinema merch</h1>
         <div className="li-swatches" aria-hidden>

@@ -23,7 +23,7 @@ export default async function OrderDeskPage() {
     <DashShell>
       <div className="lp sh">
         <TopNav me={me} active="shop" t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="ord">
+        <main id="main" className="ord">
           <h1 className="ct-h1">Order desk</h1>
           <OrderDesk initial={orders} />
           <RefundDesk review={refunds.review ?? []} send={refunds.send ?? []} />

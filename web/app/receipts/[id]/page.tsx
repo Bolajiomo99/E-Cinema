@@ -21,7 +21,7 @@ export default async function Receipt({ params }: { params: Promise<{ id: string
   const each = st ? Number(st.price.value) : 0;
   const fmt = (v: number) => new Intl.NumberFormat("en", { style: "currency", currency: st?.price.currency ?? "USD" }).format(v);
   return (
-    <main className="receipt">
+    <main id="main" className="receipt">
       <header><img src="/email/logo.png" width={116} height={34} alt="E-CINEMA" /><span>RECEIPT</span></header>
       <h1>Receipt</h1>
       <dl>

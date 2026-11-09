@@ -19,7 +19,7 @@ export default async function LicensingDeskPage() {
     <DashShell>
       <div className="lp bp">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="bp-body"><LicensingDesk /></main>
+        <main id="main" className="bp-body"><LicensingDesk /></main>
       </div>
     </DashShell>
   );

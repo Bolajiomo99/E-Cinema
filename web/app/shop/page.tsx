@@ -50,7 +50,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           </Link>
         </header>
       )}
-      <main className="sh-body">
+      <main id="main" className="sh-body">
         <div className="sh-f">
           <h2>Shop E-Cinema</h2>
           <nav className="sh-chips" aria-label="Filter products">

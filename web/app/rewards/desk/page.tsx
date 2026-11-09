@@ -23,7 +23,7 @@ export default async function DeskPage() {
     <DashShell>
       <div className="lp bp">
         <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
-        <main className="bp-body">
+        <main id="main" className="bp-body">
           <ReportDesk initial={reports} />
         </main>
       </div>

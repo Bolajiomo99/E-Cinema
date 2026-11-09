@@ -120,11 +120,11 @@ export default async function ComingSoonPage({ searchParams }: { searchParams: P
               {rise ? `, next on ${new Date(rise).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}
             </p>
           </div>
-          <Link href={`/film/${hero.id}`} className="cs-hero-poster" aria-label={`${hero.film} details`}><Poster s={hero} h={420} /></Link>
+          <Link href={`/film/${hero.id}`} className="cs-hero-poster"><Poster s={hero} h={420} /></Link>
         </header>
       )}
 
-      <main className="cs-body">
+      <main id="main" className="cs-body">
         <div className="cs-head">
           <h2>Coming soon</h2>
           <nav className="br-chips" aria-label="Filter">

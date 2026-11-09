@@ -19,7 +19,7 @@ export function LineChart({ points, labels, color = "#e3182d", label = "Sales by
   );
 }
 
-const DONUT = ["#2bb3a3", "#e3182d", "#d4a23a", "#8b7cf6", "#6e6e7a"];
+const DONUT = ["#2bb3a3", "#e3182d", "#d4a23a", "#8b7cf6", "#8e8e99"];
 export function Donut({ parts }: { parts: Share[] }) {
   const total = parts.reduce((a, p) => a + p.value, 0);
   let at = 0;
