@@ -31,6 +31,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/playback"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sync"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/translations"
 )
 
 type Server struct {
@@ -76,6 +77,8 @@ type Server struct {
 	Exec exec.Store
 	// Careers runs the jobs board, applications and group screening quotes.
 	Careers careers.Store
+	// Translations is the translation memory for site text, emails and receipts.
+	Translations translations.Store
 	// InternalToken guards routes only the web app may call (attaching orders, marking paid).
 	InternalToken string
 }
@@ -342,6 +345,7 @@ func (s *Server) Routes() http.Handler {
 	s.studentRoutes(mux)
 	mux.Handle("GET /v1/sync/{id}", sync.Handler(schedule{s.Tickets}, s.AllowedOrigins))
 	s.errorRoutes(mux)
+	s.translationRoutes(mux)
 	return securityHeaders(s.lat.wrap(recoverPanics(mux)))
 }
 

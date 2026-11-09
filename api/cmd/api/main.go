@@ -37,6 +37,7 @@ import (
 	"github.com/Bolajiomo99/E-Cinema/api/internal/identity"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/sms"
 	"github.com/Bolajiomo99/E-Cinema/api/internal/tickets"
+	"github.com/Bolajiomo99/E-Cinema/api/internal/translations"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -119,6 +120,7 @@ func run() error {
 		Studios:        studios.Store{DB: pool},
 		Exec:           exec.Store{DB: pool, CEOs: ceoEmails()},
 		Careers:        careers.Store{DB: pool},
+		Translations:   translations.Store{DB: pool},
 		ChatHub:        chat.NewHub(),
 		Passes:         rooms.Passes{Key: roomKey(os.Getenv("INTERNAL_API_TOKEN"))},
 	}
