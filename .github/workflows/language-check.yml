@@ -1,0 +1,24 @@
+name: Language check
+# Manual: asks the live site for a few interface lines in other languages and loads a page with
+# a French and an Arabic language choice, to confirm translation works end to end.
+on:
+  workflow_dispatch:
+    inputs:
+      langs:
+        description: "Languages to check"
+        default: "fr ar yo"
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for l in ${{ inputs.langs }}; do
+            echo "== $l"
+            curl -sS --max-time 120 -X POST https://e-cinema.net/api/i18n \
+              -H 'content-type: application/json' -H 'origin: https://e-cinema.net' \
+              -d "{\"lang\":\"$l\",\"strings\":[\"Get a seat\",\"Every screening happens once, at the same moment for everyone.\",\"RELEASE CALENDAR\",\"Sign in\"]}" | jq -c .
+            curl -sS --max-time 30 -o /dev/null -w "page /browse in $l: %{http_code}\n" -H "cookie: ec_lang=$l" https://e-cinema.net/browse
+            curl -sS --max-time 30 -H "cookie: ec_lang=$l" https://e-cinema.net/browse | grep -o '<html[^>]*>' | head -1
+          done
