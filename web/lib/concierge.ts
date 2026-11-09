@@ -5,6 +5,8 @@ import { CheckoutPaymentIntent } from "@paypal/paypal-server-sdk";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
 import { paypalOrders } from "@/lib/paypal";
 import { shopFor, type ShopItem } from "@/lib/shop";
+import { accountApi } from "@/lib/auth";
+import { openRequest } from "@/lib/support";
 import { AdultOnlyError, RegionError, apiEnabled, attachOrder, holdSeats, myTickets, releaseHold, SoldOutError } from "@/lib/api";
 
 // E-Cinema AI, the concierge: Claude plans the booking, PayPal takes the payment.
@@ -12,7 +14,8 @@ import { AdultOnlyError, RegionError, apiEnabled, attachOrder, holdSeats, myTick
 
 export type PendingOrder = { orderId: string; showtimeId: string; film: string; seats: number; total: string; currency: string };
 export type CalendarLink = { showtimeId: string; film: string; startsAt: string };
-export type AgentOutput = { orders: PendingOrder[]; shop: ShopItem[]; calendar: CalendarLink[]; ticketsChanged: boolean };
+export type SupportLink = { id: number; link: string; subject: string };
+export type AgentOutput = { orders: PendingOrder[]; shop: ShopItem[]; calendar: CalendarLink[]; ticketsChanged: boolean; support?: SupportLink };
 
 const MAX_SEATS = 10;
 const MAX_STEPS = 8;
@@ -29,6 +32,9 @@ Spending limit: a booking above $${SPEND_LIMIT} total needs the viewer to say ye
 If the viewer wants to change or cancel seats they have not paid for, call release_hold. Paid seats are refunded through Help, not by you.
 Offer add_to_calendar after a booking or when the viewer wants a reminder. Offer shop_the_film when it fits, products are bought on the retailer's site.
 Adult (18+) screenings need the face and ID check in the viewer's account; if booking fails for that reason, tell them where to do it (/settings/account).
+For anything you cannot solve yourself (a payment problem, a paid seat to refund that the refund page at /help/refund cannot handle, playback trouble that tips do not fix, account or security worries, a complaint),
+offer to pass it to a person on the E-Cinema team with contact_support. Ask first; write the summary in English for the team, with what happened, the film and time if known, and what the viewer wants.
+A signed-in viewer is answered at their account email; a guest must give you an email address first. Never promise a refund or a time; the team answers by email.
 Keep replies short, warm and clear. Use the viewer's language.`;
 
 const tools: Anthropic.Tool[] = [
@@ -91,6 +97,21 @@ const tools: Anthropic.Tool[] = [
       additionalProperties: false,
     },
     strict: true,
+  },
+  {
+    name: "contact_support",
+    description: "Pass the viewer's problem to a person on the E-Cinema support team. Only after the viewer agrees. The team answers by email with a private link.",
+    input_schema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", enum: ["payments", "playback", "languages", "account", "kids", "country", "other"] },
+        subject: { type: "string", description: "a short title, under 100 characters" },
+        summary: { type: "string", description: "for the team, in English: what happened, film and time if known, what the viewer wants" },
+        email: { type: "string", description: "only for a guest who is not signed in: the email address they gave you" },
+      },
+      required: ["topic", "subject", "summary"],
+      additionalProperties: false,
+    },
   },
 ];
 
@@ -188,6 +209,21 @@ async function runTool(block: Anthropic.ToolUseBlock, out: AgentOutput, session?
     const items = await shopFor(showtime.shopQuery);
     shop.push(...items);
     return reply(JSON.stringify(items.map(({ title, brand, price, currency, store }) => ({ title, brand, price, currency, store }))));
+  }
+
+  if (block.name === "contact_support") {
+    const input = block.input as { topic: string; subject: string; summary: string; email?: string };
+    let accountId: string | undefined, email = (input.email ?? "").trim(), name = "";
+    if (session) {
+      const me = await accountApi("GET", "/v1/sessions/current", undefined, session);
+      const a = me.status === 200 ? (me.body as { account: { id: string; email: string; name: string } }).account : null;
+      if (a) { accountId = a.id; email = a.email; name = a.name; }
+    }
+    if (!email) return reply("The viewer is not signed in. Ask for the email address the team should answer, then call contact_support again with it.", true);
+    const r = await openRequest({ accountId, email, name, topic: input.topic, subject: input.subject.slice(0, 140), body: input.summary.slice(0, 5000), via: "concierge" });
+    if (!r.ok) return reply(r.error, true);
+    out.support = { id: r.request.id, link: `/help/r/${r.request.token}`, subject: r.request.subject };
+    return reply(`Sent to the team as request #${r.request.id}. They answer by email at ${email}. The viewer sees a link to the request under your reply.`);
   }
 
   return reply(`Unknown tool ${block.name}`, true);
