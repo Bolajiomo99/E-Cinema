@@ -68,7 +68,7 @@ function Comments({ post, me, onCount, say }: { post: Post; me: { id: string; na
           {list.map((c) => (
             <li key={c.id}>
               <Avatar id={c.author.id} name={c.author.name} size={28} />
-              <div><strong>{c.author.name}</strong> <span className="cm-fine">{ago(c.createdAt)}</span><p>{c.body}</p></div>
+              <div><strong>{c.author.name}</strong> <span className="cm-fine">{ago(c.createdAt)}</span><p translate="no">{c.body}</p></div>
             </li>
           ))}
         </ul>
@@ -174,7 +174,7 @@ export default function PostCard({ post: initial, me, compactView = false, onGon
           )}
         </div>
       </header>
-      {body && <p className="cm-text">{renderTags(body)}</p>}
+      {body && <p className="cm-text" translate="no">{renderTags(body)}</p>}
       {post.kind === "photo" && post.mediaKey && (
         <a href={`/api/community/posts/${post.id}/photo`} target="_blank" rel="noopener noreferrer" className="cm-media">
           {/* eslint-disable-next-line @next/next/no-img-element */}

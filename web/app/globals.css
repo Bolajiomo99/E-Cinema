@@ -5745,3 +5745,9 @@ button.stu-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; 
 .exerr-stack { margin: 6px 0 0; padding: 10px; background: #0d0d10; border-radius: 8px; font: 12px/1.5 Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
 .exerr-done { opacity: .55; }
 @media (max-width: 640px) { .exerr-g { grid-template-columns: minmax(0, 1fr) auto; } .exerr-g > :nth-child(2), .exerr-g > :nth-child(4) { display: none; } .exn-th.exerr-g > :nth-child(3) { display: none; } .exerr-g > :nth-child(3) { display: none; } }
+
+/* While a page switches to the visitor's language (components/i18n/AutoTranslate.tsx). The
+   animation shows the page after 3 seconds even if the script never runs. */
+html.tr-wait body { opacity: 0; animation: tr-show 0s linear 3s forwards; }
+html body { transition: opacity .12s ease-out; }
+@keyframes tr-show { to { opacity: 1; } }

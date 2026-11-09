@@ -319,7 +319,7 @@ function Msg({ m, showtimeId, world, translated, hidden, onReveal, onReport }: {
               <img src={src} alt={m.body === "Photo" ? `Photo from ${m.name}` : m.body} loading="lazy" />
               {m.media.critic && <span className="rp-critic">✷ Snack critic: {m.media.critic.score.toFixed(1)} · {m.media.critic.line}</span>}
             </a>
-            {m.body !== "Photo" && <p>{m.body}</p>}
+            {m.body !== "Photo" && <p translate="no">{m.body}</p>}
           </>
         ) : kind === "file" && m.media ? (
           <a className="rp-file" href={src} target="_blank" rel="noreferrer">
@@ -328,7 +328,7 @@ function Msg({ m, showtimeId, world, translated, hidden, onReveal, onReport }: {
           </a>
         ) : (
           <>
-            <p>{translated ?? m.body}</p>
+            <p translate="no">{translated ?? m.body}</p>
             {translated && translated !== m.body && <small className="rp-sub">Original: {m.body}</small>}
           </>
         )}

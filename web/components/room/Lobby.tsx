@@ -47,7 +47,7 @@ export default function Lobby({ showtimeId, film, untilStart, syncMs, online, wa
       <aside className="lb-chat" aria-label="Room chat">
         <strong>Room chat</strong>
         <div className="lb-msgs">
-          {messages.length === 0 ? <p className="muted">No messages yet. Say hello.</p> : messages.slice(-3).map((m) => <p key={m.id}><b>{m.mine ? "You" : m.name}:</b> {m.body}</p>)}
+          {messages.length === 0 ? <p className="muted">No messages yet. Say hello.</p> : messages.slice(-3).map((m) => <p key={m.id}><b>{m.mine ? "You" : m.name}:</b> <span translate="no">{m.body}</span></p>)}
         </div>
         <form onSubmit={(e) => { e.preventDefault(); if (draft.trim() && onSend(draft.trim())) setDraft(""); }}>
           <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={500} placeholder="Message the room" aria-label="Message the room" />

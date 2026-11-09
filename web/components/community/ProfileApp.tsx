@@ -166,7 +166,7 @@ function Reviews({ who, me, name, say }: { who: string; me: boolean; name: strin
       {data.list.map((r) => (
         <article key={r.showtimeId} className="pf-review">
           <div className="pf-review-h"><Link href={`/film/${r.showtimeId}`}>{r.film}</Link><span aria-label={`${r.stars} out of 5 stars`}>{stars(r.stars)}</span></div>
-          {r.body && <p>{r.body}</p>}
+          {r.body && <p translate="no">{r.body}</p>}
           {r.tags.length > 0 && <div className="pf-review-tags">{r.tags.map((t) => <span key={t}>{t}</span>)}</div>}
           <div className="pf-review-m">
             {me ? <span>{r.likes.toLocaleString()} like{r.likes === 1 ? "" : "s"}</span>

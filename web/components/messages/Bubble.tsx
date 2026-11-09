@@ -75,7 +75,7 @@ export default function Bubble({ m, mine, group, showName, status, translated, o
         {m.kind === "voice" ? <Voice m={m} translated={!mine && !original ? translated : undefined} />
           : m.kind === "party" ? <PartyCard m={m} mine={mine} />
           : (
-            <div className={`msg-b ${mine ? "me" : "them"}${m.kind === "photo" ? " photo" : ""}`}>
+            <div className={`msg-b ${mine ? "me" : "them"}${m.kind === "photo" ? " photo" : ""}`} translate="no">
               {m.kind === "photo" && m.mediaKey && (
                 <a href={media(m.mediaKey)} target="_blank" rel="noopener noreferrer"><img src={media(m.mediaKey)} alt={m.body || "Photo"} loading="lazy" /></a>
               )}

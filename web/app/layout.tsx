@@ -8,11 +8,16 @@ import "./globals.css";
 import { cookies } from "next/headers";
 import CookieBanner from "@/components/legal/CookieBanner";
 import ErrorReporter from "@/components/ErrorReporter";
+import AutoTranslate from "@/components/i18n/AutoTranslate";
+import { showtimes } from "@/lib/catalog";
+
+// Film and studio names stay as they are in every language.
+const NAMES = () => [...new Set(showtimes.flatMap((s) => [s.film, s.studio]).filter(Boolean))];
 import KidsGuard from "@/components/family/KidsGuard";
 import TabBar from "@/components/mobile/TabBar";
 import { SESSION_COOKIE } from "@/lib/auth";
-import { dirOf, isLang } from "@/lib/i18n";
-import { LANG_COOKIE } from "@/lib/locale";
+import { dirOf } from "@/lib/i18n";
+import { readLocale } from "@/lib/locale";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -33,14 +38,21 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const jar = await cookies();
-  const raw = jar.get(LANG_COOKIE)?.value;
-  const lang = isLang(raw) ? raw : "en";
+  const { lang } = await readLocale();
   return (
-    <html lang={lang} dir={dirOf(lang)}>
+    <html lang={lang} dir={dirOf(lang)} suppressHydrationWarning>
+      {lang !== "en" && (
+        <head>
+          {/* Hide the English first paint for a moment while the page switches to the visitor's language. */}
+          <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('tr-wait')" }} />
+          <noscript><style>{"html.tr-wait body{opacity:1!important}"}</style></noscript>
+        </head>
+      )}
       <body>
         {children}
         <CookieBanner />
         <ErrorReporter />
+        <AutoTranslate lang={lang} keep={lang === "en" ? undefined : NAMES()} />
         <KidsGuard />
         <TabBar signedIn={Boolean(jar.get(SESSION_COOKIE))} />
       </body>
