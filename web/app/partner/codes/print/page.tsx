@@ -17,14 +17,14 @@ export default async function PrintLabels({ searchParams }: { searchParams: Prom
   const codes = b.codes.slice(0, 500);
   const svgs = await Promise.all(codes.map((c) => QRCode.toString(`${site}/verify?code=${c}`, { type: "svg", margin: 0, errorCorrectionLevel: "M" })));
   return (
-    <div className="pl">
-      <header className="pl-head">
+    <div className="pcl">
+      <header className="pcl-head">
         <div><b>{b.partner} · licence {b.licence}</b><span>{b.product} · batch {batch} · {codes.length < b.codes.length ? `first ${codes.length} of ${b.codes.length.toLocaleString("en-GB")} (use the CSV for the rest)` : `${codes.length} labels`}</span></div>
         <PrintButton />
       </header>
-      <div className="pl-grid">
+      <div className="pcl-grid">
         {codes.map((c, i) => (
-          <div key={c} className="pl-label">
+          <div key={c} className="pcl-label">
             <span dangerouslySetInnerHTML={{ __html: svgs[i] }} />
             <div><b>E-CINEMA</b><small>Official merch</small><code>{c}</code><small>{b.licence} · scan to check</small></div>
           </div>

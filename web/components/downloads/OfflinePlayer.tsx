@@ -44,14 +44,14 @@ export default function OfflinePlayer({ id: given }: { id: string }) {
 
   if (err) {
     return (
-      <div className="lp-empty">
+      <div className="lbp-empty">
         <h1>{file?.film ?? "Download"}</h1>
         <p className="muted">{err}</p>
         <Link href="/downloads" className="cta big">Back to downloads</Link>
       </div>
     );
   }
-  if (!url || !file) return <div className="lp-empty"><p className="muted">Opening your download…</p></div>;
+  if (!url || !file) return <div className="lbp-empty"><p className="muted">Opening your download…</p></div>;
   return (
     <>
     <OfflineShell />

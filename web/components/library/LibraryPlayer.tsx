@@ -99,7 +99,7 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
 
   if (!stream) {
     return (
-      <div className="lp-empty">
+      <div className="lbp-empty">
         <Link href={back} className="room-back" aria-label="Back to the library">‹</Link>
         <h1>{film}</h1>
         <p className="muted">The film is not available to stream right now. Please try again in a little while.</p>
@@ -109,12 +109,12 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
 
   const waiting = synced && Date.now() < syncStart!;
   return (
-    <div className="lp" ref={stage}>
+    <div className="lbp" ref={stage}>
       <header className="room-top">
         <Link href={back} className="room-back" aria-label="Back to the library">‹</Link>
         <div><strong>{film}</strong><span>{synced ? "Rewatch party · everyone in sync" : offline ? "Downloaded · plays without a connection" : "From your library"}</span></div>
       </header>
-      <div className="room-player on lp-player" onContextMenu={(e) => e.preventDefault()} onClick={synced ? undefined : toggle}>
+      <div className="room-player on lbp-player" onContextMenu={(e) => e.preventDefault()} onClick={synced ? undefined : toggle}>
         <video
           ref={video}
           src={saver ? stream.sd : stream.hd}
@@ -140,7 +140,7 @@ export default function LibraryPlayer({ film, stream, viewerCode, original, dubF
         {synced ? (
           <div className="room-progress"><span style={{ width: `${dur ? (pos / dur) * 100 : 0}%` }} /></div>
         ) : (
-          <input className="lp-seek" type="range" min={0} max={dur || 1} step={1} value={pos} onChange={(e) => seek(Number(e.target.value))} aria-label="Seek"
+          <input className="lbp-seek" type="range" min={0} max={dur || 1} step={1} value={pos} onChange={(e) => seek(Number(e.target.value))} aria-label="Seek"
             style={{ ["--p" as string]: `${dur ? (pos / dur) * 100 : 0}%` }} />
         )}
         <div className="room-row">
