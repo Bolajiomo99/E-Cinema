@@ -17,12 +17,12 @@ const P = {
   privacy: <><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8m-3 3 2 2m-4 0 2 2" /></>,
 };
 
-export const SECTIONS: { id: keyof typeof P; label: string; soon?: boolean }[] = [
+export const SECTIONS: { id: keyof typeof P; label: string; soon?: boolean; href?: string }[] = [
   { id: "account", label: "Account" },
   { id: "security", label: "Security and devices" },
   { id: "language", label: "Language and region" },
   { id: "plan", label: "Plan and payments" },
-  { id: "kids", label: "Kids and parental", soon: true },
+  { id: "kids", label: "Kids and parental", href: "/family" },
   { id: "notifications", label: "Notifications" },
   { id: "data-saver", label: "Data saver" },
   { id: "privacy", label: "Privacy and data" },
@@ -49,7 +49,7 @@ export default function SettingsNav() {
                   <Ico d={P[s.id]} />{s.label}<span className="soon-tag">Soon</span>
                 </span>
               ) : (
-                <Link href={`/settings/${s.id}`} className={`st-item${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>
+                <Link href={s.href ?? `/settings/${s.id}`} className={`st-item${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>
                   <Ico d={P[s.id]} />{s.label}
                 </Link>
               )}
