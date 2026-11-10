@@ -27,7 +27,7 @@ export default function TryAnother({ options, showtimeId, quality, total, retryH
         {pick === "paypal"
           ? <PayPalTicketButton showtimeId={showtimeId} quality={quality} label={`Pay ${total}`} className="state-btn primary pf-pay" />
           : pick === "paystack" || pick === "flutterwave"
-            ? <LocalPayButton provider={pick} showtimeId={showtimeId} quality={quality} label={`Pay with ${pick === "paystack" ? "Paystack" : "Flutterwave"}`} className="state-btn primary pf-pay" />
+            ? <LocalPayButton provider={pick} showtimeId={showtimeId} quality={quality} label={`Pay ${total}`} className="state-btn primary pf-pay" />
             : <button type="button" className="state-btn primary pf-pay" disabled>Pay {total}</button>}
         <Link href={retryHref} className="state-btn ghost">Try the card again</Link>
       </div>

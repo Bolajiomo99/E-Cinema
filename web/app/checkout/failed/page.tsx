@@ -11,13 +11,12 @@ import { findShowtime } from "@/lib/catalog";
 import { readLocale } from "@/lib/locale";
 import { fallbacksFor, localReady, paypalReady } from "@/lib/pay-methods";
 import { quote, salesOver } from "@/lib/ticket-quote";
+import { quoteLabel } from "@/lib/seat-price";
 
 // Built from the Figma frame "Web / Checkout · Payment failed" (96:1254).
 // The seat stays held (10 minutes from the first try) while the viewer picks another way to pay.
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Payment did not go through · E-Cinema" };
-
-const money = (cur: string, v: string) => (cur === "USD" ? `$${v}` : `${cur} ${v}`);
 
 const REASONS: Record<string, string> = {
   INSTRUMENT_DECLINED: "Your bank declined the card.",
@@ -46,6 +45,7 @@ export default async function PaymentFailed({ searchParams }: { searchParams: Pr
   const profile = prof?.status === 200 ? (prof.body as { plan?: string; planStatus?: string; country?: string }) : undefined;
   const country = profile?.country || loc.country;
   const q = quote(s, profile ? { ...profile, country } : undefined, now, quality);
+  const total = await quoteLabel(s, { currency: q.currency, value: q.total }, country);
 
   return (
     <>
@@ -68,7 +68,7 @@ export default async function PaymentFailed({ searchParams }: { searchParams: Pr
           )}
           {salesOver(q.phase)
             ? <p className="pf-sub">{q.phase === "ended" ? "This premiere has ended." : "Doors have closed for this premiere."} <Link href="/browse">Find another one</Link>.</p>
-            : <TryAnother options={fallbacksFor(country, paypalReady(), localReady())} showtimeId={s.id} quality={q.quality} total={money(q.currency, q.total)} retryHref={retry} />}
+            : <TryAnother options={fallbacksFor(country, paypalReady(), localReady())} showtimeId={s.id} quality={q.quality} total={total} retryHref={retry} />}
         </section>
       </main>
     </>
