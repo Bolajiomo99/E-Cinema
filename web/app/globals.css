@@ -350,7 +350,7 @@ body:has(.lp), body:has(.su) { background: #0a0a0c; }
 .lp-fade-bottom { position: absolute; left: 0; top: 460px; width: 100%; height: 360px; background: linear-gradient(180deg, rgba(10,10,12,0) 0%, rgba(10,10,12,.85) 60%, #0a0a0c 100%); }
 .lp-nav { position: absolute; left: 0; right: 0; top: 0; height: 76px; padding: 0 64px; display: flex; align-items: center; justify-content: space-between; z-index: 2; }
 .lp-nav-left { display: flex; align-items: center; gap: 48px; }
-.lp-nav-links { display: flex; gap: 32px; font: 600 14px/20px Manrope, sans-serif; letter-spacing: .1px; }
+.lp-nav-links { display: flex; gap: 32px; white-space: nowrap; font: 600 14px/20px Manrope, sans-serif; letter-spacing: .1px; }
 .lp-nav-links a { color: var(--text-secondary); }
 .lp-nav-links a.on, .lp-nav-links a:hover { color: var(--text-primary); }
 .lp-nav-right { display: flex; align-items: center; gap: 12px; }
@@ -434,7 +434,7 @@ body:has(.lp), body:has(.su) { background: #0a0a0c; }
 
 /* Footer */
 .lp-footer { display: flex; justify-content: space-between; gap: 40px; padding: 56px 64px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; }
-.lp-footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.lp-footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; max-width: 420px; }
 .lp-footer-brand p { font: 500 13px/18px Manrope, sans-serif; color: var(--text-muted); }
 .lp-footer-addr { font: 500 13px/18px Manrope, sans-serif; font-style: normal; color: var(--text-muted); }
 .lp-footer-cols { display: flex; gap: 80px; flex-wrap: wrap; }
@@ -5860,3 +5860,10 @@ p a:not([class]) { text-decoration: underline; text-underline-offset: 2px; }
 .spd-thread { display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 14px; background: #131317; border: 1px solid #26262e; min-width: 0; }
 .spd-thread h2 { margin: 4px 0; font: 700 20px/28px Manrope, sans-serif; color: #f4f4f6; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .spd { padding: 20px 16px 40px; } .spd-grid { grid-template-columns: 1fr; } }
+
+/* Signed-in nav carries more links and tools than the landing nav: tighter spacing so nothing overlaps at 1440. */
+.hm-nav .lp-nav-links { gap: 24px; }
+@media (max-width: 1360px) { .hm-nav .lp-nav-links { gap: 18px; } .hm-nav .lp-nav-right { gap: 8px; } }
+@media (max-width: 1340px) { .hm-nav .lp-nav-links a[href="#calendar"] { display: none; } .hm-nav .ai-pill .ai-pill-label, .hm-nav .ai-pill kbd { display: none; } }
+@media (max-width: 1080px) { .hm-nav .lp-nav-links a[href="#hm-clips"], .hm-nav .lp-nav-links a[href="/home#hm-clips"] { display: none; } }
+@media (max-width: 1000px) { .hm-nav .lp-nav-links { display: none; } }

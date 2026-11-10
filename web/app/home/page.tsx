@@ -22,6 +22,8 @@ import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { endsAt, showtimes, nextPerFilm } from "@/lib/catalog";
 import LocalePicker from "@/components/LocalePicker";
 import { readLocale } from "@/lib/locale";
+import CartLink from "@/components/store/CartLink";
+import { withLocalPrices } from "@/lib/seat-price";
 import { SPEND_LIMIT } from "@/lib/concierge";
 
 // Built from the Figma frame "Web / Home · AI concierge and release calendar" (298:1362).
@@ -56,14 +58,17 @@ export default async function Home() {
   ]);
   const topClassic = classicRes?.status === 200 && Array.isArray(classicRes.body) ? (classicRes.body as Classic[])[0] : undefined;
   const parties = partyRes?.status === 200 && Array.isArray(partyRes.body) ? (partyRes.body as Party[]) : [];
-  const { list, hero, live } = pick();
+  const picked = pick();
+  const list = await withLocalPrices(picked.list, loc.country);
+  const hero = list.find((s) => s.id === picked.hero.id) ?? (await withLocalPrices([picked.hero], loc.country))[0];
+  const live = picked.live;
   const heroStat = stats.find((x) => x.showtimeId === hero.id);
   // The room opens 30 minutes before the premiere for ticket holders.
   const lobbyOpen = !live && Date.parse(hero.startsAt) - Date.now() < 30 * 60_000;
   const heroTicket = tickets.find((t) => t.showtimeId === hero.id && t.status === "paid");
   const tiles = list.map((s) => ({ ...s, endsAtMs: endsAt(s) }));
   const calendar = [
-    ...tiles.map(({ id, film, startsAt, price, category, adult, dubs, language, endsAtMs }) => ({ id, film, startsAt, price, category, adult, dubs, language, endsAtMs })),
+    ...tiles.map(({ id, film, startsAt, price, priceLabel, category, adult, dubs, language, endsAtMs }) => ({ id, film, startsAt, price, priceLabel, category, adult, dubs, language, endsAtMs })),
     ...ANNOUNCED.map((a) => ({ ...a, price: { ...a.price }, category: a.category as never, endsAtMs: Date.parse(a.startsAt) + 7_200_000, soon: true })),
   ];
   const [l1, ...l2] = hero.film.toUpperCase().split(" ");
@@ -90,9 +95,9 @@ export default async function Home() {
                 <a href="#calendar">{t.calendar}</a>
                 <a href="#live">{t.live}</a>
                 <a href="#hm-clips">Clips</a>
-                {["Community", "Shop", "Library"].map((l) => (
-                  <span key={l} className="soon" title={`${l} is coming soon`} aria-disabled="true">{l}</span>
-                ))}
+                <Link href="/community">Community</Link>
+                <Link href="/shop">Shop</Link>
+                <Link href="/library">Library</Link>
               </div>
             </div>
             <div className="lp-nav-right">
@@ -100,12 +105,10 @@ export default async function Home() {
               <Link href="/search" className="hm-icon" aria-label="Search">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="10.08" cy="10.08" r="7.33" /><path d="m19.25 19.25-3.94-3.94" /></svg>
               </Link>
-              <span className="hm-icon soon" title="Notifications are coming soon" aria-label="Notifications, coming soon" role="img">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5.5 7.33a5.5 5.5 0 0 1 11 0c0 6.42 2.75 8.25 2.75 8.25H2.75S5.5 13.75 5.5 7.33Z" /></svg>
-              </span>
-              <span className="hm-icon soon" title="The merch cart is coming soon" aria-label="Cart, coming soon" role="img">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="7.33" cy="19.25" r=".92" /><circle cx="17.42" cy="19.25" r=".92" /><path d="M1.88 1.88h1.83l2.44 11.38a1.83 1.83 0 0 0 1.83 1.45h8.97a1.83 1.83 0 0 0 1.79-1.44l1.51-6.81H4.69" /></svg>
-              </span>
+              <Link href="/notifications" className="hm-icon" aria-label="Notifications">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5.5 7.33a5.5 5.5 0 0 1 11 0c0 6.42 2.75 8.25 2.75 8.25H2.75S5.5 13.75 5.5 7.33Z" /><path d="M9.41 19.25a1.83 1.83 0 0 0 3.18 0" /></svg>
+              </Link>
+              <CartLink />
               <LocalePicker country={loc.country} lang={loc.lang} signedIn />
               <AccountMenu name={me.name} email={me.email} />
             </div>
@@ -125,7 +128,7 @@ export default async function Home() {
               {heroTicket ? (
                 <Link href={`/room/${hero.id}`} className="lp-btn lg">{live ? t.joinTheRoom : lobbyOpen ? "Join the waiting room" : "Open my room"}</Link>
               ) : (
-                <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · ${hero.price.value}</Link>
+                <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · {hero.priceLabel}</Link>
               )}
               {live || lobbyOpen ? (
                 <Link href={`/parties/new?film=${hero.id}`} className="lp-btn lg secondary">{t.startWatchParty}</Link>

@@ -30,6 +30,11 @@ export default function TopNav({ me, active, t, country, lang }: { me: Me; activ
         <Link href="/search" className="hm-icon" aria-label="Search">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="10.08" cy="10.08" r="7.33" /><path d="m19.25 19.25-3.94-3.94" /></svg>
         </Link>
+        {me && (
+          <Link href="/notifications" className="hm-icon" aria-label="Notifications">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5.5 7.33a5.5 5.5 0 0 1 11 0c0 6.42 2.75 8.25 2.75 8.25H2.75S5.5 13.75 5.5 7.33Z" /><path d="M9.41 19.25a1.83 1.83 0 0 0 3.18 0" /></svg>
+          </Link>
+        )}
         {me && <CartLink />}
         <LocalePicker country={country} lang={lang} signedIn={Boolean(me)} />
         {me ? (
