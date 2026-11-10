@@ -8,6 +8,7 @@ import { currentAccount } from "@/lib/auth";
 import { showtimes, type Showtime } from "@/lib/catalog";
 import { typeOf } from "@/lib/browse";
 import { readLocale } from "@/lib/locale";
+import { centsFormatter } from "@/lib/seat-price";
 import { nextPriceRise, preorderSave } from "@/lib/ticket-quote";
 
 // Built from the Figma frame "Web / Coming soon" (52:808): titles months out, bookable now at a
@@ -28,7 +29,6 @@ const FILTERS = [
 ] as const;
 type F = (typeof FILTERS)[number]["id"];
 
-const money = (cur: string, cents: number) => (cur === "USD" ? `$${(cents / 100).toFixed(2)}` : `${cur} ${(cents / 100).toFixed(2)}`);
 const cents = (s: Showtime) => Math.round(Number(s.price.value) * 100);
 const preorderCents = (s: Showtime, now: number) => Math.round(cents(s) * (1 - preorderSave(s, now) / 100));
 
@@ -78,6 +78,7 @@ const VrIcon = () => (
 
 export default async function ComingSoonPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
   const [q, me, loc] = await Promise.all([searchParams, currentAccount(), readLocale()]);
+  const money = await centsFormatter(loc.country);
   const now = Date.now();
   const f = (FILTERS.find((x) => x.id === q.f)?.id ?? "all") as F;
   // Coming soon = anything more than a week out, soonest first.

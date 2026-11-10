@@ -15,7 +15,7 @@ const runtime = (m?: number) => (m ? `${Math.floor(m / 60)}h ${String(m % 60).pa
 
 // Search with AI understanding and voice (Figma 30:750). The mic uses the browser's own speech
 // recognition, so nothing is recorded or sent anywhere except the words it hears.
-export default function SearchBox({ initialQ, initial, lang }: { initialQ: string; initial: Result | null; lang: string }) {
+export default function SearchBox({ initialQ, initial, lang, prices = {} }: { initialQ: string; initial: Result | null; lang: string; prices?: Record<string, string> }) {
   const router = useRouter();
   const [q, setQ] = useState(initialQ);
   const [res, setRes] = useState<Result | null>(initial);
@@ -115,7 +115,7 @@ export default function SearchBox({ initialQ, initial, lang }: { initialQ: strin
                     </Link>
                     <div className="sr-t">
                       <Link href={`/film/${s.id}`} className="sr-name">{s.film.toUpperCase()}</Link>
-                      <small>{TYPES.find((x) => x.id === typeOf(s))?.label} · {s.year} · {runtime(s.runtimeMin)} · <LocalWhen iso={s.startsAt} /> · ${s.price.value}</small>
+                      <small>{TYPES.find((x) => x.id === typeOf(s))?.label} · {s.year} · {runtime(s.runtimeMin)} · <LocalWhen iso={s.startsAt} /> · {prices[s.id] ?? `$${s.price.value}`}</small>
                       <span className="sr-why"><Spark />{h.why}</span>
                     </div>
                     <Link href={`/checkout?film=${s.id}`} className="lp-btn sm secondary sr-cta">Get a seat</Link>

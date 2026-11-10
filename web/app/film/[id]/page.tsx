@@ -13,6 +13,7 @@ import { findShowtime, showtimes } from "@/lib/catalog";
 import { filterShowtimes, typeOf } from "@/lib/browse";
 import { LANGS } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
+import { quoteLabel, withLocalPrices } from "@/lib/seat-price";
 import type { Party } from "@/lib/parties";
 import { doorsCloseAt, LATE_GRACE_MIN, phaseOf, quote, salesOver } from "@/lib/ticket-quote";
 import LateEntry, { MinutesIn } from "@/components/film/LateEntry";
@@ -37,7 +38,6 @@ const NOTES: Record<string, string> = {
   "PG-13": "Peril and mild language. Suitable for 13+.",
   "18+": "Adult themes. Only viewers who have finished the face and ID check can book.",
 };
-const money = (cur: string, v: string) => (cur === "USD" ? `$${v}` : `${cur} ${v}`);
 const runtime = (m?: number) => (m ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : "");
 
 export default async function FilmPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,6 +62,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
   const regionBlocked = Boolean(loc.country && s.blocked?.includes(loc.country));
   const owned = mine.some((t) => t.showtimeId === s.id && t.status === "paid");
   const q = quote(s, profile ? { ...profile, country: profile.country || loc.country } : { country: loc.country });
+  const qLabel = await quoteLabel(s, { currency: q.currency, value: q.total }, profile?.country || loc.country);
   const phase = phaseOf(s);
   const p = s.poster ?? { from: "#1b1b21", via: "#0e0e12", to: "#000", glow: "rgba(227,24,45,.45)" };
   const original = CODE[s.language ?? "English"] ?? "en";
@@ -78,7 +79,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
     : shared.length
       ? `You have seats for ${shared.length} similar premiere${shared.length === 1 ? "" : "s"} (${shared.slice(0, 2).map((x) => x.film).join(", ")}). ${s.film} shares the ${(s.genres ?? []).join(" and ").toLowerCase() || "same"} feel.`
       : `A ${(s.genres ?? ["new"]).join(", ").toLowerCase()} premiere from ${s.studio}. Book a few films and this card learns what you like.`;
-  const more = filterShowtimes({}).filter((x) => x.id !== s.id && typeOf(x) === typeOf(s)).slice(0, 6);
+  const more = await withLocalPrices(filterShowtimes({}).filter((x) => x.id !== s.id && typeOf(x) === typeOf(s)).slice(0, 6), profile?.country || loc.country);
   const back = `/film/${s.id}`;
   // "Pre-order the next screening": each film screens once, so this is the next premiere of the same kind.
   const next = showtimes.find((x) => x.id !== s.id && Date.parse(x.startsAt) > Date.now() && typeOf(x) === typeOf(s)) ?? showtimes.find((x) => Date.parse(x.startsAt) > Date.now());
@@ -122,9 +123,9 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
             ) : !owned && !s.adult && (phase === "grace" || phase === "late" || phase === "closed") ? null : owned ? (
               <Link href={`/room/${s.id}`} className="lp-btn lg">{phase === "before" ? "Open my room" : "Join the room"}</Link>
             ) : s.adult ? (
-              <Link href={`/unlock/${s.id}`} className="lp-btn lg">Unlock in 4 stages · {money(q.currency, q.total)} each</Link>
+              <Link href={`/unlock/${s.id}`} className="lp-btn lg">Unlock in 4 stages · {qLabel} each</Link>
             ) : (
-              <Link href={`/checkout?film=${s.id}`} className="lp-btn lg">{phase === "late" ? "Late entry" : "Get a seat"} · {money(q.currency, q.total)}</Link>
+              <Link href={`/checkout?film=${s.id}`} className="lp-btn lg">{phase === "late" ? "Late entry" : "Get a seat"} · {qLabel}</Link>
             )}
             <TrailerButton film={s.id} title={s.film} className="lp-btn lg secondary" />
             {phase === "before" && <a href={`/api/calendar/${s.id}.ics`} className="lp-btn lg ghost">Remind me</a>}
@@ -138,7 +139,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
           )}
           {(phase === "grace" || phase === "late" || phase === "closed") && !owned && !s.adult && !regionBlocked && (
             <LateEntry start={Date.parse(s.startsAt)} doubles={Date.parse(s.startsAt) + LATE_GRACE_MIN * 60_000} closes={doorsCloseAt(s)} end={endsAt(s)}
-              join={money(q.currency, q.total)} joinHref={`/checkout?film=${s.id}`} nextHref={next ? `/film/${next.id}` : undefined} />
+              join={qLabel} joinHref={`/checkout?film=${s.id}`} nextHref={next ? `/film/${next.id}` : undefined} />
           )}
           {phase === "late" && !owned && s.adult && <p className="fd-late">Late entry: after the first {LATE_GRACE_MIN} minutes a seat costs double.</p>}
         </div>
