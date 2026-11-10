@@ -27,6 +27,7 @@ export type Showtime = {
   blocked?: string[]; // countries the studio does not sell this film in
   studentPrice?: boolean; // the studio gives verified students 30% off (Studio / Premieres rules)
   studioSlug?: string; // the studio's public page, for live studio premieres
+  priceLabel?: string; // the price in the viewer's currency, set by lib/seat-price.ts
   encoreOf?: string; // a weekly encore of this lineup screening, or a studio's sell-out encore
 };
 

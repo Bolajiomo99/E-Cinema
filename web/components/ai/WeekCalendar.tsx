@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Showtime } from "@/lib/catalog";
 import { useTickets } from "./tickets";
 
-type Item = Pick<Showtime, "id" | "film" | "startsAt" | "price" | "category" | "adult" | "dubs" | "language"> & { endsAtMs: number; soon?: boolean };
+type Item = Pick<Showtime, "id" | "film" | "startsAt" | "price" | "priceLabel" | "category" | "adult" | "dubs" | "language"> & { endsAtMs: number; soon?: boolean };
 
 const GENRES = [
   { id: "Nollywood", color: "#e3182d" },
@@ -68,7 +68,7 @@ export default function WeekCalendar({ items }: { items: Item[] }) {
           {s === "held" && <span className="lp-badge vip">AI HELD</span>}
         </span>
         <strong>{i.film}</strong>
-        <span>{i.soon ? "Tickets soon" : i.adult ? "Verified adults" : `$${i.price.value}${i.dubs ? ` · ${i.dubs} dubs` : ""}`}</span>
+        <span>{i.soon ? "Tickets soon" : i.adult ? "Verified adults" : `${i.priceLabel ?? `$${i.price.value}`}${i.dubs ? ` · ${i.dubs} dubs` : ""}`}</span>
       </Link>
     );
   }

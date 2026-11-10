@@ -72,7 +72,7 @@ export default function PremiereStrip({ tiles, eyebrow = "THIS WEEK ONLY", title
                 {b && <span className={`lp-badge ${b.kind}`}>{b.kind === "live" && <i />}{b.text}</span>}
               </Link>
               <div className="lp-tile-meta">
-                <span>{live ? `Ends in ${left} min` : t.adult ? "Verified adults" : `${t.price.currency === "USD" ? "$" : t.price.currency + " "}${t.price.value}`}</span>
+                <span>{live ? `Ends in ${left} min` : t.adult ? "Verified adults" : (t.priceLabel ?? `${t.price.currency === "USD" ? "$" : t.price.currency + " "}${t.price.value}`)}</span>
                 <span>{t.language}{t.dubs ? ` · ${t.dubs} dubs` : ""}</span>
               </div>
             </li>

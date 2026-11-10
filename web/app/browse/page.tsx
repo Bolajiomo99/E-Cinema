@@ -6,6 +6,7 @@ import { currentAccount } from "@/lib/auth";
 import { TYPES, filterShowtimes, languages, typeOf, type TypeId, type When } from "@/lib/browse";
 import { langName } from "@/lib/i18n";
 import { readLocale } from "@/lib/locale";
+import { withLocalPrices } from "@/lib/seat-price";
 
 // Built from the Figma frame "Web / Browse by type" (30:564), with the real catalogue.
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
   let list = filterShowtimes({ when, lang });
   // "Dubbed in <my language>": titles whose original audio is another language, which we dub live.
   if (dub) list = list.filter((s) => s.language !== myLang);
+  list = await withLocalPrices(list, loc.country);
   const counts = new Map<TypeId, number>();
   for (const s of filterShowtimes({ when: undefined })) counts.set(typeOf(s), (counts.get(typeOf(s)) ?? 0) + 1);
 

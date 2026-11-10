@@ -11,6 +11,7 @@ import PlanPickLink from "@/components/plans/PlanPickLink";
 import TrailerButton from "@/components/landing/TrailerButton";
 import LocalePicker from "@/components/LocalePicker";
 import { readLocale } from "@/lib/locale";
+import { withLocalPrices } from "@/lib/seat-price";
 import { countryName, currencyFor, money as planMoney, priceOf, type PlanId } from "@/lib/plans";
 import { currentAccount } from "@/lib/auth";
 import { endsAt, showtimes, nextPerFilm } from "@/lib/catalog";
@@ -41,7 +42,6 @@ function lineupNow() {
   return { list, hero };
 }
 
-const money = (p: { currency: string; value: string }) => (p.currency === "USD" ? `$${p.value}` : `${p.currency} ${p.value}`);
 const runtime = (m?: number) => (m ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : "");
 
 const STEPS = [
@@ -75,7 +75,9 @@ const LIVE_METHODS = new Set(["Mastercard", "Visa"]); // through PayPal today
 export default async function Home() {
   const [me, seats, loc] = await Promise.all([currentAccount(), liveSeats(), readLocale()]);
   const { t } = loc;
-  const { list, hero } = lineupNow();
+  const lineup = lineupNow();
+  const list = await withLocalPrices(lineup.list, loc.country);
+  const hero = list.find((s) => s.id === lineup.hero.id) ?? list[0];
   const heroSeats = seats[hero.id];
   const planCountry = loc.country;
   const planCurrency = currencyFor(planCountry);
@@ -131,7 +133,7 @@ export default async function Home() {
           <p className="lp-body-l">{hero.blurb ?? `${hero.film} from ${hero.studio}. One live screening, the whole world in the same seat.`}</p>
           <Countdown to={hero.startsAt} />
           <div className="lp-ctas">
-            <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · {money(hero.price)}</Link>
+            <Link href={`/checkout?film=${hero.id}`} className="lp-btn lg">{t.getASeat} · {hero.priceLabel}</Link>
             <TrailerButton film={hero.id} title={hero.film} className="lp-btn lg secondary" label={t.watchTrailer} />
           </div>
           {heroSeats && (
@@ -218,7 +220,7 @@ export default async function Home() {
         <ul className="lp-methods">
           {METHODS.map((m) => <li key={m} className={LIVE_METHODS.has(m) ? "" : "later"}>{m}</li>)}
         </ul>
-        <p className="lp-note">Cards work today through PayPal. The other methods switch on next, starting with Paystack and Flutterwave.</p>
+        <p className="lp-note">Seats: PayPal takes cards everywhere, and Paystack and Flutterwave take naira in Nigeria. Bank transfer and crypto switch on next.</p>
       </section>
 
       <LandingFooter heads={{ Watch: t.watch, Account: t.account, Company: t.company, Help: t.help }} />

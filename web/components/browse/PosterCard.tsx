@@ -20,7 +20,7 @@ export default function PosterCard({ s }: { s: Showtime }) {
         {s.adult && <span className="br-adult">18+</span>}
       </span>
       <span className="br-meta">
-        <b>{money(s.price.currency, s.price.value)}</b>
+        <b>{s.priceLabel ?? money(s.price.currency, s.price.value)}</b>
         <small>{langCode(s.language)} · {s.dubs ?? 3} dubs</small>
       </span>
       <span className="sr-only">{s.film}, {s.studio}</span>
