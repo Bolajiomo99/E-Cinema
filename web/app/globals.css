@@ -1115,7 +1115,7 @@ button.st-link { background: none; border: 0; padding: 0; text-decoration: under
 .pl-cycle button.on { background: #f4f4f6; color: #0a0a0c; }
 .pl-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
 .pl-card { display: flex; flex-direction: column; gap: 16px; padding: 24px; min-height: 261px; box-sizing: border-box; border-radius: 16px; border: 1px solid #26262e; background: #131317; transition: border-color .2s, background .2s, transform .2s; }
-.pl-card:hover, .pl-card:focus-within { border-color: #e3182d; background: linear-gradient(180deg, #2a0e13, #131317 70%); }
+.pl-card:hover, .pl-card:focus-within, .pl-card.pro:not(.current) { border-color: #e3182d; background: linear-gradient(180deg, #2a0e13, #131317 70%); }
 .pl-card.current { border-color: #3a3a44; }
 .pl-card-h { display: flex; align-items: center; justify-content: space-between; min-height: 22px; }
 .pl-card-h em { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .8px; color: #e3182d; }
