@@ -1100,7 +1100,7 @@ html, body { overflow-x: clip; }
 button.st-link { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
 
 /* Plans (Figma 18:426) */
-.pl { box-sizing: border-box; min-height: 100dvh; padding: 0 64px 80px; display: flex; flex-direction: column; gap: 32px; background: #0a0a0c; color: #f4f4f6; max-width: 1440px; margin: 0 auto; }
+.pl { box-sizing: border-box; min-height: 100dvh; height: auto; padding: 0 64px 80px; display: flex; flex-direction: column; gap: 32px; background: #0a0a0c; color: #f4f4f6; max-width: 1440px; margin: 0 auto; }
 .pl-nav { height: 72px; display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 .pl-nav .state-btn { height: 34px; font-size: 13px; font-weight: 600; }
 .pl-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
