@@ -28,7 +28,7 @@ export default async function StudentPage() {
   const where = countryName(country);
 
   const body = (
-    <div className="lp gf sd">
+    <div className="lp gf sdp">
       <TopNav me={me} t={loc.t} country={loc.country} lang={loc.lang} />
       <header className="sd-hero">
         <div className="gf-copy">
