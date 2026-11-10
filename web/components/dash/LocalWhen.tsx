@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localZoneName } from "@/lib/zone-abbr";
 
 // Shows a screening time in the viewer's own time zone. The server cannot know it,
 // so the first render prints UTC and the browser swaps in local time after mount.
@@ -19,5 +20,5 @@ function fmt(iso: string, timeZone?: string) {
   const tomorrow = new Date(now.getTime() + 86400000);
   const label = same(now) ? "Tonight" : same(tomorrow) ? "Tomorrow" : new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short", day: "numeric", month: "short" }).format(d);
   const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", timeZoneName: "short" }).format(d);
-  return `${label} · ${time}`;
+  return `${label} · ${timeZone === "UTC" ? time : localZoneName(time, timeZone)}`;
 }

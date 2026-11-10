@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localZoneName } from "@/lib/zone-abbr";
 
 // "21:30 · draw time WAT": the draw time in the viewer's own zone.
 export default function DrawTime({ iso }: { iso: string }) {
@@ -12,7 +13,7 @@ export default function DrawTime({ iso }: { iso: string }) {
   return (
     <>
       <b suppressHydrationWarning>{time}</b>
-      <small suppressHydrationWarning>draw time {zone}</small>
+      <small suppressHydrationWarning>draw time {tz === "UTC" ? zone : localZoneName(zone)}</small>
     </>
   );
 }

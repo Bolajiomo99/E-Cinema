@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localZoneName } from "@/lib/zone-abbr";
 
 const fmt = (iso: string, timeZone?: string, opts: Intl.DateTimeFormatOptions = {}) =>
   new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", ...opts }).format(new Date(iso));
@@ -15,7 +16,7 @@ export default function WorldTimes({ iso }: { iso: string }) {
   const label = today ? "Tonight" : new Intl.DateTimeFormat("en-GB", { timeZone: zone, weekday: "short", day: "numeric", month: "short" }).format(d);
   return (
     <>
-      <p className="ok-v">{label} · {fmt(iso, zone, { timeZoneName: "short" })}</p>
+      <p className="ok-v">{label} · {zone === "UTC" ? fmt(iso, zone, { timeZoneName: "short" }) : localZoneName(fmt(iso, zone, { timeZoneName: "short" }))}</p>
       <p className="ok-s">{fmt(iso, "Europe/London")} in London · {fmt(iso, "Asia/Kolkata")} in Mumbai · {fmt(iso, "Africa/Lagos")} in Lagos</p>
     </>
   );
