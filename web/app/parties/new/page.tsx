@@ -6,6 +6,8 @@ import { accountApi, currentAccount, SESSION_COOKIE } from "@/lib/auth";
 import { cookies } from "next/headers";
 import type { RoomOption } from "@/lib/parties";
 import { endsAt, findShowtime, showtimes } from "@/lib/catalog";
+import { readLocale } from "@/lib/locale";
+import { seatPriceLabel } from "@/lib/seat-price";
 
 // Figma "Web / Create watch party" (31:934): a dialog over the film's colours.
 export const dynamic = "force-dynamic";
@@ -23,6 +25,7 @@ export default async function NewParty({ searchParams }: { searchParams: Promise
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   const rr = await accountApi("GET", "/v1/me/rooms?kinds=party,private", undefined, session).catch(() => null);
   const rooms = rr?.status === 200 ? (rr.body as RoomOption[]) : [];
+  const seat = await seatPriceLabel(s, (await readLocale()).country);
 
   return (
     <main id="main" className="wp" style={{ background: `linear-gradient(90deg, ${p.from} 0%, ${p.via} 60%, #000 100%)` }}>
@@ -39,7 +42,7 @@ export default async function NewParty({ searchParams }: { searchParams: Promise
           <span className="wp-poster" style={{ background: `linear-gradient(180deg, ${p.from} 0%, ${p.via} 60%, ${p.to} 100%)` }} />
           <div className="co-t">
             <strong>{s.film}</strong>
-            <small><LocalWhen iso={s.startsAt} /> · ${s.price.value} a seat</small>
+            <small><LocalWhen iso={s.startsAt} /> · {seat} a seat</small>
           </div>
           {open.length > 1 && (
             <form className="wp-switch" action="/parties/new">
